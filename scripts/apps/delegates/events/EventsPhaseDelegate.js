@@ -334,7 +334,7 @@ export class EventsPhaseDelegate {
         const treeEvent = this.triggeredEvents.find(e => e.isDecisionTree);
         if (treeEvent) {
             this.activeTreeState = DecisionTreeResolver.createTreeState(
-                { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, mechanical: treeEvent.mechanical },
+                { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, gmPrompt: treeEvent.gmPrompt, checkContext: treeEvent.checkContext, gmGuidance: treeEvent.gmGuidance, mechanical: treeEvent.mechanical },
                 treeEvent.targets
             );
         }
@@ -375,6 +375,22 @@ export class EventsPhaseDelegate {
             this.activeTreeState.stallEffects.push(penalty.upfrontLoss);
         }
 
+        const stallConsequence = (penalty.consequence ?? penalty.upfrontLoss?.description ?? penalty.narrative ?? "Supplies lost to the delay.").trim();
+        const stallTags = Array.isArray(penalty.consequenceTags) && penalty.consequenceTags.length
+            ? [...penalty.consequenceTags]
+            : ["Supplies Lost", `DC +${bump}`];
+        this.activeTreeState.stallConsequence = stallConsequence;
+        this.activeTreeState.stallConsequenceTags = stallTags;
+        this.activeTreeState.lastStepOutcome = {
+            type: "stall",
+            choiceLabel: stallCount > 1 ? `Party Stalled (x${stallCount})` : "Party Stalled",
+            success: false,
+            narrative: penalty.narrative ?? "",
+            consequence: stallConsequence,
+            consequenceTags: stallTags
+        };
+
+        this._broadcastEventsState();
         await this._app._saveRestState();
         this._app.render();
     }
@@ -432,7 +448,7 @@ export class EventsPhaseDelegate {
 
         initTreeState(treeEvent) {
         this.activeTreeState = DecisionTreeResolver.createTreeState(
-            { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, mechanical: treeEvent.mechanical },
+            { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, gmPrompt: treeEvent.gmPrompt, checkContext: treeEvent.checkContext, gmGuidance: treeEvent.gmGuidance, mechanical: treeEvent.mechanical },
             treeEvent.targets
         );
         if (treeEvent.mechanical?.stallPenalty) {
@@ -696,7 +712,7 @@ export class EventsPhaseDelegate {
         const treeEvent = app._triggeredEvents.find(e => e.isDecisionTree);
         if (treeEvent) {
             app._activeTreeState = DecisionTreeResolver.createTreeState(
-                { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, mechanical: treeEvent.mechanical },
+                { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, gmPrompt: treeEvent.gmPrompt, checkContext: treeEvent.checkContext, gmGuidance: treeEvent.gmGuidance, mechanical: treeEvent.mechanical },
                 treeEvent.targets
             );
         }
@@ -891,7 +907,7 @@ export class EventsPhaseDelegate {
         const treeEvent = app._triggeredEvents.find(e => e.isDecisionTree);
         if (treeEvent) {
             app._activeTreeState = DecisionTreeResolver.createTreeState(
-                { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, mechanical: treeEvent.mechanical },
+                { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, gmPrompt: treeEvent.gmPrompt, checkContext: treeEvent.checkContext, gmGuidance: treeEvent.gmGuidance, mechanical: treeEvent.mechanical },
                 treeEvent.targets
             );
             if (treeEvent.mechanical?.stallPenalty) {
@@ -1178,7 +1194,7 @@ export class EventsPhaseDelegate {
         const treeEvent = app._triggeredEvents.find(e => e.isDecisionTree);
         if (treeEvent) {
             app._activeTreeState = DecisionTreeResolver.createTreeState(
-                { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, mechanical: treeEvent.mechanical },
+                { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, gmPrompt: treeEvent.gmPrompt, checkContext: treeEvent.checkContext, gmGuidance: treeEvent.gmGuidance, mechanical: treeEvent.mechanical },
                 treeEvent.targets
             );
         }
@@ -1471,6 +1487,22 @@ export class EventsPhaseDelegate {
             app._activeTreeState.stallEffects.push(penalty.upfrontLoss);
         }
 
+        const stallConsequence = (penalty.consequence ?? penalty.upfrontLoss?.description ?? penalty.narrative ?? "Supplies lost to the delay.").trim();
+        const stallTags = Array.isArray(penalty.consequenceTags) && penalty.consequenceTags.length
+            ? [...penalty.consequenceTags]
+            : ["Supplies Lost", `DC +${bump}`];
+        app._activeTreeState.stallConsequence = stallConsequence;
+        app._activeTreeState.stallConsequenceTags = stallTags;
+        app._activeTreeState.lastStepOutcome = {
+            type: "stall",
+            choiceLabel: stallCount > 1 ? `Party Stalled (x${stallCount})` : "Party Stalled",
+            success: false,
+            narrative: penalty.narrative ?? "",
+            consequence: stallConsequence,
+            consequenceTags: stallTags
+        };
+
+        this._broadcastEventsState();
         await app._saveRestState();
         app.render();
     

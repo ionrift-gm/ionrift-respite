@@ -1964,8 +1964,9 @@ export class RestPrepareContext {
                 // Number the options for the choice cards (Option 1, Option 2, ...).
                 const options = (ts.options ?? []).map((o, i) => ({ ...o, optionNum: i + 1 }));
                 const treeEvent = (app._triggeredEvents ?? []).find(e => e.id === ts.eventId);
-                const gmPrompt = ts.gmPrompt ?? treeEvent?.gmPrompt ?? "";
+                const gmPrompt = ts.gmPrompt || treeEvent?.gmPrompt || "";
                 const checkContext = ts.checkContext ?? treeEvent?.checkContext ?? null;
+                const gmGuidance = ts.gmGuidance || treeEvent?.gmGuidance || "";
                 let readAloud = ts.readAloud;
                 let showDecisionPrompt = ts.showDecisionPrompt;
                 if (!readAloud) {
@@ -1998,6 +1999,7 @@ export class RestPrepareContext {
                     ...ts,
                     gmPrompt,
                     checkContext,
+                    gmGuidance,
                     readAloud,
                     showDecisionPrompt: !!showDecisionPrompt,
                     treeDcAdjNote,

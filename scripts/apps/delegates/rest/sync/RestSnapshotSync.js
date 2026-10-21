@@ -154,7 +154,14 @@ export class RestSnapshotSync {
                 }
             }
         }
-        if (phaseData.activeTreeState) app._activeTreeState = phaseData.activeTreeState;
+        if (phaseData.activeTreeState) {
+            app._activeTreeState = phaseData.activeTreeState;
+            if (!app._isGM && (!phaseData.activeTreeState.awaitingRolls || !phaseData.activeTreeState.rollRequestSent)) {
+                app._pendingTreeRoll = null;
+            } else if (!app._isGM && app._pendingTreeRoll && phaseData.activeTreeState.pendingDC) {
+                app._pendingTreeRoll.dc = phaseData.activeTreeState.pendingDC;
+            }
+        }
         if (phaseData.eventsRolled !== undefined) app._eventsRolled = phaseData.eventsRolled;
         if (Array.isArray(phaseData.exhaustionDraft)) app._dawn?.restore(phaseData.exhaustionDraft);
         if (Array.isArray(phaseData.mealBuffQueue)) app._mealBuffQueue = phaseData.mealBuffQueue;

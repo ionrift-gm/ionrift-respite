@@ -42,8 +42,9 @@ export class DecisionTreeResolver {
         const description = (eventFields.description ?? treeFields.description ?? "").trim();
 
         if (depth > 0) {
-            const readAloud = prompt || description || "";
-            return { readAloud, showDecisionPrompt: false };
+            const readAloud = description || prompt || "";
+            const showDecisionPrompt = !!(description && prompt && description !== prompt);
+            return { readAloud, showDecisionPrompt };
         }
 
         const readAloud = gmPrompt || prompt || description || "";
@@ -79,6 +80,9 @@ export class DecisionTreeResolver {
             depth: 0,
             maxDepth: tree.maxDepth ?? 2,
             history: [],
+            lastStepOutcome: null,
+            stallConsequence: null,
+            stallConsequenceTags: [],
             resolved: false,
             finalEffects: [],
             finalNarrative: "",
@@ -88,6 +92,58 @@ export class DecisionTreeResolver {
             pendingRolls: [],
             resolvedRolls: []
         };
+    }
+
+    /**
+     * Extracts the immediate per-roll consequence beat and toll tags from a
+     * decision tree branch outcome (onSuccess or onFailure).
+     * Uses authored `consequence` and `consequenceTags` when present, with
+     * automatic fallback for legacy decision trees.
+     *
+     * @param {Object} outcomeNode - The onSuccess or onFailure branch object.
+     * @param {boolean} isSuccess - Whether the group check passed.
+     * @returns {{ narrative: string, consequence: string, consequenceTags: string[] }}
+     */
+    static extractStepConsequence(outcomeNode, isSuccess) {
+        if (!outcomeNode) {
+            return { narrative: "", consequence: "", consequenceTags: [] };
+        }
+        const narrative = (outcomeNode.narrative ?? "").trim();
+        const consequence = (outcomeNode.consequence ?? narrative ?? "").trim();
+
+        let consequenceTags = Array.isArray(outcomeNode.consequenceTags)
+            ? outcomeNode.consequenceTags.filter(Boolean)
+            : [];
+
+        if (!consequenceTags.length) {
+            const derived = new Set();
+            for (const eff of outcomeNode.effects ?? []) {
+                const t = eff?.type;
+                if (t === "supply_loss" || t === "consume_resource") derived.add("Supplies Lost");
+                else if (t === "item_at_risk") derived.add("Gear at Risk");
+                else if (t === "consume_gold") derived.add("Coin Lost");
+                else if (t === "damage" || t === "apply_injury") derived.add("Injury");
+                else if (t === "condition" || t === "apply_condition") {
+                    const cond = (eff.condition ?? "").toLowerCase();
+                    if (cond === "exhaustion") derived.add("Exhaustion");
+                    else if (cond === "poisoned") derived.add("Poisoned");
+                    else derived.add("Condition");
+                } else if (t === "reduce_recovery" || t === "prevent_long_rest") {
+                    derived.add("Rest Disrupted");
+                }
+            }
+            if (!derived.size) {
+                if (!isSuccess && Array.isArray(outcomeNode.options) && outcomeNode.options.length > 0) {
+                    derived.add("Situation Worsens");
+                    derived.add("Supplies at Risk");
+                } else if (isSuccess) {
+                    derived.add("No Losses");
+                }
+            }
+            consequenceTags = Array.from(derived);
+        }
+
+        return { narrative, consequence, consequenceTags };
     }
 
     /**
@@ -141,30 +197,52 @@ export class DecisionTreeResolver {
             resolvedRolls: checkResult.rolls ?? []
         };
 
-        // Record in history
-        state.history = [...(treeState.history ?? []), {
+        const outcomeNode = checkResult.success ? option.onSuccess : option.onFailure;
+        const stepBeat = this.extractStepConsequence(outcomeNode, !!checkResult.success);
+
+        // Record in history with per-roll consequence beat
+        const historyEntry = {
             depth: treeState.depth,
             choiceId: option.id,
             choiceLabel: option.label,
             check: option.check,
-            result: checkResult
-        }];
+            result: checkResult,
+            narrative: stepBeat.narrative,
+            consequence: stepBeat.consequence,
+            consequenceTags: stepBeat.consequenceTags
+        };
+        state.history = [...(treeState.history ?? []), historyEntry];
+        state.lastStepOutcome = {
+            type: "roll",
+            depth: treeState.depth,
+            choiceId: option.id,
+            choiceLabel: option.label,
+            success: !!checkResult.success,
+            passCount: checkResult.passCount,
+            totalRolls: (checkResult.rolls ?? []).length,
+            groupAverage: checkResult.groupAverage,
+            dc: option.check?.dc ?? treeState.pendingDC ?? 12,
+            narrative: stepBeat.narrative,
+            consequence: stepBeat.consequence,
+            consequenceTags: stepBeat.consequenceTags
+        };
 
         if (checkResult.success) {
             return this._resolveOutcome(state, option.onSuccess);
         } else {
             const failure = option.onFailure;
             if (failure.options && treeState.depth < treeState.maxDepth) {
-                // Branch deeper: new prompt is the read-aloud; event gmPrompt stays in state for GM steer only
-                const branchPrompt = failure.prompt ?? failure.narrative ?? "";
+                const branchNarrative = (failure.narrative ?? "").trim();
+                const branchPrompt = (failure.prompt ?? failure.narrative ?? "").trim();
+                const hasSeparatePrompt = !!(branchNarrative && branchPrompt && branchNarrative !== branchPrompt);
                 return {
                     ...state,
                     depth: treeState.depth + 1,
                     prompt: branchPrompt,
                     options: failure.options,
-                    description: failure.narrative,
-                    readAloud: branchPrompt || failure.narrative || treeState.readAloud,
-                    showDecisionPrompt: false
+                    description: branchNarrative,
+                    readAloud: branchNarrative || branchPrompt || treeState.readAloud,
+                    showDecisionPrompt: hasSeparatePrompt
                 };
             } else {
                 return this._resolveOutcome(state, failure);

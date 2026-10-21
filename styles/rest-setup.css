@@ -5521,6 +5521,170 @@ button.btn-stall-penalty:hover {
     }
 }
 
+/* ---- Per-Roll Decision Tree Consequence Beats (GM & Player) ---- */
+.tree-history-entry.is-failure {
+    border-left-color: rgba(239, 68, 68, 0.75);
+    background: linear-gradient(90deg, rgba(40, 16, 24, 0.55) 0%, rgba(16, 14, 22, 0.45) 100%);
+}
+
+.tree-history-entry.is-success {
+    border-left-color: rgba(52, 211, 153, 0.65);
+    background: linear-gradient(90deg, rgba(16, 36, 28, 0.45) 0%, rgba(16, 18, 24, 0.4) 100%);
+}
+
+.tree-step-consequence {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.3rem;
+    padding-top: 0.28rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tree-step-consequence-text {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    font-size: 0.74rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.tree-step-consequence.is-failure .tree-step-consequence-text i {
+    color: #f87171;
+    margin-top: 0.14rem;
+    flex-shrink: 0;
+}
+
+.tree-step-consequence.is-success .tree-step-consequence-text i {
+    color: #34d399;
+    margin-top: 0.14rem;
+    flex-shrink: 0;
+}
+
+.tree-step-consequence-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.tree-consequence-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.tree-consequence-pill.fail {
+    background: rgba(239, 68, 68, 0.16);
+    border: 1px solid rgba(248, 113, 113, 0.38);
+    color: #fca5a5;
+}
+
+.tree-consequence-pill.pass {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    color: #6ee7b7;
+}
+
+.player-step-consequence-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.42rem;
+    padding: 0.68rem 0.88rem;
+    border-radius: 8px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+.player-step-consequence-card.is-failure {
+    background: linear-gradient(180deg, rgba(36, 16, 24, 0.78) 0%, rgba(18, 12, 20, 0.9) 100%);
+    border: 1px solid rgba(239, 68, 68, 0.28);
+    border-left: 3px solid #ef4444;
+}
+
+.player-step-consequence-card.is-success {
+    background: linear-gradient(180deg, rgba(14, 32, 26, 0.75) 0%, rgba(12, 18, 22, 0.9) 100%);
+    border: 1px solid rgba(52, 211, 153, 0.26);
+    border-left: 3px solid #10b981;
+}
+
+.player-step-consequence-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.player-step-consequence-head .step-choice-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.93);
+}
+
+.player-step-consequence-card.is-failure .step-choice-title i {
+    color: #f87171;
+}
+
+.player-step-consequence-card.is-success .step-choice-title i {
+    color: #34d399;
+}
+
+.step-verdict-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.step-verdict-badge.fail {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+.step-verdict-badge.pass {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+}
+
+.player-step-consequence-text {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.84);
+}
+
+.player-step-next-beat {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.8rem;
+    background: rgba(14, 18, 28, 0.55);
+    border: 1px dashed rgba(192, 132, 252, 0.24);
+    border-radius: 6px;
+}
+
+.player-step-next-beat .player-narrating-icon {
+    font-size: 0.95rem;
+    color: #c084fc;
+}
+
+.player-step-next-beat .player-narrating-text {
+    font-size: 0.78rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+
 /* ---- Player Outcome Card (Modern Obsidian Glass) ---- */
 .player-outcome-card {
     display: flex;

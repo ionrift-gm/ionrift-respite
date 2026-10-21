@@ -1118,9 +1118,9 @@
                 </div>
             </div>
 
-            {{!-- Tree History (previous choices) --}}
+            {{!-- Tree History (previous choices & per-roll consequences) --}}
             {{#each activeTreeState.history}}
-            <div class="tree-history-entry">
+            <div class="tree-history-entry {{#if result.success}}is-success{{else}}is-failure{{/if}}">
                 <div class="tree-choice-made">
                     <i class="fas fa-arrow-right"></i>
                     <strong>{{choiceLabel}}</strong>
@@ -1129,6 +1129,21 @@
                         ({{result.passCount}}/{{result.rolls.length}})
                     </span>
                 </div>
+                {{#if consequence}}
+                <div class="tree-step-consequence {{#if result.success}}is-success{{else}}is-failure{{/if}}">
+                    <div class="tree-step-consequence-text">
+                        <i class="fas {{#if result.success}}fa-shield-alt{{else}}fa-exclamation-circle{{/if}}"></i>
+                        <span>{{consequence}}</span>
+                    </div>
+                    {{#if consequenceTags.length}}
+                    <div class="tree-step-consequence-tags">
+                        {{#each consequenceTags}}
+                        <span class="tree-consequence-pill {{#if ../result.success}}pass{{else}}fail{{/if}}">{{this}}</span>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                </div>
+                {{/if}}
             </div>
             {{/each}}
 
@@ -1311,7 +1326,7 @@
                 <span class="stall-hint-text">Third option bid &middot; negotiating between choices &middot; repeating answered questions</span>
                 {{#if activeTreeState.stallCount}}
                 <span class="stall-applied-count">
-                    <i class="fas fa-exclamation-triangle"></i> Applied {{activeTreeState.stallCount}}x. DCs +{{activeTreeState.totalStallBump}}, supplies lost
+                    <i class="fas fa-exclamation-triangle"></i> Applied {{activeTreeState.stallCount}}x. DCs +{{activeTreeState.totalStallBump}}, supplies lost{{#if activeTreeState.stallConsequence}} &middot; {{activeTreeState.stallConsequence}}{{/if}}
                 </span>
                 {{/if}}
             </div>
@@ -1447,8 +1462,52 @@
             {{/if}}
         </div>
         {{else}}
-        {{!-- Player View: Obscured narration state, roll request when prompted --}}
+        {{!-- Player View: Per-roll consequence trail, roll request when prompted, itemised lock at end --}}
         <div class="respite-decision-tree player-tree-view">
+            {{#if activeTreeState.stallConsequence}}
+            <div class="player-step-consequence-card is-failure is-stall">
+                <div class="player-step-consequence-head">
+                    <span class="step-choice-title">
+                        <i class="fas fa-hourglass-half"></i>
+                        Party Stalled{{#if (gt activeTreeState.stallCount 1)}} (x{{activeTreeState.stallCount}}){{/if}}
+                    </span>
+                    <span class="step-verdict-badge fail">Delay Penalty</span>
+                </div>
+                <div class="player-step-consequence-text">{{activeTreeState.stallConsequence}}</div>
+                {{#if activeTreeState.stallConsequenceTags.length}}
+                <div class="tree-step-consequence-tags">
+                    {{#each activeTreeState.stallConsequenceTags}}
+                    <span class="tree-consequence-pill fail">{{this}}</span>
+                    {{/each}}
+                </div>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            {{#each activeTreeState.history}}
+            <div class="player-step-consequence-card {{#if result.success}}is-success{{else}}is-failure{{/if}}">
+                <div class="player-step-consequence-head">
+                    <span class="step-choice-title">
+                        <i class="fas {{#if result.success}}fa-shield-alt{{else}}fa-exclamation-circle{{/if}}"></i>
+                        {{choiceLabel}}
+                    </span>
+                    <span class="step-verdict-badge {{#if result.success}}pass{{else}}fail{{/if}}">
+                        {{#if result.success}}Passed{{else}}Failed{{/if}} ({{result.passCount}}/{{result.rolls.length}})
+                    </span>
+                </div>
+                {{#if consequence}}
+                <div class="player-step-consequence-text">{{consequence}}</div>
+                {{/if}}
+                {{#if consequenceTags.length}}
+                <div class="tree-step-consequence-tags">
+                    {{#each consequenceTags}}
+                    <span class="tree-consequence-pill {{#if ../result.success}}pass{{else}}fail{{/if}}">{{this}}</span>
+                    {{/each}}
+                </div>
+                {{/if}}
+            </div>
+            {{/each}}
+
             {{#if activeTreeState.resolved}}
             {{#if activeTreeState.hasLockedLosses}}
             <div class="player-outcome-card">
@@ -1536,15 +1595,22 @@
                 </div>
             </div>
             {{else}}
+            {{#unless activeTreeState.history.length}}
             <div class="player-event-narrating-card">
                 <i class="fas fa-theater-masks player-narrating-icon"></i>
                 <span class="player-narrating-text">The GM is narrating...</span>
             </div>
+            {{/unless}}
             {{/if}}
             {{else}}
             {{#if @root.pendingTreeRoll.rollRequest}}
             <div class="player-tree-roll-section">
                 {{> rollRequest rollRequest=@root.pendingTreeRoll.rollRequest}}
+            </div>
+            {{else if activeTreeState.lastStepOutcome}}
+            <div class="player-step-next-beat">
+                <i class="fas fa-theater-masks player-narrating-icon"></i>
+                <span class="player-narrating-text">The GM is framing the next decision...</span>
             </div>
             {{else}}
             <div class="player-event-narrating-card">
