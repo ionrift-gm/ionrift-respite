@@ -1,4 +1,6 @@
 {
     "ionrift-respite.travel.forage.requires_pack": "Foraging needs items in Respite Custom Forage folders when homebrew provisions only is enabled.",
-    "ionrift-respite.travel.hunt.requires_provision": "Hunting needs items in the Respite Custom Hunting folder when homebrew provisions only is enabled."
+    "ionrift-respite.travel.hunt.requires_provision": "Hunting needs items in the Respite Custom Hunting folder when homebrew provisions only is enabled.",
+    "ionrift-respite.nightWatch.improvise.triggered": "<strong>Improvised night check</strong> ({terrain}) threshold {dc}<br>{roll} below the threshold. Run your own scenario at the table.",
+    "ionrift-respite.nightWatch.improvise.quiet": "<strong>Improvised night check</strong> ({terrain}) threshold {dc}<br>{roll} meets or beats the threshold. The night passes without incident."
 }

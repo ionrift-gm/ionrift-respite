@@ -614,11 +614,16 @@ export class EventsPhaseDelegate {
         const rawDie = roll.total;
         const triggered = rawDie === 1 || rawDie < effectiveDC;
         const terrainTag = app._engine.terrainTag ?? "forest";
+        const terrainLabel = TerrainRegistry.get(terrainTag)?.label ?? terrainTag;
 
         if (triggered) {
             await roll.toMessage({
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Improvised night check</strong> (${terrainTag}) threshold ${effectiveDC}<br>${rawDie} below the threshold. Run your own scenario at the table.`,
+                flavor: game.i18n.format("ionrift-respite.nightWatch.improvise.triggered", {
+                    terrain: terrainLabel,
+                    dc: effectiveDC,
+                    roll: rawDie
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             app._triggeredEvents = [{
@@ -637,7 +642,11 @@ export class EventsPhaseDelegate {
         } else {
             await roll.toMessage({
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Improvised night check</strong> (${terrainTag}) threshold ${effectiveDC}<br>${rawDie} meets or beats the threshold. The night passes without incident.`,
+                flavor: game.i18n.format("ionrift-respite.nightWatch.improvise.quiet", {
+                    terrain: terrainLabel,
+                    dc: effectiveDC,
+                    roll: rawDie
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             app._triggeredEvents = [];
@@ -957,11 +966,16 @@ export class EventsPhaseDelegate {
         const rawDie = roll.total;
         const triggered = rawDie === 1 || rawDie < effectiveDC;
         const terrainTag = app._engine.terrainTag ?? "forest";
+        const terrainLabel = TerrainRegistry.get(terrainTag)?.label ?? terrainTag;
 
         if (triggered) {
             await roll.toMessage({
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Improvised night check</strong> (${terrainTag}) threshold ${effectiveDC}<br>${rawDie} below the threshold. Run your own scenario at the table.`,
+                flavor: game.i18n.format("ionrift-respite.nightWatch.improvise.triggered", {
+                    terrain: terrainLabel,
+                    dc: effectiveDC,
+                    roll: rawDie
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             app._triggeredEvents = [{
@@ -980,7 +994,11 @@ export class EventsPhaseDelegate {
         } else {
             await roll.toMessage({
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Improvised night check</strong> (${terrainTag}) threshold ${effectiveDC}<br>${rawDie} meets or beats the threshold. The night passes without incident.`,
+                flavor: game.i18n.format("ionrift-respite.nightWatch.improvise.quiet", {
+                    terrain: terrainLabel,
+                    dc: effectiveDC,
+                    roll: rawDie
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             app._triggeredEvents = [];

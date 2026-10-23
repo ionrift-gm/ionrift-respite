@@ -294,14 +294,6 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         const packLabel = evt.pack
             ? evt.pack.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
             : "Base Pack";
-        const isImportedPack = evt.pack && evt.pack !== "base";
-        const parentTerrain = (evt.terrainTags ?? []).find(tag => {
-            const manifest = TerrainRegistry.get(tag);
-            return manifest && !manifest.custom && !TerrainRegistry.isCustomTerrain(tag);
-        });
-        const legacyBindingNote = (isImportedPack && parentTerrain)
-            ? `<p class="event-legacy-pack-note"><i class="fas fa-layer-group"></i> Curate under <strong>${TerrainRegistry.get(parentTerrain)?.label ?? parentTerrain} · ${packLabel}</strong>. Still rolls on ${parentTerrain} rests.</p>`
-            : "";
         const hasCustomTerrain = (evt.terrainTags ?? []).some(t => TerrainRegistry.isCustomTerrain(t));
         const customTerrainNote = hasCustomTerrain
             ? `<p class="event-custom-terrain-note"><i class="fas fa-puzzle-piece"></i> Uses a custom terrain tag. Travel and forage stay off unless a full terrain pack is installed.</p>`
@@ -355,7 +347,6 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             </div>
             <div class="event-card-body">
                 <p class="event-description">${evt.description ?? ""}</p>
-                ${legacyBindingNote}
                 ${customTerrainNote}
                 ${outcomesHtml}
                 ${guidanceHtml}
