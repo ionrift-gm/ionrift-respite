@@ -140,6 +140,7 @@
     },
     {
         "id": "act_craft",
+        "disabled": true,
         "name": "Craft",
         "professions": [
             "tinker",
@@ -420,7 +421,8 @@
                                 "img": "icons/weapons/ammunition/arrow-head-war-flight.webp",
                                 "system": {
                                     "type": {
-                                        "value": "ammo"
+                                        "value": "ammo",
+                                        "subtype": "arrow"
                                     }
                                 }
                             },
@@ -430,7 +432,8 @@
                                 "img": "icons/weapons/ammunition/bolt-tip-engraved.webp",
                                 "system": {
                                     "type": {
-                                        "value": "ammo"
+                                        "value": "ammo",
+                                        "subtype": "crossbowBolt"
                                     }
                                 }
                             }

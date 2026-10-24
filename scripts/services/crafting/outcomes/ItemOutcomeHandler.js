@@ -7,6 +7,7 @@ import { isHomebrewProvisionOnly } from "../../travel/settings/TravelSettings.js
 import { PROVISIONS_CUSTOM_PACK_ID } from "../../meal/provisions/ProvisionsCustomPack.js";
 import { getRegisteredProvisionPackIds } from "../../travel/resolve/TravelProvisionIndex.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { findFletchAmmoStack } from "./FletchAmmoStack.js";
 
 const MODULE_PACK_ID = "ionrift-respite.respite-items";
 
@@ -95,9 +96,10 @@ export class ItemOutcomeHandler {
                 }
             }
 
-            const existing = useCohortSuffix
+            const pinned = grant.stackOntoId ? actor.items.get(grant.stackOntoId) : null;
+            const existing = pinned ?? (useCohortSuffix
                 ? ItemOutcomeHandler._findCohortSuffixMergeTarget(actor, grant, grantType)
-                : ItemOutcomeHandler._findMetadataMergeTarget(actor, grant, grantType);
+                : ItemOutcomeHandler._findMetadataMergeTarget(actor, grant, grantType));
 
             if (existing) {
                 // Stack onto existing: increment quantity + merge flags
@@ -121,7 +123,7 @@ export class ItemOutcomeHandler {
                 }
 
                 toUpdate.push(updateData);
-                summary.push({ name: grant.name, quantity: qty, stacked: true });
+                summary.push({ name: existing.name ?? grant.name, quantity: qty, stacked: true });
             } else {
                 // Create new item with correct quantity.
                 // Spread system first, then override quantity so the rolled
@@ -180,13 +182,17 @@ export class ItemOutcomeHandler {
                     const resolved = await this._resolveItemRef(itemEntry);
                     if (!resolved) continue;
 
+                    const ammoStack = itemEntry.ammoKind
+                        ? findFletchAmmoStack(actor, itemEntry.ammoKind)
+                        : null;
                     grants.push({
-                        name: resolved.name,
-                        type: resolved.type,
+                        name: ammoStack?.name ?? resolved.name,
+                        type: ammoStack?.type ?? resolved.type,
                         img: resolved.img,
                         quantity: itemEntry.quantity ?? 1,
                         system: resolved.system ?? {},
-                        flags: resolved.flags ?? {}
+                        flags: resolved.flags ?? {},
+                        ...(ammoStack ? { stackOntoId: ammoStack.id } : {})
                     });
                 }
             }

@@ -5,6 +5,7 @@ import {
     getFletchingYieldFormula,
     isFletchingEnabled
 } from "../../crafting/settings/FletchingSettings.js";
+import { fletchAmmoKind } from "../../crafting/outcomes/FletchAmmoStack.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../../crafting/settings/TrainingSettings.js";
 import { isProfessionActivityEnabled, isChefTreatCookingOnly } from "../../travel/settings/TravelSettings.js";
 import { hasChefFeat } from "../../meal/buffs/ChefFeat.js";
@@ -545,13 +546,14 @@ export class ActivityResolver {
             }
 
             // Resolve followUp-based item references (e.g. arrows vs bolts)
+            const followUpValue = options.followUpValue ?? activity.followUp?.default ?? null;
             let resolvedItemRef = itemRef.itemRef;
             let resolvedItemData = itemRef.itemData ?? null;
-            if (itemRef.itemRef === "followUp" && itemRef.itemMap && options.followUpValue) {
-                resolvedItemRef = itemRef.itemMap[options.followUpValue] ?? itemRef.itemRef;
+            if (itemRef.itemRef === "followUp" && itemRef.itemMap && followUpValue) {
+                resolvedItemRef = itemRef.itemMap[followUpValue] ?? itemRef.itemRef;
                 // Inline fallback data from itemDataMap (used when compendium lookup fails)
-                if (itemRef.itemDataMap?.[options.followUpValue]) {
-                    resolvedItemData = itemRef.itemDataMap[options.followUpValue];
+                if (itemRef.itemDataMap?.[followUpValue]) {
+                    resolvedItemData = itemRef.itemDataMap[followUpValue];
                 }
             }
 
@@ -560,7 +562,8 @@ export class ActivityResolver {
                 itemRef: resolvedItemRef,
                 itemData: resolvedItemData,
                 pool: itemRef.pool?.replace?.("${terrain}", terrainTag) ?? itemRef.pool,
-                quantity: qty
+                quantity: qty,
+                ...(activity.id === "act_fletch" ? { ammoKind: fletchAmmoKind(followUpValue) } : {})
             });
         }
 

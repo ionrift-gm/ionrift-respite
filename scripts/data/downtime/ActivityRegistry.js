@@ -145,6 +145,7 @@ export const DOWNTIME_ACTIVITIES = Object.freeze([
     {
         id: "craft",
         catalogId: "act_craft",
+        disabled: true,
         label: "Craft",
         icon: "fas fa-tools",
         skill: null,
@@ -224,7 +225,7 @@ export class ActivityRegistry {
      * @returns {Array<object>}
      */
     static getActivitiesForHaven(haven = "wilderness") {
-        return DOWNTIME_ACTIVITIES.filter(a => a.haven === "both" || a.haven === haven);
+        return DOWNTIME_ACTIVITIES.filter(a => !a.disabled && (a.haven === "both" || a.haven === haven));
     }
 
     /**

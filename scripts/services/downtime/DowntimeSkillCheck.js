@@ -1,6 +1,7 @@
 import { ActivityRegistry } from "../../data/downtime/ActivityRegistry.js";
 import { presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 import { ItemOutcomeHandler } from "../crafting/outcomes/ItemOutcomeHandler.js";
+import { findFletchAmmoStack, fletchAmmoSubtype } from "../crafting/outcomes/FletchAmmoStack.js";
 import {
     applyFletchingYieldFloor,
     getFletchingTier,
@@ -38,9 +39,10 @@ export function pickFletchKind(actor) {
         if (item?.type !== "consumable") continue;
         if (item.system?.type?.value !== "ammo") continue;
         const name = String(item.name ?? "");
+        const subtype = item.system?.type?.subtype;
         const qty = Number(item.system?.quantity ?? 0);
-        if (/bolt/i.test(name)) bolts += qty;
-        else if (/arrow/i.test(name)) arrows += qty;
+        if (subtype === "crossbowBolt" || (!subtype && /bolt/i.test(name))) bolts += qty;
+        else if (subtype === "arrow" || (!subtype && /arrow/i.test(name))) arrows += qty;
     }
     if (bolts > 0 && arrows === 0) return "bolts";
     return "arrows";
@@ -135,12 +137,14 @@ async function grantFletchDay(actor, dayRoll, kind) {
     const qty = await rollFletchQuantity(actor);
     if (qty <= 0) return null;
     const spec = FLETCH_KINDS[kind] ?? FLETCH_KINDS.arrows;
+    const stack = findFletchAmmoStack(actor, spec.kind);
     await ItemOutcomeHandler.grantItemsToActor(actor, [{
-        name: spec.name,
+        name: stack?.name ?? spec.name,
         type: "consumable",
         img: spec.img,
         quantity: qty,
-        system: { type: { value: "ammo" } }
+        system: { type: { value: "ammo", subtype: fletchAmmoSubtype(spec.kind) } },
+        ...(stack ? { stackOntoId: stack.id } : {})
     }]);
     dayRoll.yieldGranted = true;
     dayRoll.yieldQty = (Number(dayRoll.yieldQty) || 0) + qty;
