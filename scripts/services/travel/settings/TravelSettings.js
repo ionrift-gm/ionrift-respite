@@ -122,7 +122,7 @@ export const CAMP_FUEL_FIND_MAX_PERCENT = 25;
 
 /**
  * World setting: percent chance a successful forage consults the camp fuel table.
- * @returns {number} Integer 0–25
+ * @returns {number} Integer 0-25
  */
 export function getCampFuelFindPercent() {
     try {
@@ -140,7 +140,7 @@ export function getCampFuelFindPercent() {
 }
 
 /**
- * Decimal chance (0–1) for {@link TravelResolver} camp fuel rolls.
+ * Decimal chance (0-1) for {@link TravelResolver} camp fuel rolls.
  * @returns {number}
  */
 export function getCampFuelFindChance() {

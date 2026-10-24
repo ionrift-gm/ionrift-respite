@@ -1433,7 +1433,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 }
             }
 
-            // Days 1–6 routine sustenance (neededDays1to6 per character)
+            // Days 1-6 routine sustenance (neededDays1to6 per character)
             const days1to6Needed = (haven === "civilized") ? 0 : Math.max(0, this._campLogistics._foodDaysNeeded - 1);
             const isSelectedDepartureMeal = Boolean(selectedDepartureMealId);
             const day7RoutineFoodNeeded = (haven === "civilized" || isSelectedDepartureMeal) ? 0 : 1;
@@ -1460,7 +1460,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
                 if (maxAvailable <= 0) continue;
 
-                // First satisfy Days 1–6
+                // First satisfy Days 1-6
                 const days1to6RemainingUnits = Math.max(0, totalFoodUnitsNeeded1to6 - foragedFoodUsed - autoConsumed1to6.reduce((sum, f) => sum + f.quantity, 0));
                 const takeFor1to6 = Math.min(maxAvailable, days1to6RemainingUnits);
                 if (takeFor1to6 > 0) {
@@ -1535,7 +1535,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 : Math.max(0, 7 - waterShortfallDays);
             const waterPintsRemainingInPack = Math.max(0, totalPackWaterPints - waterUnitsTakenFromSources);
 
-            // Format Days 1–6 food summary with remaining pack stock
+            // Format Days 1-6 food summary with remaining pack stock
             let autoFoodSummary = null;
             let autoFoodTooltip = null;
             if (autoConsumed1to6.length > 0) {
@@ -1554,7 +1554,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 }));
             }
 
-            // Format Days 1–6 water summary
+            // Format Days 1-6 water summary
             let autoWaterSummary = null;
             let autoWaterTooltip = null;
             if (haven === "wilderness") {
@@ -1965,7 +1965,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         }
                     }
                 } else {
-                    // Days 1–6
+                    // Days 1-6
                     if (haven === "civilized") {
                         const mealName = "Settlement Meal";
                         const mealImg = "icons/consumables/food/bowl-stew-brown.webp";
@@ -3013,11 +3013,11 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const coveredDays = Math.max(0, 7 - this._campLogistics._foodDaysNeeded);
         const coveredDaysLabel = coveredDays === 0
             ? null
-            : (coveredDays === 1 ? "Day 1" : `Days 1–${coveredDays}`);
+            : (coveredDays === 1 ? "Day 1" : `Days 1-${coveredDays}`);
         const neededDays1to6 = Math.max(0, 6 - coveredDays);
         const neededDaysLabel = neededDays1to6 === 0
             ? "Fully Covered"
-            : (coveredDays === 0 ? "Days 1–6" : (coveredDays === 5 ? "Day 6" : `Days ${coveredDays + 1}–6`));
+            : (coveredDays === 0 ? "Days 1-6" : (coveredDays === 5 ? "Day 6" : `Days ${coveredDays + 1}-6`));
 
         const pacingActive = Boolean(this._pacingActive);
         const maxPacingNight = totalNights + 1;
@@ -3167,10 +3167,10 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         let watchRotation = [];
         if (isSingleNight) {
             const watchDefs = [
-                { key: "dusk", label: "Dusk", hours: "0–2h", icon: "fa-cloud-sun", isPeakHazard: false },
-                { key: "midnight", label: "Midnight", hours: "2–4h", icon: "fa-moon", isPeakHazard: false },
-                { key: "deep", label: "Deep Night", hours: "4–6h", icon: "fa-shield-moon", isPeakHazard: true },
-                { key: "dawn", label: "Pre-Dawn", hours: "6–8h", icon: "fa-sun", isPeakHazard: false }
+                { key: "dusk", label: "Dusk", hours: "0-2h", icon: "fa-cloud-sun", isPeakHazard: false },
+                { key: "midnight", label: "Midnight", hours: "2-4h", icon: "fa-moon", isPeakHazard: false },
+                { key: "deep", label: "Deep Night", hours: "4-6h", icon: "fa-shield-moon", isPeakHazard: true },
+                { key: "dawn", label: "Pre-Dawn", hours: "6-8h", icon: "fa-sun", isPeakHazard: false }
             ];
             watchRotation = watchDefs.map((w, idx) => {
                 const actor = party[idx % party.length] ?? null;

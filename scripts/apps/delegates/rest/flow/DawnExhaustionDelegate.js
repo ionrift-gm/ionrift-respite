@@ -74,7 +74,7 @@ export class DawnExhaustionDelegate {
         if (pendingEntries.length > 0) {
             const firstDc = pendingEntries[0].dc ?? 10;
             const allSameDc = pendingEntries.every(e => (e.dc ?? 10) === firstDc);
-            commonDc = allSameDc ? firstDc : "—";
+            commonDc = allSameDc ? firstDc : "-";
             const firstMode = pendingEntries[0].advMode ?? "norm";
             const allSameMode = pendingEntries.every(e => (e.advMode ?? "norm") === firstMode);
             commonAdvMode = allSameMode ? firstMode : "mixed";

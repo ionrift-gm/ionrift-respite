@@ -30,8 +30,8 @@ export function ingredientNameOptions(ingredient) {
  * Resolve which output item a successful craft grants.
  *
  * Hidden JSON accommodation (not in the recipe editor UI):
- * - `outputs: Output[]` — OR-list for standard success; one entry chosen at random
- * - `ambitiousOutputs: Output[]` — same for ambitious / Chef nat-20 upgrade
+ * - `outputs: Output[]` - OR-list for standard success; one entry chosen at random
+ * - `ambitiousOutputs: Output[]` - same for ambitious / Chef nat-20 upgrade
  * Singular `output` / `ambitiousOutput` still work. Terrain variants may carry
  * the same fields. Prefer separate recipes when the outcome depends on inputs.
  *

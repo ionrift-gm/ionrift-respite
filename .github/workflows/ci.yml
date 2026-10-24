@@ -27,6 +27,7 @@ jobs:
     with:
       testharness_repo: 'ionrift-gm/ionrift-testharness'
       testharness_config: 'vitest/respite/vitest.config.js'
+      sibling_repos: 'ionrift-gm/ionrift-library ionrift-gm/ionrift-monstrous-feast ionrift-gm/ionrift-pack-workshop'
     secrets:
       CI_PAT: ${{ secrets.IONRIFT_CI_PAT }}
 

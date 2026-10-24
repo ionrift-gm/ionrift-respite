@@ -263,7 +263,7 @@ export class DowntimeBatchEngine {
                 }
             }
 
-            // Tend Wounds — targeted per-patient resolution
+            // Tend Wounds - targeted per-patient resolution
             const tendActivity = viewModel.activities.find(a => a.id === "tend");
             const tendDays = tendActivity?.assignedDays ?? 0;
             if (tendDays > 0) {
@@ -329,7 +329,7 @@ export class DowntimeBatchEngine {
                 }
             }
 
-            // Brew — mirrors cook, consumes ingredients from larder/inventory
+            // Brew - mirrors cook, consumes ingredients from larder/inventory
             const brewActivity = viewModel.activities.find(a => a.id === "brew");
             const brewDays = brewActivity?.assignedDays ?? 0;
             if (brewDays > 0) {
@@ -519,7 +519,7 @@ export class DowntimeBatchEngine {
             }
         }
 
-        // ─── SUPPLY COMMISSARY RESOLUTION (Days 1–6 Sustenance & Water) ─────────
+        // ─── SUPPLY COMMISSARY RESOLUTION (Days 1-6 Sustenance & Water) ─────────
         const terrainDefaults = TerrainRegistry.getDefaults(terrainTag);
         const terrainMealRules = terrainDefaults?.mealRules ?? { waterPerDay: MEAL_DEFAULTS.waterPerDay, foodPerDay: MEAL_DEFAULTS.foodPerDay };
         const characterFoodShortfalls = new Map();

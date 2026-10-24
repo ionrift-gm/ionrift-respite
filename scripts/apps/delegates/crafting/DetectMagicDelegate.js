@@ -153,8 +153,8 @@ export function getNamedSpellAccess(actor, spellNameLower) {
             return {
                 state: "available",
                 badge: "",
-                caption: `${actor.name} can cast ${pretty} as a ritual from the spellbook without preparing it (Wizard – Ritual Adept, PHB p.115).`,
-                tooltip: `${actor.name} can cast ${pretty} as a ritual from the spellbook without preparing it (Wizard – Ritual Adept, PHB p.115).`
+                caption: `${actor.name} can cast ${pretty} as a ritual from the spellbook without preparing it (Wizard - Ritual Adept, PHB p.115).`,
+                tooltip: `${actor.name} can cast ${pretty} as a ritual from the spellbook without preparing it (Wizard - Ritual Adept, PHB p.115).`
             };
         }
         if (mode === "innate") {
@@ -251,7 +251,7 @@ export function buildArcaneWorkbenchAccess(actor, opts = {}) {
         const idCap = identifyAccess.caption || "";
         const dmCap = detectMagicAccess.caption || "";
         if (idCap.includes("Ritual Adept") && dmCap.includes("Ritual Adept")) {
-            arcaneStatus = `${actorName} can cast Identify and Detect Magic as rituals from the spellbook without preparing them (Wizard – Ritual Adept, PHB p.115).`;
+            arcaneStatus = `${actorName} can cast Identify and Detect Magic as rituals from the spellbook without preparing them (Wizard - Ritual Adept, PHB p.115).`;
         } else {
             arcaneStatus = [idCap, dmCap].filter(Boolean).join(" ");
         }

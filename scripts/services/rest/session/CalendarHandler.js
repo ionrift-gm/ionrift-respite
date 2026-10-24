@@ -124,7 +124,7 @@ export class CalendarHandler {
                 if (typeof CALENDARIA.api.formatDate === "function") {
                     return CALENDARIA.api.formatDate(null, "dateLong");
                 }
-                // Calendaria uses 1-indexed month/day — no +1 needed
+                // Calendaria uses 1-indexed month/day - no +1 needed
                 const dt = CALENDARIA.api.getCurrentDateTime();
                 return `Day ${dt.day}, Month ${dt.month}, Year ${dt.year}`;
             }

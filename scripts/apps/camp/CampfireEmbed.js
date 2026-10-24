@@ -1247,7 +1247,7 @@ export class CampfireEmbed {
     }
 
     /**
-     * Center of the tier segment on the meter track (0–100%).
+     * Center of the tier segment on the meter track (0-100%).
      * @param {string} level
      * @param {HTMLElement|null} el
      */

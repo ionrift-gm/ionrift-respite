@@ -248,7 +248,7 @@ export class ActivityBudgetDelegate {
 
     /**
      * Assigns tend days to a specific patient. Does NOT change the core
-     * allocation map — the total tend days must already be allocated via
+     * allocation map - the total tend days must already be allocated via
      * dumpDays/stepDays. This breaks those N days into per-patient blocks.
      *
      * @param {string} actorId The medic actor ID

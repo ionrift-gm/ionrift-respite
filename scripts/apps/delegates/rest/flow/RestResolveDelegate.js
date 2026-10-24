@@ -1220,7 +1220,7 @@ export class RestResolveDelegate {
         const comfortLabel = comfort.charAt(0).toUpperCase() + comfort.slice(1);
 
         const restType = app._engine?.restType ?? "long";
-        const title = restType === "long" ? "Long Rest Complete — Dawn Breaks" : "Short Rest Complete";
+        const title = restType === "long" ? "Long Rest Complete - Dawn Breaks" : "Short Rest Complete";
 
         const activeShelters = app._engine?.activeShelters ?? [];
         const shelterNames = activeShelters.map(s => {

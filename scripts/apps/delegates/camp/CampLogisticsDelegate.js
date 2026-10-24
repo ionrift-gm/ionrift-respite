@@ -32,7 +32,7 @@ export function fireEncounterDcNudge(fireLevel) {
  */
 export class CampLogisticsDelegate {
 
-    /** @param {ApplicationV2} app — the host application instance */
+    /** @param {ApplicationV2} app - the host application instance */
     constructor(app) {
         this._app = app;
     }
