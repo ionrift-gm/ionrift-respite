@@ -307,7 +307,8 @@ export function buildMealContext(characterIds, terrainTag, terrainMealRules = {}
         for (const slot of waterSlots) {
             if (!slot.filled || !slot.selected || slot.selected === "skip") continue;
             if (slot.selected.startsWith?.("__")) {
-                if (!sourceMap.has("__feast")) sourceMap.set("__feast", { name: "Feast", pintsUsed: 0 });
+                const feastName = game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealContext.sourceFeast") : "Feast";
+                if (!sourceMap.has("__feast")) sourceMap.set("__feast", { name: feastName, pintsUsed: 0 });
                 sourceMap.get("__feast").pintsUsed++;
                 continue;
             }
@@ -318,7 +319,8 @@ export function buildMealContext(characterIds, terrainTag, terrainMealRules = {}
         }
         for (const src of sourceMap.values()) waterPoolSources.push(src);
         if (bonusWater > 0) {
-            waterPoolSources.push({ name: "Covered by meal", pintsUsed: bonusWater, isMealCredit: true });
+            const coveredName = game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealContext.sourceCoveredByMeal") : "Covered by meal";
+            waterPoolSources.push({ name: coveredName, pintsUsed: bonusWater, isMealCredit: true });
         }
 
         const normalWater = MEAL_DEFAULTS.waterPerDay;

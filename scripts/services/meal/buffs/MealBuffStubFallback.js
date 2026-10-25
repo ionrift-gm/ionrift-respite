@@ -70,8 +70,12 @@ export async function resolveStubMealBuff(actor, buff, { chatDetail = false } = 
                 }
             }
             const detail = `1d20 + ${conSaveBonus} = ${total} vs DC ${dc} (${pass ? "pass" : "fail"})`;
+            const exTitle = game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffStub.chatExhaustionTitle") : "Meal Buff: Exhaustion Save";
+            const outcomeText = pass
+                ? (game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffStub.chatRemovesExhaustion") : "Removes 1 exhaustion.")
+                : (game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffStub.chatNoExhaustionRemoved") : "No exhaustion removed.");
             await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>Meal Buff: Exhaustion Save</strong></p><p><i class="fas fa-dice-d20"></i> <strong>${actor.name}</strong> ${detail}. ${pass ? "Removes 1 exhaustion." : "No exhaustion removed."}</p></div>`,
+                content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${exTitle}</strong></p><p><i class="fas fa-dice-d20"></i> <strong>${actor.name}</strong> ${detail}. ${outcomeText}</p></div>`,
                 rolls: [roll],
                 speaker: ChatMessage.getSpeaker({ actor })
             });
@@ -87,8 +91,11 @@ export async function resolveStubMealBuff(actor, buff, { chatDetail = false } = 
             }
             const restored = await restoreHitDice(actor, n);
             if (restored > 0) {
+                const hdMsg = game.i18n?.format
+                    ? game.i18n.format("ionrift-respite.mealBuffStub.chatHitDieRestored", { name: actor.name, count: restored })
+                    : `<strong>${actor.name}</strong> restores <strong>${restored}</strong> hit die.`;
                 await ChatMessage.create({
-                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-heart"></i> <strong>${actor.name}</strong> restores <strong>${restored}</strong> hit die.</p></div>`,
+                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-heart"></i> ${hdMsg}</p></div>`,
                     speaker: ChatMessage.getSpeaker({ actor })
                 });
             }

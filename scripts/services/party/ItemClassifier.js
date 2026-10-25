@@ -45,11 +45,41 @@ export const PROVISION_ITEM_TYPES = Object.freeze(new Set(["consumable", "loot",
  * @type {Readonly<Array<{ id: string, label: string, multiplier: number|null, badge: string, description: string }>>}
  */
 export const STORAGE_TYPES = Object.freeze([
-    { id: "ventilated", label: "Ventilated", multiplier: 1.3, badge: "1.3×", description: "Breezy or dry storage extending shelf life slightly." },
-    { id: "cellar", label: "Cellar", multiplier: 1.5, badge: "1.5×", description: "Cool, shaded storage slowing spoilage." },
-    { id: "coolbox", label: "Cool Box", multiplier: 2.0, badge: "2×", description: "Insulated ice container doubling shelf life." },
-    { id: "deepchill", label: "Deep Chill", multiplier: 3.0, badge: "3×", description: "Packed in salt and ice, tripling shelf life." },
-    { id: "custom", label: "Custom Multiplier", multiplier: null, badge: "CUSTOM", description: "Custom shelf life multiplier." }
+    {
+        id: "ventilated",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageVentilatedLabel") : "Ventilated"; },
+        multiplier: 1.3,
+        badge: "1.3×",
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageVentilatedDesc") : "Breezy or dry storage extending shelf life slightly."; }
+    },
+    {
+        id: "cellar",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageCellarLabel") : "Cellar"; },
+        multiplier: 1.5,
+        badge: "1.5×",
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageCellarDesc") : "Cool, shaded storage slowing spoilage."; }
+    },
+    {
+        id: "coolbox",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageCoolBoxLabel") : "Cool Box"; },
+        multiplier: 2.0,
+        badge: "2×",
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageCoolBoxDesc") : "Insulated ice container doubling shelf life."; }
+    },
+    {
+        id: "deepchill",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageDeepChillLabel") : "Deep Chill"; },
+        multiplier: 3.0,
+        badge: "3×",
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageDeepChillDesc") : "Packed in salt and ice, tripling shelf life."; }
+    },
+    {
+        id: "custom",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageCustomLabel") : "Custom Multiplier"; },
+        multiplier: null,
+        badge: "CUSTOM",
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageCustomDesc") : "Custom shelf life multiplier."; }
+    }
 ]);
 
 /**
@@ -139,27 +169,40 @@ const DEFAULT_DIET = {
  * Preset diet profiles. GM selects one, then customises if needed.
  * Keys are the preset ID; values are partial diet objects merged over DEFAULT_DIET.
  */
+const DIET_PRESET_LABELS = {
+    standard: "ionrift-respite.itemClassifier.dietStandard",
+    herbivore: "ionrift-respite.itemClassifier.dietHerbivore",
+    carnivore: "ionrift-respite.itemClassifier.dietCarnivore",
+    omnivore: "ionrift-respite.itemClassifier.dietOmnivore",
+    construct: "ionrift-respite.itemClassifier.dietNotNeeded",
+    maintenance: "ionrift-respite.itemClassifier.dietMaintenance",
+    undead: "ionrift-respite.itemClassifier.dietUndead",
+    celestial: "ionrift-respite.itemClassifier.dietCelestial",
+    elemental: "ionrift-respite.itemClassifier.dietElemental",
+    custom: "ionrift-respite.itemClassifier.dietCustom"
+};
+
 const DIET_PRESETS = {
     standard: {
-        label: "Standard"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.standard) : "Standard"; }
     },
     herbivore: {
         canEat: ["food"],
         canEatTags: ["plant", "prepared"],
         canDrink: ["water"],
-        label: "Herbivore"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.herbivore) : "Herbivore"; }
     },
     carnivore: {
         canEat: ["food"],
         canEatTags: ["meat", "prepared"],
         canDrink: ["water"],
-        label: "Carnivore"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.carnivore) : "Carnivore"; }
     },
     omnivore: {
         canEat: ["food", "ingredient"],
         canEatTags: ["meat", "plant", "prepared"],
         canDrink: ["water", "alcohol"],
-        label: "Omnivore"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.omnivore) : "Omnivore"; }
     },
     construct: {
         canEat: [],
@@ -169,7 +212,7 @@ const DIET_PRESETS = {
         customWaterNames: [],
         excludeNames: [],
         sustenanceType: "none",
-        label: "Not Needed"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.construct) : "Not Needed"; }
     },
     maintenance: {
         canEat: ["fuel"],
@@ -179,7 +222,7 @@ const DIET_PRESETS = {
         customWaterNames: ["oil flask", "lamp oil"],
         excludeNames: [],
         sustenanceType: "essence",
-        label: "Maintenance"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.maintenance) : "Maintenance"; }
     },
     undead: {
         canEat: [],
@@ -189,7 +232,7 @@ const DIET_PRESETS = {
         customWaterNames: [],
         excludeNames: [],
         sustenanceType: "essence",
-        label: "Undead"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.undead) : "Undead"; }
     },
     celestial: {
         canEat: [],
@@ -199,7 +242,7 @@ const DIET_PRESETS = {
         customWaterNames: [],
         excludeNames: [],
         sustenanceType: "essence",
-        label: "Celestial"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.celestial) : "Celestial"; }
     },
     elemental: {
         canEat: [],
@@ -209,10 +252,10 @@ const DIET_PRESETS = {
         customWaterNames: [],
         excludeNames: [],
         sustenanceType: "essence",
-        label: "Elemental"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.elemental) : "Elemental"; }
     },
     custom: {
-        label: "Custom"
+        get label() { return game.i18n?.localize ? game.i18n.localize(DIET_PRESET_LABELS.custom) : "Custom"; }
     }
 };
 

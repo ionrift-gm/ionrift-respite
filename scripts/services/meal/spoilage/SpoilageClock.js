@@ -122,8 +122,8 @@ export class SpoilageClock {
         if (daysLeft !== null) {
             if (daysLeft <= 0) {
                 return {
-                    text: "SPOILED",
-                    tooltip: "This food has gone off.",
+                    text: game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilageClock.badgeSpoiled") : "SPOILED",
+                    tooltip: game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilageClock.tipFoodGoneOff") : "This food has gone off.",
                     stateClass: "spoil-expired"
                 };
             }
@@ -131,13 +131,13 @@ export class SpoilageClock {
             if (displayDays <= 1) {
                 return {
                     text: "1d",
-                    tooltip: "Spoils within a day. Eat or cook it.",
+                    tooltip: game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilageClock.tipSpoilsWithinDay") : "Spoils within a day. Eat or cook it.",
                     stateClass: "spoil-urgent"
                 };
             }
             return {
                 text: `${displayDays}d`,
-                tooltip: `${displayDays} days until spoilage.`,
+                tooltip: game.i18n?.format ? game.i18n.format("ionrift-respite.spoilageClock.tipDaysUntilSpoilage", { count: displayDays }) : `${displayDays} days until spoilage.`,
                 stateClass: "spoil-fresh"
             };
         }
@@ -147,8 +147,8 @@ export class SpoilageClock {
 
         if (hoursLeft <= 0) {
             return {
-                text: "SPOILED",
-                tooltip: "This food has gone off.",
+                text: game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilageClock.badgeSpoiled") : "SPOILED",
+                tooltip: game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilageClock.tipFoodGoneOff") : "This food has gone off.",
                 stateClass: "spoil-expired"
             };
         }
@@ -157,14 +157,14 @@ export class SpoilageClock {
         if (displayHours <= 1) {
             return {
                 text: displayHours < 1 ? "<1h" : "1h",
-                tooltip: "Spoils within an hour. Eat it soon.",
+                tooltip: game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilageClock.tipSpoilsWithinHour") : "Spoils within an hour. Eat it soon.",
                 stateClass: "spoil-urgent"
             };
         }
 
         return {
             text: `${displayHours}h`,
-            tooltip: `${displayHours} hours until spoilage.`,
+            tooltip: game.i18n?.format ? game.i18n.format("ionrift-respite.spoilageClock.tipHoursUntilSpoilage", { count: displayHours }) : `${displayHours} hours until spoilage.`,
             stateClass: displayHours <= 2 ? "spoil-urgent" : "spoil-fresh"
         };
     }

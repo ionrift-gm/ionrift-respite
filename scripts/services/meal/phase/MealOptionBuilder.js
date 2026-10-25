@@ -40,9 +40,12 @@ export function buildFoodOptions(actor) {
         if (!allowed) continue;
 
         const mealBuff = describeItemMealBuff(item.flags?.[MODULE_ID]);
+        const itemLabel = game.i18n?.format
+            ? game.i18n.format("ionrift-respite.mealOptions.itemWithQty", { name: item.name, qty })
+            : `${item.name} (\u00d7${qty})`;
         options.push({
             value: item.id,
-            label: `${item.name} (\u00d7${qty})`,
+            label: itemLabel,
             name: item.name,
             itemId: item.id,
             available: qty,
@@ -240,9 +243,12 @@ export function buildEssenceOptions(actor) {
 
         if (!ItemClassifier.isEssenceMealFoodOption(item, actor)) continue;
 
+        const essenceLabel = game.i18n?.format
+            ? game.i18n.format("ionrift-respite.mealOptions.itemWithQty", { name: item.name, qty })
+            : `${item.name} (\u00d7${qty})`;
         options.push({
             value: item.id,
-            label: `${item.name} (\u00d7${qty})`,
+            label: essenceLabel,
             itemId: item.id,
             available: qty,
             icon: item.img ?? "icons/commodities/gems/gem-rough-white-blue.webp"

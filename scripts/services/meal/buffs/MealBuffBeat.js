@@ -38,7 +38,9 @@ export function servingsFromSnapshots(snapshots, meta) {
             actorId: meta.actorId,
             actorName: meta.actorName ?? "",
             kind: meta.kind === "drink" ? "drink" : "food",
-            itemName: snapshot.name ?? (meta.kind === "drink" ? "Drink" : "Meal"),
+            itemName: snapshot.name ?? (meta.kind === "drink"
+                ? (game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffBeat.fallbackDrink") : "Drink")
+                : (game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffBeat.fallbackMeal") : "Meal")),
             buffSummary: described.buffSummary,
             itemSnapshot: snapshot,
             partyIds: meta.partyIds ?? [meta.actorId],

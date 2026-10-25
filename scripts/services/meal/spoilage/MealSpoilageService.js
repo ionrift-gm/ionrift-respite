@@ -20,17 +20,24 @@ async function postSpoilageChat(report, intro, gmContext) {
     if (!report.length) return;
 
     const lines = report.flatMap(r =>
-        r.spoiled.map(s => `<strong>${r.actorName}</strong> lost ${s.qty}x ${s.name}`)
+        r.spoiled.map(s => game.i18n?.format
+            ? game.i18n.format("ionrift-respite.spoilage.lostItemLine", { name: r.actorName, qty: s.qty, item: s.name })
+            : `<strong>${r.actorName}</strong> lost ${s.qty}x ${s.name}`)
     );
 
+    const spoilTitle = game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilage.chatSpoilageTitle") : "Spoilage";
     await ChatMessage.create({
-        content: `<div class="respite-recovery-chat"><p><i class="fas fa-skull-crossbones"></i> <strong>Spoilage</strong></p><p>${intro}</p><ul>${lines.map(l => `<li>${l}</li>`).join("")}</ul></div>`,
+        content: `<div class="respite-recovery-chat"><p><i class="fas fa-skull-crossbones"></i> <strong>${spoilTitle}</strong></p><p>${intro}</p><ul>${lines.map(l => `<li>${l}</li>`).join("")}</ul></div>`,
         speaker: { alias: "Respite" }
     });
 
     const totalSpoiled = report.reduce((sum, r) => sum + r.spoiled.reduce((s, i) => s + i.qty, 0), 0);
+    const repTitle = game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilage.chatReportTitle") : "Spoilage Report:";
+    const repSummary = game.i18n?.format
+        ? game.i18n.format("ionrift-respite.spoilage.reportSummary", { total: totalSpoiled, characters: report.length, context: gmContext })
+        : `${totalSpoiled} item(s) spoiled across ${report.length} character(s) ${gmContext}.`;
     const msgData = {
-        content: `<p><i class="fas fa-info-circle"></i> <strong>Spoilage Report:</strong> ${totalSpoiled} item(s) spoiled across ${report.length} character(s) ${gmContext}.</p>`,
+        content: `<p><i class="fas fa-info-circle"></i> <strong>${repTitle}</strong> ${repSummary}</p>`,
         speaker: { alias: "Respite" },
         whisper: ChatMessage.getWhisperRecipients?.("GM")
             ?? game.users.filter(u => u.isGM).map(u => u.id)
@@ -79,11 +86,19 @@ export async function resolveSpoilage(characterIds, daysSinceLastRest = 1) {
     }
 
     if (report.length) {
-        const dayLabel = daysSinceLastRest === 1 ? "1 day" : `${daysSinceLastRest} days`;
+        const dayLabel = daysSinceLastRest === 1
+            ? (game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilage.oneDay") : "1 day")
+            : (game.i18n?.format ? game.i18n.format("ionrift-respite.spoilage.pluralDays", { count: daysSinceLastRest }) : `${daysSinceLastRest} days`);
+        const introTravel = game.i18n?.format
+            ? game.i18n.format("ionrift-respite.spoilage.introTravel", { days: dayLabel })
+            : `After ${dayLabel} of travel, perishable food has gone off:`;
+        const contextTravel = game.i18n?.format
+            ? game.i18n.format("ionrift-respite.spoilage.contextTravel", { days: dayLabel })
+            : `after ${dayLabel}`;
         await postSpoilageChat(
             report,
-            `After ${dayLabel} of travel, perishable food has gone off:`,
-            `after ${dayLabel}`
+            introTravel,
+            contextTravel
         );
     }
 
@@ -169,9 +184,10 @@ export async function resolveCalendarSpoilage(actors) {
     if (report.length) {
         const formattedDate = CalendarHandler.getFormattedDate();
         const intro = formattedDate
-            ? `On ${formattedDate}, perishable food has gone off:`
-            : "Perishable food has gone off:";
-        await postSpoilageChat(report, intro, "during time advance");
+            ? (game.i18n?.format ? game.i18n.format("ionrift-respite.spoilage.introCalendar", { date: formattedDate }) : `On ${formattedDate}, perishable food has gone off:`)
+            : (game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilage.introGeneral") : "Perishable food has gone off:");
+        const timeAdvContext = game.i18n?.localize ? game.i18n.localize("ionrift-respite.spoilage.contextTimeAdvance") : "during time advance";
+        await postSpoilageChat(report, intro, timeAdvContext);
     }
 
     return report;

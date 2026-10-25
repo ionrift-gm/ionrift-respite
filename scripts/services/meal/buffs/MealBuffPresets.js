@@ -18,27 +18,27 @@ const OVERLAY_DEFAULT_PROFESSION = {
 };
 
 export const MEAL_BUFF_DURATION_LABELS = {
-    immediate: "Immediate",
-    untilLongRest: "Until long rest",
-    untilShortRest: "Until short rest",
-    nextSave: "Next save"
+    get immediate() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.durationImmediate") : "Immediate"; },
+    get untilLongRest() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.durationUntilLongRest") : "Until long rest"; },
+    get untilShortRest() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.durationUntilShortRest") : "Until short rest"; },
+    get nextSave() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.durationNextSave") : "Next save"; }
 };
 
 export const MEAL_BUFF_TYPE_LABELS = {
-    temp_hp: "Temp HP",
-    heal: "Healing",
-    advantage: "Advantage",
-    exhaustion_save: "Exhaustion save",
-    resistance: "Resistance",
-    hit_die: "Hit die"
+    get temp_hp() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.typeTempHp") : "Temp HP"; },
+    get heal() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.typeHealing") : "Healing"; },
+    get advantage() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.typeAdvantage") : "Advantage"; },
+    get exhaustion_save() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.typeExhaustionSave") : "Exhaustion save"; },
+    get resistance() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.typeResistance") : "Resistance"; },
+    get hit_die() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.typeHitDie") : "Hit die"; }
 };
 
 export const FOOD_TAG_OPTIONS = [
-    { id: "cooked_meal", label: "Cooked meal" },
-    { id: "preserved", label: "Preserved" },
-    { id: "drink", label: "Drink" },
-    { id: "meat", label: "Raw meat" },
-    { id: "raw_fish", label: "Raw fish" }
+    { id: "cooked_meal", get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.tagCookedMeal") : "Cooked meal"; } },
+    { id: "preserved", get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.tagPreserved") : "Preserved"; } },
+    { id: "drink", get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.tagDrink") : "Drink"; } },
+    { id: "meat", get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.tagRawMeat") : "Raw meat"; } },
+    { id: "raw_fish", get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.tagRawFish") : "Raw fish"; } }
 ];
 
 /** Display order for buff-type groups in the homebrew picker. */
@@ -54,14 +54,14 @@ export const MEAL_BUFF_CATEGORY_ORDER = [
 ];
 
 const MEAL_BUFF_CATEGORY_LABELS = {
-    temp_hp: "Temp HP",
-    exhaustion_save: "Exhaustion save",
-    advantage: "Advantage",
-    resistance: "Resistance",
-    heal: "Healing",
-    hit_die: "Hit die",
-    combo: "Combined buffs",
-    none: "No buff"
+    get temp_hp() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.categoryTempHp") : "Temp HP"; },
+    get exhaustion_save() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.categoryExhaustionSave") : "Exhaustion save"; },
+    get advantage() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.categoryAdvantage") : "Advantage"; },
+    get resistance() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.categoryResistance") : "Resistance"; },
+    get heal() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.categoryHealing") : "Healing"; },
+    get hit_die() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.categoryHitDie") : "Hit die"; },
+    get combo() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.categoryCombo") : "Combined buffs"; },
+    get none() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.categoryNone") : "No buff"; }
 };
 
 /**
@@ -86,16 +86,16 @@ const MEAL_BUFF_CATEGORY_LABELS = {
 const BASE_MEAL_BUFF_PRESETS = [
     {
         id: "none",
-        label: "No buff",
-        description: "Satiates only. No Well Fed slot interaction.",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetNoneLabel") : "No buff"; },
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetNoneDesc") : "Satiates only. No Well Fed slot interaction."; },
         wellFed: false,
         buff: null,
         _source: "base"
     },
     {
         id: "temp_hp_prof",
-        label: "Temp HP (proficiency)",
-        description: "Temporary HP equal to proficiency bonus until long rest.",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetTempHpProfLabel") : "Temp HP (proficiency)"; },
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetTempHpProfDesc") : "Temporary HP equal to proficiency bonus until long rest."; },
         wellFed: true,
         buff: {
             type: "temp_hp",
@@ -107,8 +107,8 @@ const BASE_MEAL_BUFF_PRESETS = [
     },
     {
         id: "temp_hp_prof_1d4",
-        label: "Temp HP (prof + 1d4)",
-        description: "Proficiency bonus plus 1d4 temporary HP until long rest.",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetTempHpProf1d4Label") : "Temp HP (prof + 1d4)"; },
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetTempHpProf1d4Desc") : "Proficiency bonus plus 1d4 temporary HP until long rest."; },
         wellFed: true,
         buff: {
             type: "temp_hp",
@@ -120,8 +120,8 @@ const BASE_MEAL_BUFF_PRESETS = [
     },
     {
         id: "temp_hp_prof_party",
-        label: "Temp HP (proficiency, party)",
-        description: "Party-wide temporary HP from proficiency bonus until long rest.",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetTempHpProfPartyLabel") : "Temp HP (proficiency, party)"; },
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetTempHpProfPartyDesc") : "Party-wide temporary HP from proficiency bonus until long rest."; },
         wellFed: true,
         buff: {
             type: "temp_hp",
@@ -133,8 +133,8 @@ const BASE_MEAL_BUFF_PRESETS = [
     },
     {
         id: "exhaustion_save_15",
-        label: "Exhaustion save (DC 15)",
-        description: "Immediate Constitution save to remove one exhaustion level.",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetExhaustionSave15Label") : "Exhaustion save (DC 15)"; },
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetExhaustionSave15Desc") : "Immediate Constitution save to remove one exhaustion level."; },
         wellFed: true,
         buff: {
             type: "exhaustion_save",
@@ -146,8 +146,8 @@ const BASE_MEAL_BUFF_PRESETS = [
     },
     {
         id: "advantage_con",
-        label: "Advantage on CON saves",
-        description: "Advantage on the next Constitution saving throw.",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetAdvantageConLabel") : "Advantage on CON saves"; },
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetAdvantageConDesc") : "Advantage on the next Constitution saving throw."; },
         wellFed: true,
         buff: {
             type: "advantage",
@@ -159,8 +159,8 @@ const BASE_MEAL_BUFF_PRESETS = [
     },
     {
         id: "heal_prof",
-        label: "Healing (proficiency)",
-        description: "Immediate healing equal to proficiency bonus.",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetHealProfLabel") : "Healing (proficiency)"; },
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetHealProfDesc") : "Immediate healing equal to proficiency bonus."; },
         wellFed: true,
         buff: {
             type: "heal",
@@ -172,8 +172,8 @@ const BASE_MEAL_BUFF_PRESETS = [
     },
     {
         id: "hit_die_1",
-        label: "Restore 1 hit die",
-        description: "Immediately restores one spent hit die.",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetHitDie1Label") : "Restore 1 hit die"; },
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.presetHitDie1Desc") : "Immediately restores one spent hit die."; },
         wellFed: true,
         buff: {
             type: "hit_die",
@@ -449,7 +449,13 @@ export function describeItemMealBuff(flags) {
     if (!flags) return { hasBuff: false, buffSummary: "" };
     if (flags.chefTreat) {
         const pb = Number(flags.chefTreatProfBonus) || 0;
-        return { hasBuff: true, buffSummary: `Bolstering Treat (+${pb > 0 ? pb : 1} temp HP)` };
+        const hp = pb > 0 ? pb : 1;
+        return {
+            hasBuff: true,
+            buffSummary: game.i18n?.format
+                ? game.i18n.format("ionrift-respite.mealBuffPresets.bolsteringTreatSummary", { hp })
+                : `Bolstering Treat (+${hp} temp HP)`
+        };
     }
     if (flags.buff) {
         const buffs = Array.isArray(flags.buff) ? flags.buff : [flags.buff];
@@ -459,7 +465,12 @@ export function describeItemMealBuff(flags) {
             .join("; ");
         if (summary) return { hasBuff: true, buffSummary: summary };
     }
-    if (flags.wellFed) return { hasBuff: true, buffSummary: "Well Fed" };
+    if (flags.wellFed) return {
+        hasBuff: true,
+        buffSummary: game.i18n?.localize
+            ? game.i18n.localize("ionrift-respite.mealBuffPresets.wellFed")
+            : "Well Fed"
+    };
     return { hasBuff: false, buffSummary: "" };
 }
 
@@ -469,8 +480,14 @@ export function describeItemMealBuff(flags) {
  * @returns {string}
  */
 export function formatMealBuffPresetTitle(preset) {
-    if (!preset || preset.id === "none") return "No buff";
-    if (!preset.buff) return preset.wellFed ? "Well Fed only" : "No buff";
+    if (!preset || preset.id === "none") {
+        return game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.noBuff") : "No buff";
+    }
+    if (!preset.buff) {
+        return preset.wellFed
+            ? (game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.wellFedOnly") : "Well Fed only")
+            : (game.i18n?.localize ? game.i18n.localize("ionrift-respite.mealBuffPresets.noBuff") : "No buff");
+    }
 
     const buffs = Array.isArray(preset.buff) ? preset.buff : [preset.buff];
     if (buffs.length > 1) {

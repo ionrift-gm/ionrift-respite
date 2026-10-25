@@ -36,7 +36,9 @@ export function mealSnapshotAsSingleLeftover(itemSnapshot) {
 export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, partyIds, verb = "eats" }) {
     const rf = itemSnapshot.flags?.[MODULE_ID] ?? {};
     const itemName = itemSnapshot.name ?? "Meal";
-    const action = verb === "drinks" ? "drinks" : "eats";
+    const action = verb === "drinks"
+        ? (game.i18n?.localize ? game.i18n.localize("ionrift-respite.wellFed.verbDrinks") : "drinks")
+        : (game.i18n?.localize ? game.i18n.localize("ionrift-respite.wellFed.verbEats") : "eats");
     if (rf.partyMeal) {
         const summaries = [];
         const partyRolls = [];
@@ -49,7 +51,10 @@ export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, 
                 const doc = mealSnapshotAsSingleLeftover(itemSnapshot);
                 const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
                 await grantMealItem(member, doc, ref, { separateItem: true });
-                summaries.push(`<strong>${member.name}</strong>: packed serving (already Well Fed)`);
+                const packedNote = game.i18n?.localize
+                    ? game.i18n.localize("ionrift-respite.wellFed.packedServingAlreadyWellFed")
+                    : "packed serving (already Well Fed)";
+                summaries.push(`<strong>${member.name}</strong>: ${packedNote}`);
             } else {
                 const part = await applyWellFedEffect(member, itemSnapshot);
                 if (part.lines?.length) summaries.push(`<strong>${member.name}</strong>: ${part.lines.join("; ")}`);
@@ -57,8 +62,11 @@ export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, 
             }
         }
         if (summaries.length) {
+            const feedTitle = game.i18n?.format
+                ? game.i18n.format("ionrift-respite.wellFed.chatFeedsParty", { consumer: consumerActor.name, item: itemName })
+                : `<strong>${consumerActor.name}</strong>'s <strong>${itemName}</strong> feeds the whole party.`;
             await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${consumerActor.name}</strong>'s <strong>${itemName}</strong> feeds the whole party.</p><p>${summaries.join("<br>")}</p></div>`,
+                content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> ${feedTitle}</p><p>${summaries.join("<br>")}</p></div>`,
                 rolls: partyRolls,
                 speaker: ChatMessage.getSpeaker({ actor: consumerActor })
             });
@@ -73,16 +81,25 @@ export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, 
             const doc = mealSnapshotAsSingleLeftover(itemSnapshot);
             const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
             await grantMealItem(consumerActor, doc, ref, { separateItem: true });
+            const packedMsg = game.i18n?.format
+                ? game.i18n.format("ionrift-respite.wellFed.chatPackedAway", { consumer: consumerActor.name, item: itemName })
+                : `<strong>${consumerActor.name}</strong> could not take another yet. <strong>${itemName}</strong> was packed away.`;
             await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><p><i class="fas fa-box-open"></i> <strong>${consumerActor.name}</strong> could not take another yet. <strong>${itemName}</strong> was packed away.</p></div>`,
+                content: `<div class="respite-recovery-chat"><p><i class="fas fa-box-open"></i> ${packedMsg}</p></div>`,
                 speaker: ChatMessage.getSpeaker({ actor: consumerActor })
             });
-            return { lines: [`${itemName} packed away`] };
+            const lineNote = game.i18n?.format
+                ? game.i18n.format("ionrift-respite.wellFed.linePackedAway", { item: itemName })
+                : `${itemName} packed away`;
+            return { lines: [lineNote] };
         } else {
             const { lines, rolls } = await applyWellFedEffect(consumerActor, itemSnapshot);
             if (lines?.length) {
+                const consumeMsg = game.i18n?.format
+                    ? game.i18n.format("ionrift-respite.wellFed.chatConsumes", { consumer: consumerActor.name, action, item: itemName, details: lines.join("; ") })
+                    : `<strong>${consumerActor.name}</strong> ${action} <strong>${itemName}</strong>. ${lines.join("; ")}`;
                 await ChatMessage.create({
-                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${consumerActor.name}</strong> ${action} <strong>${itemName}</strong>. ${lines.join("; ")}</p></div>`,
+                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> ${consumeMsg}</p></div>`,
                     rolls: rolls ?? [],
                     speaker: ChatMessage.getSpeaker({ actor: consumerActor })
                 });
@@ -176,7 +193,9 @@ export async function applyWellFedEffect(actor, item) {
     if (deferredBuffs.length && usePf2e) {
         const pf2eResult = await applicator.applyBuffsRouted(actor, deferredBuffs, {
             item,
-            title: `Well Fed: ${itemName}`,
+            title: game.i18n?.format
+                ? game.i18n.format("ionrift-respite.wellFed.effectTitle", { item: itemName })
+                : `Well Fed: ${itemName}`,
             extraFlags: { [MODULE_ID]: { wellFed: true, expiresAt: "nextRestStart" } },
             clearSlot: true
         });
@@ -199,8 +218,10 @@ export async function applyWellFedEffect(actor, item) {
             const ceActive = !!game.modules?.get?.("dfreds-convenient-effects")?.active;
             if (!ceActive && aeChanges.length) {
                 aeDescriptions.push(
-                    "Convenient Effects is not installed. This effect applies basic roll mode changes only. "
-                    + "conditional automation (Midi-QoL triggers, advantage reminders) will not function."
+                    game.i18n?.localize
+                        ? game.i18n.localize("ionrift-respite.wellFed.aeDescNoConvenientEffects")
+                        : "Convenient Effects is not installed. This effect applies basic roll mode changes only. "
+                        + "conditional automation (Midi-QoL triggers, advantage reminders) will not function."
                 );
             }
 
@@ -219,8 +240,11 @@ export async function applyWellFedEffect(actor, item) {
                 aeFlags.dae = { specialDuration: [...new Set([...existing, ...aeDaeSpecials])] };
             }
 
+            const effName = game.i18n?.format
+                ? game.i18n.format("ionrift-respite.wellFed.effectTitle", { item: itemName })
+                : `Well Fed: ${itemName}`;
             await actor.createEmbeddedDocuments("ActiveEffect", [{
-                name: `Well Fed: ${itemName}`,
+                name: effName,
                 img: item.img ?? "icons/consumables/food/bowl-stew-brown.webp",
                 origin: actor.uuid,
                 transfer: false,
@@ -234,8 +258,11 @@ export async function applyWellFedEffect(actor, item) {
             if (!ceActive) {
                 const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
                 if (gmIds.length) {
+                    const ceWarn = game.i18n?.format
+                        ? game.i18n.format("ionrift-respite.wellFed.chatNoConvenientEffects", { item: itemName, name: actor.name })
+                        : `<strong>Well Fed: ${itemName}</strong> applied to <strong>${actor.name}</strong> with basic AE changes. <em>Convenient Effects</em> is not installed. Conditional triggers (expire on next save, advantage reminders) require CE + DAE/Midi-QoL.`;
                     await ChatMessage.create({
-                        content: `<div class="respite-recovery-chat"><p><i class="fas fa-exclamation-triangle"></i> <strong>Well Fed: ${itemName}</strong> applied to <strong>${actor.name}</strong> with basic AE changes. <em>Convenient Effects</em> is not installed. Conditional triggers (expire on next save, advantage reminders) require CE + DAE/Midi-QoL.</p></div>`,
+                        content: `<div class="respite-recovery-chat"><p><i class="fas fa-exclamation-triangle"></i> ${ceWarn}</p></div>`,
                         whisper: gmIds,
                         speaker: { alias: "Respite" }
                     });
