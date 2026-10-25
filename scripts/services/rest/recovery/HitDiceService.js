@@ -103,7 +103,7 @@ export class HitDiceService {
 
         const hdData = this.getHitDiceInfo(actor);
         if (hdData.remaining <= 0) {
-            ui.notifications?.warn?.(`${actor.name} has no Hit Dice remaining.`);
+            ui.notifications?.warn?.(game.i18n.format("ionrift-respite.hitDice.noHitDiceRemaining", { name: actor.name }));
             return null;
         }
 
@@ -125,7 +125,7 @@ export class HitDiceService {
                 roll = await settleAfter(() => actor.rollHitDie({ dialog: false }));
             } catch (e2) {
                 console.error(`${MODULE_ID} | rollHitDie failed entirely:`, e2);
-                ui.notifications?.error?.("Could not roll Hit Die. See console for details.");
+                ui.notifications?.error?.(game.i18n.localize("ionrift-respite.hitDice.rollFailed"));
                 return null;
             }
         }
@@ -169,7 +169,7 @@ export class HitDiceService {
 
         const songRoll = await HitDiceService.#showDieThenSettle(actor, songVolunteer.songDie, {
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>Song of Rest</strong> (${songVolunteer.bardName})`
+            flavor: `<strong>${game.i18n.localize("ionrift-respite.hitDice.songOfRest")}</strong> (${songVolunteer.bardName})`
         });
         if (!songRoll) return null;
         if (songRoll.total > 0) await HitDiceService.#restoreHp(actor, songRoll.total);
@@ -193,7 +193,7 @@ export class HitDiceService {
 
         const chefRoll = await HitDiceService.#showDieThenSettle(actor, "1d8", {
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>Replenishing Meal</strong> (${chefVolunteer.chefName ?? "Chef"})`
+            flavor: `<strong>${game.i18n.localize("ionrift-respite.hitDice.replenishingMeal")}</strong> (${chefVolunteer.chefName ?? game.i18n.localize("ionrift-respite.hitDice.chefDefault")})`
         });
         if (!chefRoll) return null;
         if (chefRoll.total > 0) await HitDiceService.#restoreHp(actor, chefRoll.total);
@@ -224,7 +224,7 @@ export class HitDiceService {
         } else if (warmthMode === "1d4") {
             const shown = await HitDiceService.#showDieThenSettle(actor, "1d4", {
                 speaker: ChatMessage.getSpeaker({ actor }),
-                flavor: `<strong>Warm Campfire Healing</strong>`,
+                flavor: `<strong>${game.i18n.localize("ionrift-respite.hitDice.warmCampfireHealing")}</strong>`,
                 whisper: game.users.filter(u => u.isGM || actor.testUserPermission(u, "OWNER")).map(u => u.id)
             });
             if (!shown) return null;

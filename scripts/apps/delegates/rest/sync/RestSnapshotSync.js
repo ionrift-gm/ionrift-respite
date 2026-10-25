@@ -367,7 +367,7 @@ export class RestSnapshotSync {
 
         if (!app._isGM && phase === "events" && phaseData.awaitingCombat) {
             if (app.rendered) {
-                ui.notifications.info("Encounter started. Rest window minimized to the status bar.");
+                ui.notifications.info(game.i18n.localize("ionrift-respite.restSync.encounterStartedMinimized"));
                 await app.close({ retainPlayerApp: true });
                 return;
             }

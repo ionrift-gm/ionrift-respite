@@ -179,8 +179,8 @@ export class CalendarHandler {
             const formatted = this.getFormattedDate();
             const dateDisplay = formatted ?? dateKey;
             await ChatMessage.create({
-                content: `<p><i class="fas fa-campground"></i> <strong>Rest Complete</strong></p>
-                          <p>The party rests. (${dateDisplay})</p>`,
+                content: `<p><i class="fas fa-campground"></i> <strong>${game.i18n.localize("ionrift-respite.calendar.restComplete")}</strong></p>
+                          <p>${game.i18n.format("ionrift-respite.calendar.partyRests", { date: dateDisplay })}</p>`,
                 speaker: { alias: "Respite" },
                 flags: { [MODULE_ID]: { type: "calendarRest" } }
             });

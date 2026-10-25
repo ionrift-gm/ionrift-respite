@@ -95,22 +95,22 @@ export class EncounterDraftService {
         let event = null;
         let sentrySurprised = false;
 
-        const terrainDisplay = terrainTag ? (terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1)) : "Wilderness";
-        let flavor = `<strong>Night Watch Check</strong> (${terrainDisplay}) · DC ${effectiveDC}<br>`;
+        const terrainDisplay = terrainTag ? (terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1)) : game.i18n.localize("ionrift-respite.encounterDraft.wildernessDefault");
+        let flavor = `<strong>${game.i18n.localize("ionrift-respite.encounterDraft.nightWatchCheck")}</strong> (${terrainDisplay}) · DC ${effectiveDC}<br>`;
         if (isGreen) {
             state = "green";
-            flavor += `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Safe dawn (${rollTotal} ≥ DC ${effectiveDC}).</span>`;
+            flavor += `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> ${game.i18n.format("ionrift-respite.encounterDraft.safeDawnFlavor", { roll: rollTotal, dc: effectiveDC })}</span>`;
         } else if (isAmber) {
             state = "amber";
             category = "non-combat";
-            flavor += `<span style="color:#f59e0b;"><i class="fas fa-eye"></i> Nocturnal stir (${rollTotal} vs DC ${effectiveDC}). Ambient discovery.</span>`;
+            flavor += `<span style="color:#f59e0b;"><i class="fas fa-eye"></i> ${game.i18n.format("ionrift-respite.encounterDraft.nocturnalStirFlavor", { roll: rollTotal, dc: effectiveDC })}</span>`;
             event = {
-                title: "Nocturnal Encounter",
-                description: `Strange lights, curious wildlife, or wandering travelers moved through the ${terrainTag}.`,
+                title: game.i18n.localize("ionrift-respite.encounterDraft.titleNocturnalEncounter"),
+                description: game.i18n.format("ionrift-respite.encounterDraft.descNocturnalAmber", { terrain: terrainTag }),
                 category: "discovery",
                 isDisaster: false,
                 terrainTag,
-                sentryName: sentryName ?? "Camp Watch",
+                sentryName: sentryName ?? game.i18n.localize("ionrift-respite.encounterDraft.campWatchDefault"),
                 sentrySurprised: false
             };
         } else {
@@ -119,14 +119,14 @@ export class EncounterDraftService {
             isDisaster = isNat1;
             const stealthDC = 12;
             sentrySurprised = hasActiveGuard ? false : pp < stealthDC;
-            flavor += `<span style="color:#ef4444;"><i class="fas fa-skull-crossbones"></i> Ambush! (${rollTotal} vs DC ${effectiveDC}).</span>`;
+            flavor += `<span style="color:#ef4444;"><i class="fas fa-skull-crossbones"></i> ${game.i18n.format("ionrift-respite.encounterDraft.ambushFlavor", { roll: rollTotal, dc: effectiveDC })}</span>`;
             event = {
-                title: "Hostile Ambush",
-                description: `Prowlers circle the perimeter in the ${terrainTag}.`,
+                title: game.i18n.localize("ionrift-respite.encounterDraft.titleHostileAmbush"),
+                description: game.i18n.format("ionrift-respite.encounterDraft.descHostileAmbush", { terrain: terrainTag }),
                 category: "encounter",
                 isDisaster: isNat1,
                 terrainTag,
-                sentryName: sentryName ?? "Camp Watch",
+                sentryName: sentryName ?? game.i18n.localize("ionrift-respite.encounterDraft.campWatchDefault"),
                 sentrySurprised
             };
         }
@@ -144,22 +144,22 @@ export class EncounterDraftService {
             if (isAmber && event) {
                 await ChatMessage.create({
                     content: `<div class="respite-chat-parchment ionrift-window">` +
-                        `<h3><i class="fas fa-eye" style="color:#f59e0b;"></i> Nocturnal Sighting (${terrainDisplay})</h3>` +
+                        `<h3><i class="fas fa-eye" style="color:#f59e0b;"></i> ${game.i18n.format("ionrift-respite.encounterDraft.headingNocturnalSighting", { terrain: terrainDisplay })}</h3>` +
                         `<p>${event.description}</p>` +
-                        `<p style="color:#94a3b8; font-size:0.85rem;"><i class="fas fa-shield-halved"></i> The camp remained secure and completed their rest safely.</p>` +
+                        `<p style="color:#94a3b8; font-size:0.85rem;"><i class="fas fa-shield-halved"></i> ${game.i18n.localize("ionrift-respite.encounterDraft.campRemainedSecure")}</p>` +
                         `</div>`,
                     speaker: { alias: "Night Watch" }
                 });
             } else if (isRed && event) {
                 const surpriseText = sentrySurprised
-                    ? `<strong>Surprise Attack!</strong> The camp was caught off-guard.`
-                    : `The sentry (${sentryName ?? "Camp Watch"}) spotted the threat in time.`;
+                    ? `<strong>${game.i18n.localize("ionrift-respite.encounterDraft.surpriseAttack")}</strong> ${game.i18n.localize("ionrift-respite.encounterDraft.caughtOffGuard")}`
+                    : game.i18n.format("ionrift-respite.encounterDraft.sentrySpottedThreat", { sentryName: sentryName ?? game.i18n.localize("ionrift-respite.encounterDraft.campWatchDefault") });
 
                 await ChatMessage.create({
                     content: `<div class="respite-chat-parchment ionrift-window">` +
-                        `<h3><i class="fas fa-skull-crossbones" style="color:#ef4444;"></i> Hostile Ambush! (${terrainDisplay})</h3>` +
+                        `<h3><i class="fas fa-skull-crossbones" style="color:#ef4444;"></i> ${game.i18n.format("ionrift-respite.encounterDraft.headingHostileAmbush", { terrain: terrainDisplay })}</h3>` +
                         `<p>${surpriseText}</p>` +
-                        `<p style="color:#ef4444;"><strong>Rest interrupted!</strong> Prepare for combat.</p>` +
+                        `<p style="color:#ef4444;"><strong>${game.i18n.localize("ionrift-respite.encounterDraft.restInterrupted")}</strong> ${game.i18n.localize("ionrift-respite.encounterDraft.prepareForCombat")}</p>` +
                         `</div>`,
                     speaker: { alias: "Night Watch" }
                 });
@@ -218,7 +218,7 @@ export class EncounterDraftService {
         }
 
         const rollTotal = entry.rollTotal;
-        const sentryName = entry.sentryName ?? "Camp Watch";
+        const sentryName = entry.sentryName ?? game.i18n.localize("ionrift-respite.encounterDraft.campWatchDefault");
         const sentrySurprised = entry.hasActiveGuard ? false : (entry.sentrySurprised ?? false);
 
         if (rollTotal < effectiveDC - 4) {
@@ -226,8 +226,8 @@ export class EncounterDraftService {
             entry.category = "combat";
             entry.isDisaster = false;
             entry.event = {
-                title: "Hostile Ambush",
-                description: `Prowlers circle the perimeter in the ${terrainTag}.`,
+                title: game.i18n.localize("ionrift-respite.encounterDraft.titleHostileAmbush"),
+                description: game.i18n.format("ionrift-respite.encounterDraft.descHostileAmbush", { terrain: terrainTag }),
                 category: "encounter",
                 isDisaster: false,
                 terrainTag,
@@ -239,8 +239,8 @@ export class EncounterDraftService {
             entry.category = "non-combat";
             entry.isDisaster = false;
             entry.event = {
-                title: "Nocturnal Encounter",
-                description: `Strange lights, curious wildlife, or a wandering traveler approaches in the ${terrainTag}.`,
+                title: game.i18n.localize("ionrift-respite.encounterDraft.titleNocturnalEncounter"),
+                description: game.i18n.format("ionrift-respite.encounterDraft.descNocturnalAmber2", { terrain: terrainTag }),
                 category: "discovery",
                 isDisaster: false,
                 terrainTag,
@@ -357,11 +357,11 @@ export class EncounterDraftService {
             entry.category = "non-combat";
             entry.isDisaster = false;
             entry.event = {
-                title: "Nocturnal Encounter",
-                description: `Non-combat encounter, discovery, or social dilemma in the ${terrainTag}.`,
+                title: game.i18n.localize("ionrift-respite.encounterDraft.titleNocturnalEncounter"),
+                description: game.i18n.format("ionrift-respite.encounterDraft.descNocturnalAmber3", { terrain: terrainTag }),
                 category: "discovery",
                 isDisaster: false,
-                sentryName: entry.sentryName ?? "Camp Watch"
+                sentryName: entry.sentryName ?? game.i18n.localize("ionrift-respite.encounterDraft.campWatchDefault")
             };
         } else if (entry.state === "amber") {
             entry.state = "red";
@@ -370,11 +370,11 @@ export class EncounterDraftService {
             entry.category = "combat";
             entry.isDisaster = false;
             entry.event = {
-                title: "Hostile Ambush",
-                description: `Hostile combat encounter in the ${terrainTag}.`,
+                title: game.i18n.localize("ionrift-respite.encounterDraft.titleHostileAmbush"),
+                description: game.i18n.format("ionrift-respite.encounterDraft.descHostileAmbush2", { terrain: terrainTag }),
                 category: "encounter",
                 isDisaster: false,
-                sentryName: entry.sentryName ?? "Camp Watch"
+                sentryName: entry.sentryName ?? game.i18n.localize("ionrift-respite.encounterDraft.campWatchDefault")
             };
         } else {
             // Return to Green (Peaceful/Safe)

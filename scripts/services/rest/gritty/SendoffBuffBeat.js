@@ -80,7 +80,7 @@ export function collectSendoffRows({ actors = [], meals, drinks, applied = [] } 
                 actorName: actor.name ?? "",
                 kind,
                 itemId,
-                itemName: prior?.itemName || item?.name || (kind === "drink" ? "Drink" : "Meal"),
+                itemName: prior?.itemName || item?.name || (kind === "drink" ? game.i18n.localize("ionrift-respite.sendoffBuff.drinkFallback") : game.i18n.localize("ionrift-respite.sendoffBuff.mealFallback")),
                 buffSummary: described.buffSummary || prior?.buffSummary || "",
                 applied: Boolean(prior),
                 resultLine: prior?.resultLine ?? ""
@@ -105,13 +105,13 @@ export function collectSendoffRows({ actors = [], meals, drinks, applied = [] } 
 export async function applySendoffServing({ actor, itemId, kind, partyIds = [] }) {
     const item = itemOn(actor, itemId);
     if (!actor || !item) {
-        return { ok: false, resultLine: "No longer in the pack" };
+        return { ok: false, resultLine: game.i18n.localize("ionrift-respite.sendoffBuff.noLongerInPack") };
     }
     const flags = item.flags?.[MODULE_ID] ?? {};
     const snapshot = item.toObject ? item.toObject() : item;
     const taken = await consumeItem(actor, item.id, 1);
     if (taken <= 0) {
-        return { ok: false, resultLine: "Could not serve" };
+        return { ok: false, resultLine: game.i18n.localize("ionrift-respite.sendoffBuff.couldNotServe") };
     }
 
     let resultLine = "";
@@ -125,9 +125,9 @@ export async function applySendoffServing({ actor, itemId, kind, partyIds = [] }
         const described = describeItemMealBuff(flags);
         resultLine = (outcome?.lines ?? []).filter(Boolean).join("; ")
             || described.buffSummary
-            || "Applied";
+            || game.i18n.localize("ionrift-respite.sendoffBuff.applied");
     } catch {
-        resultLine = "Served";
+        resultLine = game.i18n.localize("ionrift-respite.sendoffBuff.served");
     }
 
     return {

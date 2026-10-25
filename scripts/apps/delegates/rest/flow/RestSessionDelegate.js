@@ -81,7 +81,7 @@ export class RestSessionDelegate {
                 } else {
                     const fallback = await app._spendPartyFirewoodForMakeCamp(pledge.count, null);
                     if (!fallback.ok) {
-                        ui.notifications.warn(`Could not spend firewood for ${pledge.actorName}. Proceeding anyway.`);
+                        ui.notifications.warn(game.i18n.format("ionrift-respite.restSession.couldNotSpendFirewood", { name: pledge.actorName }));
                     }
                 }
             }
@@ -89,7 +89,9 @@ export class RestSessionDelegate {
                 const level = app._fireLevel ?? "unlit";
                 const label = level.charAt(0).toUpperCase() + level.slice(1);
                 const names = pledges.map(([, p]) => p.actorName).join(" and ");
-                ui.notifications.info(`${names} ${pledges.length === 1 ? "spends" : "spend"} firewood for ${label}.`);
+                ui.notifications.info(pledges.length === 1
+                    ? game.i18n.format("ionrift-respite.restSession.spendsFirewoodSingle", { name: names, label })
+                    : game.i18n.format("ionrift-respite.restSession.spendsFirewoodPlural", { names, label }));
             }
         }
         app._campFireWoodSpendUserId = null;
@@ -265,7 +267,7 @@ export class RestSessionDelegate {
 
         const actor = getPartyActors()[0];
         if (!actor) {
-            ui.notifications.warn("No party character found to light the campfire. Add an actor to the party or light the fire from the map.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.restSession.noPartyToLightCampfire"));
             return;
         }
 
@@ -964,7 +966,7 @@ export class RestSessionDelegate {
         const app = this._app;
 
         if (app._campPitBlocksFireLighting()) {
-            ui.notifications.warn("Place the campfire on the map before lighting.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.restSession.placeCampfireBeforeLighting"));
             return;
         }
         const root = target?.closest?.("[data-action=\"campLightFire\"]") ?? target;

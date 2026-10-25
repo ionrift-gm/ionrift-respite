@@ -350,8 +350,13 @@ export class RecoveryHandler {
                             const damage = roll.total;
                             damageByActor.set(actorId, (damageByActor.get(actorId) ?? 0) + damage);
                             await postRollAndSettle(roll, {
-                                speaker: { alias: sub.eventName ?? "Rest Event" },
-                                flavor: `<strong>${actor.name}</strong>: ${effect.formula ?? effect.roll} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
+                                speaker: { alias: sub.eventName ?? game.i18n.localize("ionrift-respite.recovery.restEventAlias") },
+                                flavor: game.i18n.format("ionrift-respite.recovery.damageFlavor", {
+                                    name: actor.name,
+                                    roll: effect.formula ?? effect.roll,
+                                    damageType: effect.damageType ?? "",
+                                    description: effect.description ?? ""
+                                }),
                                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
                             });
                         } catch (e) {
@@ -520,10 +525,14 @@ export class RecoveryHandler {
             const passed = roll.total >= recovery.exhaustionDC;
 
             // Post the save roll to chat (GM-whispered)
-            const advLabel = advantage ? " (mess kit gives advantage)" : "";
+            const advLabel = advantage ? " " + game.i18n.localize("ionrift-respite.recovery.messKitAdvantage") : "";
             await postRollAndSettle(roll, {
                 speaker: ChatMessage.getSpeaker({ actor }),
-                flavor: `<strong>${actor.name}</strong>: CON save vs exhaustion DC ${recovery.exhaustionDC}${advLabel}`,
+                flavor: game.i18n.format("ionrift-respite.recovery.conSaveFlavor", {
+                    name: actor.name,
+                    dc: recovery.exhaustionDC,
+                    advLabel
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
 
@@ -555,33 +564,33 @@ export class RecoveryHandler {
      */
     static async _postRecoveryChat(actor, recovery, hpRestored, hdRecovered, exhaustionDelta = 0) {
         const comfortLabels = {
-            safe: "Safe",
-            sheltered: "Sheltered",
-            rough: "Rough",
-            hostile: "Hostile"
+            safe: game.i18n.localize("ionrift-respite.recovery.comfortSafe"),
+            sheltered: game.i18n.localize("ionrift-respite.recovery.comfortSheltered"),
+            rough: game.i18n.localize("ionrift-respite.recovery.comfortRough"),
+            hostile: game.i18n.localize("ionrift-respite.recovery.comfortHostile")
         };
         const comfortLabel = comfortLabels[recovery.comfortLevel] ?? recovery.comfortLevel;
 
         const parts = [];
-        if (hpRestored > 0) parts.push(`${hpRestored} HP`);
-        if (hdRecovered > 0) parts.push(`${hdRecovered} Hit Dice`);
-        if (exhaustionDelta < 0) parts.push(`${Math.abs(exhaustionDelta)} exhaustion reduced`);
-        if (exhaustionDelta > 0) parts.push(`${exhaustionDelta} exhaustion gained`);
+        if (hpRestored > 0) parts.push(game.i18n.format("ionrift-respite.recovery.partHp", { amount: hpRestored }));
+        if (hdRecovered > 0) parts.push(game.i18n.format("ionrift-respite.recovery.partHd", { amount: hdRecovered }));
+        if (exhaustionDelta < 0) parts.push(game.i18n.format("ionrift-respite.recovery.partExhReduced", { amount: Math.abs(exhaustionDelta) }));
+        if (exhaustionDelta > 0) parts.push(game.i18n.format("ionrift-respite.recovery.partExhGained", { amount: exhaustionDelta }));
 
         // Advisory when exhaustion reduction is blocked
         let exhaustionNote = null;
         if (recovery.comfortLevel === "hostile" && recovery.restType === "long" && exhaustionDelta >= 0) {
-            exhaustionNote = "Hostile conditions prevent natural exhaustion recovery.";
+            exhaustionNote = game.i18n.localize("ionrift-respite.recovery.noteHostile");
         } else if (recovery.armorSleepPenalty && recovery.restType === "long" && exhaustionDelta >= 0) {
-            exhaustionNote = "Sleeping in armor prevents exhaustion recovery.";
+            exhaustionNote = game.i18n.localize("ionrift-respite.recovery.noteArmorSleep");
         } else if (recovery.noFoodOrWater && recovery.restType === "long" && exhaustionDelta >= 0) {
-            exhaustionNote = "Lack of food or water prevents exhaustion recovery.";
+            exhaustionNote = game.i18n.localize("ionrift-respite.recovery.noteNoFoodWater");
         }
 
         // Skip chat if nothing was restored or changed and no advisory
         if (parts.length === 0 && !exhaustionNote) return;
 
-        const recoveredLine = parts.length > 0 ? `Recovered: ${parts.join(", ")}.` : "";
+        const recoveredLine = parts.length > 0 ? game.i18n.format("ionrift-respite.recovery.recoveredPrefix", { parts: parts.join(", ") }) : "";
         const noteLine = exhaustionNote ? `<br><em style="color:#e67e22;"><i class="fas fa-exclamation-circle"></i> ${exhaustionNote}</em>` : "";
         const gearLine = recovery.gearDescriptors?.length
             ? `<br><span style="font-size:0.85em;opacity:0.7;">${recovery.gearDescriptors.join(" · ")}</span>`
@@ -589,7 +598,7 @@ export class RecoveryHandler {
 
         const content = `
             <div class="respite-recovery-chat">
-                <strong>${actor.name}</strong> rests in <em>${comfortLabel}</em> conditions.<br>
+                ${game.i18n.format("ionrift-respite.recovery.restsInConditions", { name: actor.name, comfort: comfortLabel })}
                 ${recoveredLine}${gearLine}${noteLine}
             </div>
         `;
@@ -632,8 +641,13 @@ export class RecoveryHandler {
                     totalDamage += damage;
 
                     await postRollAndSettle(roll, {
-                        speaker: { alias: sub.eventName ?? "Rest Event" },
-                        flavor: `<strong>${actor.name}</strong>: ${effect.formula ?? effect.roll} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
+                        speaker: { alias: sub.eventName ?? game.i18n.localize("ionrift-respite.recovery.restEventAlias") },
+                        flavor: game.i18n.format("ionrift-respite.recovery.damageFlavor", {
+                            name: actor.name,
+                            roll: effect.formula ?? effect.roll,
+                            damageType: effect.damageType ?? "",
+                            description: effect.description ?? ""
+                        }),
                         whisper: game.users.filter(u => u.isGM).map(u => u.id)
                     });
                 } catch (e) {

@@ -36,7 +36,7 @@ export class RestTrainingDelegate {
         const actor = game.actors.get(characterId);
         if (!actor) return;
         if (!actor.isOwner && !game.user.isGM) {
-            ui.notifications.warn("Only the character's owner can roll training checks.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.restTraining.ownerOnlyWarn"));
             return;
         }
 
@@ -56,7 +56,7 @@ export class RestTrainingDelegate {
 
             if (game.user.isGM && !actor.isOwner) {
                 const roll = await new Roll(`1d20 + ${ctx.modifier ?? 0}`).evaluate();
-                const flavor = `<strong>Training</strong> Set ${setNumber}/${numRolls} (${abilityName}) · DC ${ctx.adjustedDc} [GM roll]`;
+                const flavor = `<strong>${game.i18n.localize("ionrift-respite.restTraining.trainingLabel")}</strong> ${game.i18n.format("ionrift-respite.restTraining.flavorGm", { setNumber, numRolls, abilityName, dc: ctx.adjustedDc })}`;
                 const gate = armDiceSoNiceSettle();
                 try {
                     await postRollToChat(actor, roll, flavor);
@@ -68,7 +68,7 @@ export class RestTrainingDelegate {
                 total = roll.total;
                 passed = total >= ctx.adjustedDc;
             } else {
-                const flavor = `<strong>Training</strong> Set ${setNumber}/${numRolls} (${abilityName}) · DC ${ctx.adjustedDc}`;
+                const flavor = `<strong>${game.i18n.localize("ionrift-respite.restTraining.trainingLabel")}</strong> ${game.i18n.format("ionrift-respite.restTraining.flavor", { setNumber, numRolls, abilityName, dc: ctx.adjustedDc })}`;
                 const result = await executeAbilityRoll(
                     actor,
                     ctx.abilityKey ?? "str",
@@ -98,7 +98,7 @@ export class RestTrainingDelegate {
                 app._totmFollowUpExpanded = null;
 
                 const award = outcome.training?.awardedXP ?? 0;
-                ui.notifications.info(`${actor.name}: Training complete · +${award} XP`);
+                ui.notifications.info(game.i18n.format("ionrift-respite.restTraining.completeXp", { name: actor.name, award }));
 
                 if (!game.user.isGM) {
                     emitTrainingComplete(characterId, outcome);
@@ -119,7 +119,7 @@ export class RestTrainingDelegate {
             }
         } catch (err) {
             console.warn(`${MODULE_ID} | Training roll failed:`, err);
-            ui.notifications.error("Training roll failed. Try again.");
+            ui.notifications.error(game.i18n.localize("ionrift-respite.restTraining.rollFailed"));
         } finally {
             state.rolling = false;
             app.render();

@@ -357,7 +357,7 @@ export class ResourceSink {
         const magnitude = effect.method === "percent_roll"
             ? (effect.maxPercent ?? (effect.multiplier ?? 10) * 2)
             : (effect.amount ?? 1) * 10;
-        return this.SUPPLIES_GEAR_CURVE.find(t => magnitude <= t.maxMagnitude)
+        return this.SUPPLIES_GEAR_CURVE.find(t => t.maxMagnitude >= magnitude)
             ?? this.SUPPLIES_GEAR_CURVE[this.SUPPLIES_GEAR_CURVE.length - 1];
     }
 

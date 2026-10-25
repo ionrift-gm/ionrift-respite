@@ -258,10 +258,10 @@ export class ConditionAdvisory {
         const allApplied = new Set([...applied, ...aeApplied]);
         const lines = [
             `<div class="respite-condition-advisory">`,
-            `<h3><i class="fas fa-exclamation-triangle"></i> Conditions to Apply</h3>`,
+            `<h3><i class="fas fa-exclamation-triangle"></i> ${game.i18n.localize("ionrift-respite.conditionAdvisory.conditionsToApply")}</h3>`,
             allApplied.size > 0
-                ? `<p class="advisory-subtitle">Conditions auto-applied where possible. Manual items listed below.</p>`
-                : `<p class="advisory-subtitle">These conditions were triggered by rest events. Apply them manually.</p>`
+                ? `<p class="advisory-subtitle">${game.i18n.localize("ionrift-respite.conditionAdvisory.subtitleAutoApplied")}</p>`
+                : `<p class="advisory-subtitle">${game.i18n.localize("ionrift-respite.conditionAdvisory.subtitleManual")}</p>`
         ];
 
         // When the automation stack is absent, point the GM at what would make
@@ -272,7 +272,7 @@ export class ConditionAdvisory {
         if (anyUnapplied && fx?.tier?.() === "basic") {
             lines.push(
                 `<p class="advisory-hint"><i class="fas fa-circle-info"></i> ` +
-                `Dynamic Active Effects and Midi-QoL apply and expire these automatically.</p>`
+                `${game.i18n.localize("ionrift-respite.conditionAdvisory.hintAutomation")}</p>`
             );
         }
 
@@ -298,7 +298,7 @@ export class ConditionAdvisory {
                         `<div class="advisory-effect applied">` +
                         `<i class="${icon}"></i> ` +
                         `<span class="effect-label">${label}</span>` +
-                        ` <span class="effect-applied"><i class="fas fa-check-circle"></i> Applied</span>` +
+                        ` <span class="effect-applied"><i class="fas fa-check-circle"></i> ${game.i18n.localize("ionrift-respite.conditionAdvisory.applied")}</span>` +
                         `</div>`
                     );
                 } else {
@@ -448,7 +448,7 @@ export class ConditionAdvisory {
     static _formatConditionLabel(effect) {
         if (effect.type === "temp_hp") {
             const formula = effect.formula ?? effect.amount ?? "?";
-            return `Temporary HP: ${formula}`;
+            return game.i18n.format("ionrift-respite.conditionAdvisory.tempHp", { formula });
         }
 
         let label = (effect.condition ?? "unknown").charAt(0).toUpperCase()
@@ -456,7 +456,7 @@ export class ConditionAdvisory {
 
         if (effect.checks?.length) {
             const checks = effect.checks.map(c => c.toUpperCase()).join(", ");
-            label += ` (${checks} checks)`;
+            label += " " + game.i18n.format("ionrift-respite.conditionAdvisory.checksSuffix", { checks });
         }
 
         return label;
@@ -466,13 +466,13 @@ export class ConditionAdvisory {
         if (!duration) return null;
 
         const durationMap = {
-            next_rest: "until next rest",
-            end_of_rest: "end of rest",
-            "1_hour": "1 hour",
-            "4_hours": "4 hours",
-            "8_hours": "8 hours",
-            "24_hours": "24 hours",
-            permanent: "permanent"
+            next_rest: game.i18n.localize("ionrift-respite.conditionAdvisory.durationNextRest"),
+            end_of_rest: game.i18n.localize("ionrift-respite.conditionAdvisory.durationEndOfRest"),
+            "1_hour": game.i18n.localize("ionrift-respite.conditionAdvisory.duration1Hour"),
+            "4_hours": game.i18n.localize("ionrift-respite.conditionAdvisory.duration4Hours"),
+            "8_hours": game.i18n.localize("ionrift-respite.conditionAdvisory.duration8Hours"),
+            "24_hours": game.i18n.localize("ionrift-respite.conditionAdvisory.duration24Hours"),
+            permanent: game.i18n.localize("ionrift-respite.conditionAdvisory.durationPermanent")
         };
 
         return durationMap[duration] ?? duration;

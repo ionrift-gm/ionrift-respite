@@ -185,7 +185,7 @@ export class DawnExhaustionDelegate {
         if (!game.user.isGM) return;
         if (app._phase !== "dawn") return;
         if (this.pendingSaves() > 0) {
-            ui.notifications.warn("Roll or waive each exhaustion save before the rest ends.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.dawnExhaustionStage.warnPendingSaves"));
             return;
         }
         return app._resolve.onResolveEvents(event, target);

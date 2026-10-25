@@ -43,7 +43,7 @@ export class RestSetupDebugJumps {
         const targets = getPartyActors().map(a => a.id);
 
         if (targets.length === 0) {
-            ui.notifications.warn("No player-owned characters found.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.debug.noPlayerChars"));
             return;
         }
 
@@ -54,9 +54,9 @@ export class RestSetupDebugJumps {
         }
 
         app._triggeredEvents = [{
-            id: "test_single_event", name: "Wolf Tracks", category: "complication",
-            description: "Fresh wolf tracks circle the camp perimeter.",
-            narrative: "Fresh wolf tracks circle the camp perimeter.",
+            id: "test_single_event", name: game.i18n.localize("ionrift-respite.debug.wolfTracks"), category: "complication",
+            description: game.i18n.localize("ionrift-respite.debug.wolfTracksDesc"),
+            narrative: game.i18n.localize("ionrift-respite.debug.wolfTracksDesc"),
             mechanical: {
                 type: "skill_check", skill: "sur", dc: 12, targets: "watch",
                 onSuccess: { narrative: "The pack moves on.", effects: [] },
@@ -77,7 +77,7 @@ export class RestSetupDebugJumps {
 
         app.render(true);
         Logger.log("[Respite:Debug] Single event injected.");
-        ui.notifications.info("Single event loaded.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.debug.singleEventLoaded"));
     }
 
     async jumpToResolution() {
@@ -99,15 +99,15 @@ export class RestSetupDebugJumps {
         }
 
         app._triggeredEvents = [{
-            id: "test_discovery", name: "Hidden Grove", category: "discovery",
-            description: "A cluster of medicinal plants grows near the campsite.",
+            id: "test_discovery", name: game.i18n.localize("ionrift-respite.debug.hiddenGrove"), category: "discovery",
+            description: game.i18n.localize("ionrift-respite.debug.hiddenGroveDesc"),
             mechanical: {
                 type: "skill_check", skill: "nat", dc: 10, targets: "watch",
                 onSuccess: { narrative: "You gather the herbs carefully.", items: [{ itemRef: "jungle_herbs", quantity: "1d4" }] },
                 onFailure: { narrative: "The plants crumble at your touch.", effects: [] }
             },
             targets, rollTotal: 15, result: "triggered",
-            narrative: "A cluster of medicinal plants grows near the campsite.",
+            narrative: game.i18n.localize("ionrift-respite.debug.hiddenGroveDesc"),
             resolvedOutcome: "success",
             items: [{ itemRef: "jungle_herbs", quantity: "1d4" }],
             effects: []
@@ -166,9 +166,9 @@ export class RestSetupDebugJumps {
         }
 
         app._triggeredEvents = [{
-            id: "debug_encounter", name: "Prowling Predators", category: "encounter",
-            description: "A pack of creatures stalks the edge of your campfire light.",
-            narrative: "A pack of creatures stalks the edge of your campfire light.",
+            id: "debug_encounter", name: game.i18n.localize("ionrift-respite.debug.prowlingPredators"), category: "encounter",
+            description: game.i18n.localize("ionrift-respite.debug.prowlingPredatorsDesc"),
+            narrative: game.i18n.localize("ionrift-respite.debug.prowlingPredatorsDesc"),
             targets, result: "triggered", resolvedOutcome: null,
             effects: []
         }];
@@ -222,7 +222,7 @@ export class RestSetupDebugJumps {
 
         const flood = await findInstalledDisaster({ preferId: "evt_disaster_flash_flood", terrainTag });
         if (!flood) {
-            ui.notifications.warn("No camp disaster events installed.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.debug.noDisastersInstalled"));
             return;
         }
 
@@ -261,7 +261,7 @@ export class RestSetupDebugJumps {
 
         app.render(true);
         Logger.log("[Respite:Debug] Jumped to events phase with Flash Flood decision tree.");
-        ui.notifications.info("Flash Flood disaster injected. Decision tree active.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.debug.flashFloodInjected"));
     }
 
     async jumpToRecoveryPenalty() {
@@ -272,7 +272,7 @@ export class RestSetupDebugJumps {
         const targets = getPartyActors().map(a => a.id);
 
         if (targets.length === 0) {
-            ui.notifications.warn("No player-owned characters found.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.debug.noPlayerChars"));
             return;
         }
 
@@ -296,10 +296,10 @@ export class RestSetupDebugJumps {
 
         app._triggeredEvents = [{
             id: "evt_swamp_bog_rot",
-            name: "Bog Rot",
+            name: game.i18n.localize("ionrift-respite.debug.bogRot"),
             category: "complication",
-            description: "Infected wounds fester. Recovery will be slower.",
-            narrative: "Infected wounds fester. Recovery will be slower.",
+            description: game.i18n.localize("ionrift-respite.debug.bogRotDesc"),
+            narrative: game.i18n.localize("ionrift-respite.debug.bogRotDesc"),
             targets,
             result: "failure",
             resolvedOutcome: "failure",
@@ -307,7 +307,7 @@ export class RestSetupDebugJumps {
                 {
                     type: "recovery_penalty",
                     hpMultiplier: 0.5,
-                    description: "Infected wounds reduce healing."
+                    description: game.i18n.localize("ionrift-respite.debug.bogRotEffectDesc")
                 }
             ]
         }];
@@ -346,7 +346,7 @@ export class RestSetupDebugJumps {
         }
 
         Logger.log("[Respite:Debug] Jumped to resolution with Bog Rot 0.5x hpMultiplier penalty.");
-        ui.notifications.info("Recovery penalty scenario loaded. Check the resolution screen.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.debug.recoveryPenaltyLoaded"));
     }
 
     async jumpToDamageTest() {
@@ -357,7 +357,7 @@ export class RestSetupDebugJumps {
         const targets = getPartyActors().map(a => a.id);
 
         if (targets.length === 0) {
-            ui.notifications.warn("No player-owned characters found.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.debug.noPlayerChars"));
             return;
         }
 
@@ -381,15 +381,15 @@ export class RestSetupDebugJumps {
 
         app._triggeredEvents = [{
             id: "evt_test_damage",
-            name: "Falling Branch",
+            name: game.i18n.localize("ionrift-respite.debug.fallingBranch"),
             category: "complication",
-            description: "A large branch cracks loose and crashes into camp.",
-            narrative: "A large branch cracks loose and crashes into camp.",
+            description: game.i18n.localize("ionrift-respite.debug.fallingBranchDesc"),
+            narrative: game.i18n.localize("ionrift-respite.debug.fallingBranchDesc"),
             targets,
             resolved: true,
             resolvedOutcome: "failure",
             effects: [
-                { type: "damage", formula: "10", damageType: "bludgeoning", description: "Struck by falling branch." }
+                { type: "damage", formula: "10", damageType: "bludgeoning", description: game.i18n.localize("ionrift-respite.debug.fallingBranchEffectDesc") }
             ]
         }];
 
@@ -449,7 +449,7 @@ export class RestSetupDebugJumps {
         }
 
         Logger.log("[Respite:Debug] Jumped to resolution with 10 bludgeoning damage event.");
-        ui.notifications.info("Damage test scenario loaded. Click 'Apply Results' to apply.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.debug.damageTestLoaded"));
     }
 
     async jumpToHostileComfort() {
@@ -460,7 +460,7 @@ export class RestSetupDebugJumps {
         const targets = getPartyActors().map(a => a.id);
 
         if (targets.length === 0) {
-            ui.notifications.warn("No player-owned characters found.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.debug.noPlayerChars"));
             return;
         }
 
@@ -517,7 +517,7 @@ export class RestSetupDebugJumps {
         }
 
         Logger.log("[Respite:Debug] Hostile comfort scenario loaded.");
-        ui.notifications.info("Hostile comfort scenario loaded. Check exhaustion advisories.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.debug.hostileComfortLoaded"));
     }
 
     static async addSupplies(qty = 50) {
@@ -535,7 +535,7 @@ export class RestSetupDebugJumps {
         Logger.log(`[Respite:Debug] ${actor.name}: added ${qty} to existing ${existing.name} (now ${(existing.system?.quantity ?? 0) + qty})`);
             } else {
                 await actor.createEmbeddedDocuments("Item", [{
-                    name: "Supplies",
+                    name: game.i18n.localize("ionrift-respite.debug.itemSupplies"),
                     type: "loot",
                     img: "icons/containers/bags/pack-leather-brown.webp",
                     system: { quantity: qty, weight: { value: 0.5 }, price: { value: 1, denomination: "gp" } }
@@ -543,7 +543,7 @@ export class RestSetupDebugJumps {
         Logger.log(`[Respite:Debug] ${actor.name}: created Supplies x${qty}`);
             }
         }
-        ui.notifications.info(`Added ${qty} supplies to ${actors.length} party members.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.debug.addedSupplies", { qty, count: actors.length }));
     }
 
     async toggleRestVariant() {
@@ -568,7 +568,7 @@ export class RestSetupDebugJumps {
         app._activePacingNight = 1;
         await app.render({ force: true });
         Logger.log("[Respite:Debug] Jumped to Nights (pacing) in DowntimeLedgerApp");
-        ui.notifications.info("Opened Nights pacing view (dev jump).");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.debug.openedNightsPacing"));
     }
 
     /**
@@ -581,7 +581,7 @@ export class RestSetupDebugJumps {
         const app = this.#app;
         const targets = getPartyActors();
         if (!targets.length) {
-            ui.notifications.warn("No player-owned characters found.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.debug.noPlayerChars"));
             return;
         }
 
@@ -623,7 +623,7 @@ export class RestSetupDebugJumps {
         this.#registerActiveRestApp(app);
         app.render(true);
         Logger.log("[Respite:Debug] Jumped to dawn exhaustion.");
-        ui.notifications.info("Opened dawn exhaustion. Rough camp, DC 10.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.debug.openedDawnExhaustion"));
     }
 
     /**
@@ -636,7 +636,7 @@ export class RestSetupDebugJumps {
         const app = this.#app;
         const actors = getPartyActors();
         if (!actors.length) {
-            ui.notifications.warn("No player-owned characters found.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.debug.noPlayerChars"));
             return;
         }
 
@@ -659,7 +659,7 @@ export class RestSetupDebugJumps {
         const outcome = flood?.mechanical?.options
             ?.find(o => o.id === "move_high")?.onSuccess;
         if (!outcome?.effects?.length) {
-            ui.notifications.error("Flash Flood loss outcome not found.");
+            ui.notifications.error(game.i18n.localize("ionrift-respite.debug.flashFloodLossNotFound"));
             return;
         }
 
@@ -723,7 +723,7 @@ export class RestSetupDebugJumps {
         this.#registerActiveRestApp(app);
         app.render(true);
         Logger.log("[Respite:Debug] Jumped to locked pack losses.");
-        ui.notifications.info("Opened pack losses. Supplies destroyed, gear to be taken.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.debug.openedPackLosses"));
     }
 
     /**
@@ -764,13 +764,13 @@ export class RestSetupDebugJumps {
 
         const app = RestSetupDebugJumps.#findGrittyApp();
         if (!app?._budgetDelegate) {
-            ui.notifications.warn("Open the gritty rest first.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.debug.openGrittyRestFirst"));
             return;
         }
 
         const actors = getPartyActors();
         if (!actors.length) {
-            ui.notifications.warn("No party characters found.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.debug.noPartyCharactersFound"));
             return;
         }
 
@@ -804,7 +804,7 @@ export class RestSetupDebugJumps {
             const foodNeed = days * Math.max(1, needs?.foodPerDay ?? 1);
             const waterNeed = days * Math.max(0, needs?.waterPerDay ?? MEAL_DEFAULTS.waterPerDay);
             await RestSetupDebugJumps.#topUpProvision(actor, {
-                name: "Rations",
+                name: game.i18n.localize("ionrift-respite.debug.itemRations"),
                 needed: foodNeed,
                 have: RestSetupDebugJumps.#foodOnHand(actor),
                 resourceType: "food",
@@ -821,7 +821,7 @@ export class RestSetupDebugJumps {
         app._broadcastSync?.();
         await app.render?.({ force: true });
         await app._saveSessionState?.();
-        ui.notifications.info(`Filled ${actors.length} characters. Other left off. Food and water stocked.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.debug.filledCharsStocked", { count: actors.length }));
         Logger.log(`[Respite:Debug] fillRestParty: ${actors.map(a => a.name).join(", ")}`);
     }
 
@@ -867,7 +867,7 @@ export class RestSetupDebugJumps {
         if (shortfall <= 0) return;
 
         await RestSetupDebugJumps.#topUpProvision(actor, {
-            name: "Water",
+            name: game.i18n.localize("ionrift-respite.debug.itemWater"),
             needed: shortfall,
             have: 0,
             resourceType: "water",

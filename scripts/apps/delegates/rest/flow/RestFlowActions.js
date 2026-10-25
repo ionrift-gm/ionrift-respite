@@ -303,11 +303,11 @@ export class RestFlowActions {
         app._restLedger.add({
             phase: "setup", category: "comfort", icon: "fas fa-bed",
             summary: `Comfort: ${effectiveComfort}`,
-            detail: safeRestSpot ? "Safe rest spot" : ""
+            detail: safeRestSpot ? game.i18n.localize("ionrift-respite.restFlow.safeRestSpotDefault") : ""
         });
         app._refreshLedgerApp();
 
-        ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.restFlow.restPhaseStartedInfo"));
 
         // Campfire token: ensure hidden at rest start (fire not lit yet).
         // Trailer filming keeps a pre-placed canvas token; hiding it here made the pit vanish on resume.
@@ -350,10 +350,10 @@ export class RestFlowActions {
 
         if ((app._fireLevel ?? "unlit") === "unlit" && !app._coldCampDecided && !app._engine?.safeRestSpot) {
             const proceedWithCold = await game.ionrift?.library?.confirm({
-                title: "No fire",
-                content: "<p>Cold camp is <strong>-1 comfort</strong> and a quieter night.</p>",
-                yesLabel: "Cold camp",
-                noLabel: "Light fire",
+                title: game.i18n.localize("ionrift-respite.restFlow.noFireTitle"),
+                content: game.i18n.localize("ionrift-respite.restFlow.coldCampComfortContent"),
+                yesLabel: game.i18n.localize("ionrift-respite.restFlow.coldCampBtn"),
+                noLabel: game.i18n.localize("ionrift-respite.restFlow.lightFireBtn"),
                 yesIcon: "fas fa-moon",
                 noIcon: "fas fa-arrow-left",
                 defaultYes: false
@@ -450,13 +450,13 @@ export class RestFlowActions {
                         overlay.classList.add("ionrift-armor-modal-overlay");
                         overlay.innerHTML = `
                             <div class="ionrift-armor-modal">
-                                <h3><i class="fas fa-shield-alt"></i> Sleeping in Armor</h3>
-                                <p><strong>${actor.name}</strong> is wearing <strong>${equippedArmor.name}</strong> (${armorType}).</p>
-                                <p>Sleeping in medium or heavy armor reduces Hit Dice recovery to 1/4 and prevents exhaustion reduction (Xanathar's).</p>
-                                <p>Confirm this activity, or go back and doff armor first?</p>
+                                <h3><i class="fas fa-shield-alt"></i> ${game.i18n.localize("ionrift-respite.restFlow.sleepingInArmorTitle")}</h3>
+                                <p>${game.i18n.format("ionrift-respite.restFlow.wearingArmorPrompt", { name: actor.name, armor: equippedArmor.name, armorType })}</p>
+                                <p>${game.i18n.localize("ionrift-respite.restFlow.armorPenaltyDesc")}</p>
+                                <p>${game.i18n.localize("ionrift-respite.restFlow.confirmOrDoffPrompt")}</p>
                                 <div class="ionrift-armor-modal-buttons">
-                                    <button class="btn-armor-confirm"><i class="fas fa-check"></i> Confirm</button>
-                                    <button class="btn-armor-cancel"><i class="fas fa-times"></i> Go Back</button>
+                                    <button class="btn-armor-confirm"><i class="fas fa-check"></i> ${game.i18n.localize("ionrift-respite.restFlow.confirmBtn")}</button>
+                                    <button class="btn-armor-cancel"><i class="fas fa-times"></i> ${game.i18n.localize("ionrift-respite.restFlow.goBackBtn")}</button>
                                 </div>
                             </div>`;
                         document.body.appendChild(overlay);
@@ -480,7 +480,7 @@ export class RestFlowActions {
             const ownerUser = actor ? game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER")) : null;
             const playerAlreadySubmitted = ownerUser && app._playerSubmissions?.has(ownerUser.id);
             if (playerAlreadySubmitted && !app._gmOverrides.has(characterId)) {
-                ui.notifications.warn(`${actor.name}'s player already submitted. Overriding their choice.`);
+                ui.notifications.warn(game.i18n.format("ionrift-respite.restFlow.overridingPlayerChoiceWarn", { name: actor.name }));
             }
             // GM: override + broadcast
             app._gmOverrides.set(characterId, activityId);
@@ -531,10 +531,10 @@ export class RestFlowActions {
                     narrative: `Level ${spellLevel} spell (${cost}gp, DC ${dc}). Awaiting transaction.`
                 });
 
-                if (actor) ui.notifications.info(`${actor.name}: Copy Spell Level ${spellLevel} submitted.`);
+                if (actor) ui.notifications.info(game.i18n.format("ionrift-respite.restFlow.copySpellSubmittedInfo", { name: actor.name, level: spellLevel }));
             } else {
                 const actor = game.actors.get(characterId);
-                if (actor) ui.notifications.info(`${actor.name}'s activity submitted.`);
+                if (actor) ui.notifications.info(game.i18n.format("ionrift-respite.restFlow.activitySubmittedInfo", { name: actor.name }));
             }
 
             emitActivityChoice(
@@ -648,13 +648,13 @@ export class RestFlowActions {
                 const gearLines = proposal.gear
                     .map(g => `${g.actorName}: ${g.itemName}${g.lossQty > 1 ? ` &times;${g.lossQty}` : ""}`)
                     .join("<br>");
-                parts.push(`<p><strong>Gear lost from the pack:</strong></p><p>${gearLines}</p>`);
+                parts.push(`<p><strong>${game.i18n.localize("ionrift-respite.restFlow.gearLostFromPack")}</strong></p><p>${gearLines}</p>`);
             }
             if (parts.length) {
                 await ChatMessage.create({
                     speaker: { alias: te.name ?? "Rest Event" },
                     whisper: game.users.filter(u => u.isGM).map(u => u.id),
-                    content: `${parts.join("")}<p><em>Applied after the rest.</em></p>`
+                    content: `${parts.join("")}<p><em>${game.i18n.localize("ionrift-respite.restFlow.appliedAfterRest")}</em></p>`
                 });
             }
         } else if (effect.type === "item_at_risk") {
@@ -681,13 +681,13 @@ export class RestFlowActions {
                 await ChatMessage.create({
                     speaker: { alias: te.name ?? "Rest Event" },
                     whisper: game.users.filter(u => u.isGM).map(u => u.id),
-                    content: `<p><strong>Taken from the packs:</strong></p><p>${lines}</p><p><em>Applied after the rest.</em></p>`
+                    content: `<p><strong>${game.i18n.localize("ionrift-respite.restFlow.takenFromPacksHeader")}</strong></p><p>${lines}</p><p><em>${game.i18n.localize("ionrift-respite.restFlow.appliedAfterRest")}</em></p>`
                 });
             } else {
                 await ChatMessage.create({
                     speaker: { alias: te.name ?? "Rest Event" },
                     whisper: game.users.filter(u => u.isGM).map(u => u.id),
-                    content: `<p><em>Nothing worth taking was within reach.</em></p>`
+                    content: `<p><em>${game.i18n.localize("ionrift-respite.restFlow.nothingWorthTaking")}</em></p>`
                 });
             }
         } else if (effect.type === "consume_gold") {
@@ -704,13 +704,13 @@ export class RestFlowActions {
                 await ChatMessage.create({
                     speaker: { alias: te.name ?? "Rest Event" },
                     whisper: game.users.filter(u => u.isGM).map(u => u.id),
-                    content: `<p><strong>Coin lifted:</strong> ${proposal.totalLoss} gp</p><p>${lines}</p><p><em>Applied after the rest.</em></p>`
+                    content: `<p><strong>${game.i18n.format("ionrift-respite.restFlow.coinLiftedHeader", { total: proposal.totalLoss })}</strong></p><p>${lines}</p><p><em>${game.i18n.localize("ionrift-respite.restFlow.appliedAfterRest")}</em></p>`
                 });
             } else {
                 await ChatMessage.create({
                     speaker: { alias: te.name ?? "Rest Event" },
                     whisper: game.users.filter(u => u.isGM).map(u => u.id),
-                    content: `<p><em>No coin in the purses to lift.</em></p>`
+                    content: `<p><em>${game.i18n.localize("ionrift-respite.restFlow.noCoinToLift")}</em></p>`
                 });
             }
         } else if (effect.type === "supply_loss") {
@@ -728,13 +728,13 @@ export class RestFlowActions {
                 await ChatMessage.create({
                     speaker: { alias: te.name ?? "Rest Event" },
                     whisper: game.users.filter(u => u.isGM).map(u => u.id),
-                    content: `<p><strong>Lost to the disaster:</strong></p><p>${lines}</p><p><em>Applied after the rest.</em></p>`
+                    content: `<p><strong>${game.i18n.localize("ionrift-respite.restFlow.lostToDisasterHeader")}</strong></p><p>${lines}</p><p><em>${game.i18n.localize("ionrift-respite.restFlow.appliedAfterRest")}</em></p>`
                 });
             } else {
                 await ChatMessage.create({
                     speaker: { alias: te.name ?? "Rest Event" },
                     whisper: game.users.filter(u => u.isGM).map(u => u.id),
-                    content: `<p><em>No supplies on hand to lose.</em></p>`
+                    content: `<p><em>${game.i18n.localize("ionrift-respite.restFlow.noSuppliesToLose")}</em></p>`
                 });
             }
         } else {
@@ -768,7 +768,7 @@ export class RestFlowActions {
             (e, i) => i !== eventIndex && e.awaitingRolls
         );
         if (anotherAwaiting) {
-            ui.notifications.warn("Resolve the current event check before starting another.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.restFlow.resolveCurrentEventCheckWarn"));
             return;
         }
 
@@ -848,7 +848,7 @@ export class RestFlowActions {
         if (!actor) return;
 
         if (!actor.isOwner) {
-            ui.notifications.warn("You do not own this character.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.restFlow.doNotOwnCharacterWarn"));
             return;
         }
 
@@ -870,7 +870,12 @@ export class RestFlowActions {
                     characterName: actor.name,
                     total
                 });
-            ui.notifications.info(`${actor.name}: ${rollMode === "force-pass" ? "Auto-success" : "Auto-fail"} applied.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.restFlow.autoRollAppliedInfo", {
+            name: actor.name,
+            mode: rollMode === "force-pass"
+                ? game.i18n.localize("ionrift-respite.restFlow.autoSuccess")
+                : game.i18n.localize("ionrift-respite.restFlow.autoFail")
+        }));
             app.render();
             return;
         }
@@ -892,7 +897,11 @@ export class RestFlowActions {
                     total
                 });
 
-        ui.notifications.info(`${actor.name} rolled ${total} for ${pending.skillName}.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.restFlow.rolledForSkillInfo", {
+            name: actor.name,
+            total,
+            skill: pending.skillName
+        }));
         app.render();
     
     }

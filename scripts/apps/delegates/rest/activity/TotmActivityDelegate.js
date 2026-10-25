@@ -34,12 +34,12 @@ export class TotmActivityDelegate {
         }
 
         if (app._craftingInProgress?.has(characterId)) {
-            ui.notifications.warn("Crafting is currently in progress for this character.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.craftingInProgressWarn"));
             return;
         }
 
         if (app._lockedCharacters?.has(characterId) || app.hasCompletedCrafting?.(characterId)) {
-            ui.notifications.warn("This character has already submitted their activity.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.alreadySubmittedWarn"));
             app._totmFollowUpExpanded = null;
             app.render();
             return;
@@ -72,10 +72,10 @@ export class TotmActivityDelegate {
                     if (equippedArmor) {
                         const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
                         const proceed = await confirmFn({
-                            title: "Sleeping in Armor",
-                            content: `<p><strong>${equippedArmor.name}</strong> is equipped. Sleeping in medium or heavy armor limits recovery to 1/4 Hit Dice and prevents exhaustion reduction (Xanathar's rules).</p><p>Doff the armor before confirming, or proceed and accept the penalty.</p>`,
-                            yesLabel: "Confirm Anyway",
-                            noLabel: "Cancel",
+                            title: game.i18n.localize("ionrift-respite.totmActivity.sleepingInArmorTitle"),
+                            content: `<p>${game.i18n.format("ionrift-respite.totmActivity.sleepingInArmorContent", { name: equippedArmor.name })}</p><p>${game.i18n.localize("ionrift-respite.totmActivity.sleepingInArmorPrompt")}</p>`,
+                            yesLabel: game.i18n.localize("ionrift-respite.totmActivity.confirmAnyway"),
+                            noLabel: game.i18n.localize("ionrift-respite.common.cancel"),
                             yesIcon: "fas fa-check",
                             noIcon: "fas fa-times",
                             defaultYes: false,
@@ -109,11 +109,11 @@ export class TotmActivityDelegate {
         if (!activityId) return;
         const characterId = app._selectedCharacterId;
         if (!characterId) {
-            ui.notifications.warn("Select a character from the roster first.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.selectCharacterFirstWarn"));
             return;
         }
         if (app._craftingInProgress?.has(characterId)) {
-            ui.notifications.warn("Crafting is currently in progress for this character.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.craftingInProgressWarn"));
             return;
         }
 
@@ -123,7 +123,7 @@ export class TotmActivityDelegate {
         if (activityId === "act_forage" || activityId === "act_hunt") {
             if (gatherSelectionBlocked(app, characterId)) {
                 if (gatherAlreadyResolved(app, characterId)) {
-                    ui.notifications.info("Already gathered this rest.");
+                    ui.notifications.info(game.i18n.localize("ionrift-respite.totmActivity.alreadyGatheredInfo"));
                 }
                 return;
             }
@@ -141,7 +141,7 @@ export class TotmActivityDelegate {
             if (isCrafting && hasCrafted) {
                 // Allow reviewing completed craft result
             } else {
-                ui.notifications.warn("This character has already submitted their activity.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.alreadySubmittedWarn"));
                 return;
             }
         }
@@ -203,20 +203,22 @@ export class TotmActivityDelegate {
         const actor = game.actors.get(characterId);
         if (!actor) return;
         if (!actor.isOwner && !game.user.isGM) {
-            ui.notifications.warn("You do not own this character.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.doNotOwnCharacterWarn"));
             return;
         }
 
         if (gatherSelectionBlocked(app, characterId)) {
             if (app._craftingInProgress?.has(characterId)) {
-                ui.notifications.warn("Crafting is currently in progress for this character.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.craftingInProgressWarn"));
                 return;
             }
         }
 
         if (gatherAlreadyResolved(app, characterId)) {
             const prior = app._gatherResults.get(characterId);
-            const note = prior?.haul ? `${actor.name} already gathered this rest. ${prior.haul}` : "Already gathered this rest.";
+            const note = prior?.haul
+                ? game.i18n.format("ionrift-respite.totmActivity.alreadyGatheredHaul", { name: actor.name, haul: prior.haul })
+                : game.i18n.localize("ionrift-respite.totmActivity.alreadyGatheredInfo");
             ui.notifications.info(note);
             if (prior?.activityId) app._gatherChoices.set(characterId, prior.activityId);
             app.render();
@@ -225,7 +227,7 @@ export class TotmActivityDelegate {
 
         const pending = app._gatherPending;
         if (pending?.characterId === characterId && pending.phase === "findings") {
-            ui.notifications.info("Roll for findings before switching.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.totmActivity.rollFindingsBeforeSwitchingInfo"));
             return;
         }
 
@@ -273,7 +275,7 @@ export class TotmActivityDelegate {
             if (gatherAlreadyResolved(app, characterId)) return;
             const other = app._gatherPending;
             if (other?.phase === "findings" && other.characterId !== characterId) {
-                ui.notifications.warn("Another gather roll is still open.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.anotherGatherRollOpenWarn"));
                 return;
             }
             pending = openGatherCheck(app, characterId, choice, {
@@ -290,7 +292,7 @@ export class TotmActivityDelegate {
         const actor = game.actors.get(characterId);
         if (!actor) return;
         if (!actor.isOwner && !game.user.isGM) {
-            ui.notifications.warn("You do not own this character.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.doNotOwnCharacterWarn"));
             return;
         }
 
@@ -304,8 +306,8 @@ export class TotmActivityDelegate {
     async #rollGatherCheck(actor, pending, target) {
         const app = this._app;
         const isHunt = pending.activityId === "act_hunt";
-        const label = isHunt ? "Hunt" : "Forage";
-        const flavor = `<strong>${actor.name}</strong> ${label} (Survival) DC ${pending.dc}`;
+        const label = isHunt ? game.i18n.localize("ionrift-respite.totmActivity.huntLabel") : game.i18n.localize("ionrift-respite.totmActivity.forageLabel");
+        const flavor = `<strong>${actor.name}</strong> ${label} ${game.i18n.format("ionrift-respite.totmActivity.gatherFlavorSuffix", { dc: pending.dc })}`;
         const { total } = await executePlayerRoll(actor, "sur", pending.dc, flavor, target);
 
         const resolver = GatherYieldService.getResolver();
@@ -343,7 +345,7 @@ export class TotmActivityDelegate {
         if (pending._findingsBusy) return;
         const request = game.ionrift?.library?.rollRequest?.request;
         if (typeof request !== "function") {
-            ui.notifications.warn("Findings roll is unavailable.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.findingsUnavailableWarn"));
             return;
         }
 
@@ -420,8 +422,8 @@ export class TotmActivityDelegate {
         }
         const haul = gathered.fromTable
             ? GatherYieldService.describeItems(gathered.items)
-            : (gathered.rations > 0 ? `${gathered.rations} rations` : "");
-        const summary = [haul, gathered.mishap].filter(Boolean).join(". ") || (gathered.success ? "Found provisions" : "Nothing found");
+            : (gathered.rations > 0 ? game.i18n.format("ionrift-respite.totmActivity.rationsCount", { count: gathered.rations }) : "");
+        const summary = [haul, gathered.mishap].filter(Boolean).join(". ") || (gathered.success ? game.i18n.localize("ionrift-respite.totmActivity.foundProvisions") : game.i18n.localize("ionrift-respite.totmActivity.nothingFound"));
         const isHunt = pending.activityId === "act_hunt";
         app._gatherChoices.set(actor.id, pending.activityId);
         app._gatherResults.set(actor.id, {
@@ -439,7 +441,13 @@ export class TotmActivityDelegate {
             gatherResult: app._gatherResults.get(actor.id),
             gatherPending: null
         });
-        ui.notifications.info(`${actor.name}: ${isHunt ? "Hunt" : "Forage"}. ${summary}`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.totmActivity.gatherSummaryNotification", {
+            name: actor.name,
+            activity: isHunt
+                ? game.i18n.localize("ionrift-respite.totmActivity.huntLabel")
+                : game.i18n.localize("ionrift-respite.totmActivity.forageLabel"),
+            summary
+        }));
         app.checkAndAutoMarkCharacterReady?.(actor.id);
         app.render();
     }
@@ -509,7 +517,7 @@ export class TotmActivityDelegate {
                     app._earlyResults?.size ? Object.fromEntries(app._earlyResults) : null
                 );
                 const actor = game.actors.get(characterId);
-                if (actor) ui.notifications.info(`${actor.name}'s activity submitted.`);
+                if (actor) ui.notifications.info(game.i18n.format("ionrift-respite.totmActivity.activitySubmittedInfo", { name: actor.name }));
             }
             app._saveRestState?.();
         }
@@ -550,7 +558,7 @@ export class TotmActivityDelegate {
         const expanded = app._totmFollowUpExpanded;
         const cid = expanded?.characterId ?? app._selectedCharacterId;
         if (cid && app._trainingStates?.has(cid) && !app._earlyResults?.has(cid)) {
-            ui.notifications.warn("Finish your training sets before going back.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.finishTrainingSetsWarn"));
             return;
         }
         app._totmFollowUpExpanded = null;
@@ -563,7 +571,7 @@ export class TotmActivityDelegate {
         const cid = app._selectedCharacterId;
         if (!cid) return;
         if (app._earlyResults?.has(cid) || app.hasCompletedCrafting?.(cid) || app._craftingResults?.has(cid)) {
-            ui.notifications.warn("Cannot change an activity that has already been resolved.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.totmActivity.cannotChangeResolvedWarn"));
             return;
         }
         app._lockedCharacters?.delete(cid);

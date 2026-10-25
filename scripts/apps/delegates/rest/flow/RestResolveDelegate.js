@@ -181,7 +181,7 @@ export class RestResolveDelegate {
                 for (const e of p.breakdown) {
                     if (e.lossGp > 0) {
                         recordActorLoss(e.actorId, e.actorName, {
-                            name: "Gold",
+                            name: game.i18n.localize("ionrift-respite.restResolve.goldItemName"),
                             img: "icons/commodities/currency/coins-plain-stack-gold.webp",
                             lossQty: `${e.lossGp} gp`,
                             isTotal: false
@@ -573,14 +573,16 @@ export class RestResolveDelegate {
             const itemSummary = await ItemOutcomeHandler.processAll(app._outcomes);
             const totalItems = itemSummary.reduce((sum, s) => sum + s.items.length, 0);
             if (totalItems > 0) {
-                ui.notifications.info(`Rest complete: ${totalItems} item${totalItems === 1 ? "" : "s"} created.`);
+                ui.notifications.info(game.i18n.format(totalItems === 1
+                ? "ionrift-respite.restResolve.restCompleteSingleItem"
+                : "ionrift-respite.restResolve.restCompletePluralItems", { count: totalItems }));
             } else {
-                ui.notifications.info("Rest complete.");
+                ui.notifications.info(game.i18n.localize("ionrift-respite.restResolve.restComplete"));
             }
         } catch (e) {
 
             console.warn(`${MODULE_ID} | Item processing failed:`, e);
-            ui.notifications.info("Rest complete.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.restResolve.restComplete"));
         }
 
         // Write training XP onto the sheet. Runs GM-side where this resolution
@@ -732,7 +734,7 @@ export class RestResolveDelegate {
                 ensureActor(entry.actorId, entry.actorName).rows.push({
                     uid,
                     img: "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
-                    name: "Gold",
+                    name: game.i18n.localize("ionrift-respite.restResolve.goldItemName"),
                     qtyLabel: `-${entry.lossGp} gp`,
                     rangeLabel: `${entry.currentGp} &rarr; ${remaining} gp`
                 });
@@ -779,20 +781,20 @@ export class RestResolveDelegate {
                     <div class="respite-disaster-modal-header">
                         <div class="modal-title-group">
                             <i class="fas fa-triangle-exclamation modal-title-icon"></i>
-                            <h3>Disaster Loss Reconciliation</h3>
+                            <h3>${game.i18n.localize("ionrift-respite.restResolve.disasterModalTitle")}</h3>
                         </div>
-                        <button type="button" class="btn-modal-close" title="Close"><i class="fas fa-times"></i></button>
+                        <button type="button" class="btn-modal-close" title="${game.i18n.localize("ionrift-respite.restResolve.closeBtnTitle")}"><i class="fas fa-times"></i></button>
                     </div>
                     <div class="loss-summary-banner">
                         <i class="fas fa-exclamation-circle"></i>
-                        <span>The incident proposes <strong>${allEntries.length}</strong> casualty/resource losses across the party. Review and uncheck any to preserve.</span>
+                        <span>${game.i18n.format("ionrift-respite.restResolve.disasterBannerText", { count: allEntries.length })}</span>
                     </div>
                     <div class="loss-controls-bar">
                         <div class="loss-batch-actions">
-                            <button type="button" class="loss-btn-subtle loss-select-all"><i class="fas fa-check-double"></i> Select All</button>
-                            <button type="button" class="loss-btn-subtle loss-select-none"><i class="fas fa-times"></i> Select None</button>
+                            <button type="button" class="loss-btn-subtle loss-select-all"><i class="fas fa-check-double"></i> ${game.i18n.localize("ionrift-respite.restResolve.selectAll")}</button>
+                            <button type="button" class="loss-btn-subtle loss-select-none"><i class="fas fa-times"></i> ${game.i18n.localize("ionrift-respite.restResolve.selectNone")}</button>
                         </div>
-                        <span class="loss-controls-hint">Uncheck to preserve items</span>
+                        <span class="loss-controls-hint">${game.i18n.localize("ionrift-respite.restResolve.uncheckHint")}</span>
                     </div>
                     <div class="loss-scrollable">
                         ${scrollContent}
@@ -800,11 +802,11 @@ export class RestResolveDelegate {
                     <div class="respite-disaster-modal-footer">
                         <div class="loss-tally">
                             <i class="fas fa-boxes-stacked"></i>
-                            <span class="loss-tally-count">${allEntries.length} losses approved</span>
+                            <span class="loss-tally-count">${game.i18n.format("ionrift-respite.restResolve.lossesApproved", { count: allEntries.length })}</span>
                         </div>
                         <div class="modal-footer-actions">
-                            <button type="button" class="btn-loss-cancel"><i class="fas fa-times"></i> Cancel</button>
-                            <button type="button" class="btn-loss-confirm"><i class="fas fa-check"></i> <span>Confirm Losses (${allEntries.length})</span></button>
+                            <button type="button" class="btn-loss-cancel"><i class="fas fa-times"></i> ${game.i18n.localize("ionrift-respite.restResolve.cancel")}</button>
+                            <button type="button" class="btn-loss-confirm"><i class="fas fa-check"></i> <span>${game.i18n.format("ionrift-respite.restResolve.confirmLosses", { count: allEntries.length })}</span></button>
                         </div>
                     </div>
                 </div>`;
@@ -893,20 +895,20 @@ export class RestResolveDelegate {
 
         const classifyActivity = (result) => {
             switch (result) {
-                case "exceptional": return { valence: "positive", label: "Exceptional", icon: "fas fa-star" };
-                case "success": return { valence: "positive", label: "Success", icon: "fas fa-check" };
+                case "exceptional": return { valence: "positive", label: game.i18n.localize("ionrift-respite.restResolve.outcomeExceptional"), icon: "fas fa-star" };
+                case "success": return { valence: "positive", label: game.i18n.localize("ionrift-respite.restResolve.outcomeSuccess"), icon: "fas fa-check" };
                 case "failure":
-                case "failure_complication": return { valence: "negative", label: "Failed", icon: "fas fa-times" };
+                case "failure_complication": return { valence: "negative", label: game.i18n.localize("ionrift-respite.restResolve.outcomeFailed"), icon: "fas fa-times" };
                 default: return { valence: "neutral", label: null, icon: "fas fa-circle" };
             }
         };
         const classifyEvent = (resolvedOutcome) => {
             switch (resolvedOutcome) {
-                case "triumph": return { valence: "positive", label: "Triumph", icon: "fas fa-star" };
-                case "success": return { valence: "positive", label: "Passed", icon: "fas fa-check" };
-                case "partial": return { valence: "partial", label: "Partial", icon: "fas fa-exclamation-triangle" };
+                case "triumph": return { valence: "positive", label: game.i18n.localize("ionrift-respite.restResolve.outcomeTriumph"), icon: "fas fa-star" };
+                case "success": return { valence: "positive", label: game.i18n.localize("ionrift-respite.restResolve.outcomePassed"), icon: "fas fa-check" };
+                case "partial": return { valence: "partial", label: game.i18n.localize("ionrift-respite.restResolve.outcomePartial"), icon: "fas fa-exclamation-triangle" };
                 case "failure":
-                case "failure_complication": return { valence: "negative", label: "Failed", icon: "fas fa-times" };
+                case "failure_complication": return { valence: "negative", label: game.i18n.localize("ionrift-respite.restResolve.outcomeFailed"), icon: "fas fa-times" };
                 default: return { valence: "neutral", label: null, icon: "fas fa-moon" };
             }
         };
@@ -1027,7 +1029,9 @@ export class RestResolveDelegate {
                 hdAtMax = totalHdSpent <= 0;
             }
 
-            const exhaustionConditionLabel = recovery.comfortLevel === "hostile" ? "Hostile" : "Rough";
+            const exhaustionConditionLabel = recovery.comfortLevel === "hostile"
+                ? game.i18n.localize("ionrift-respite.restResolve.hostileLabel")
+                : game.i18n.localize("ionrift-respite.restResolve.roughLabel");
 
             const mealExhaustion = recovery.mealExhaustion ?? 0;
 
@@ -1179,7 +1183,7 @@ export class RestResolveDelegate {
         const { clearActiveRestApp } = await import("../../../../module.js");
         clearActiveRestApp();
 
-        ui.notifications.info("Rest abandoned.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.restResolve.restAbandonedInfo"));
         app.close({ resolved: true, abandoned: true });
     
     }
@@ -1220,39 +1224,43 @@ export class RestResolveDelegate {
         const comfortLabel = comfort.charAt(0).toUpperCase() + comfort.slice(1);
 
         const restType = app._engine?.restType ?? "long";
-        const title = restType === "long" ? "Long Rest Complete - Dawn Breaks" : "Short Rest Complete";
+        const title = restType === "long"
+            ? game.i18n.localize("ionrift-respite.restResolve.longRestCompleteTitle")
+            : game.i18n.localize("ionrift-respite.restResolve.shortRestCompleteTitle");
 
         const activeShelters = app._engine?.activeShelters ?? [];
         const shelterNames = activeShelters.map(s => {
-            if (s === "tent") return "Tent pitched";
-            if (s === "tiny_hut") return "Tiny Hut";
-            if (s === "rope_trick") return "Rope Trick";
-            if (s === "magnificent_mansion") return "Mansion";
+            if (s === "tent") return game.i18n.localize("ionrift-respite.restResolve.tentPitched");
+            if (s === "tiny_hut") return game.i18n.localize("ionrift-respite.restResolve.tinyHut");
+            if (s === "rope_trick") return game.i18n.localize("ionrift-respite.restResolve.ropeTrick");
+            if (s === "magnificent_mansion") return game.i18n.localize("ionrift-respite.restResolve.mansion");
             return s;
         });
-        const shelterSummary = shelterNames.length ? shelterNames.join(", ") : "Open Sky";
+        const shelterSummary = shelterNames.length ? shelterNames.join(", ") : game.i18n.localize("ionrift-respite.restResolve.openSky");
 
         // Summary metrics
         const totalHpRestored = outcomes.reduce((sum, o) => sum + (o.recovery?.hpRestored ?? 0), 0);
         const totalHdRestored = outcomes.reduce((sum, o) => sum + (o.recovery?.hdRestored ?? 0), 0);
         const totalExhaustionGained = outcomes.reduce((sum, o) => sum + Math.max(0, o.recovery?.exhaustionDelta ?? 0), 0);
 
-        let vitalSummary = "Full Vital Recovery";
+        let vitalSummary = game.i18n.localize("ionrift-respite.restResolve.fullVitalRecovery");
         if (totalExhaustionGained > 0) {
             vitalSummary = `+${totalHpRestored} HP, +${totalHdRestored} HD (+${totalExhaustionGained} Exh)`;
         } else if (totalHpRestored > 0 || totalHdRestored > 0) {
             vitalSummary = `+${totalHpRestored} HP, +${totalHdRestored} HD`;
         }
-        const vitalDetail = "Spell slots, hit dice & features reset";
+        const vitalDetail = game.i18n.localize("ionrift-respite.restResolve.vitalDetail");
 
         const incidentsCount = (app._triggeredEvents ?? []).length;
 
         const fireLevel = app._fireLevel ?? "unlit";
-        const hearthLabel = fireLevel !== "unlit" ? fireLevel.charAt(0).toUpperCase() + fireLevel.slice(1) : "Cold Camp";
+        const hearthLabel = fireLevel !== "unlit" ? fireLevel.charAt(0).toUpperCase() + fireLevel.slice(1) : game.i18n.localize("ionrift-respite.restResolve.coldCamp");
         const shelterDetail = shelterSummary;
 
-        const mealLabel = app._mealResults?.length ? "Camp Meal Consumed" : "Rations Accounted";
-        const mealDetail = "Adequate sustenance for the night";
+        const mealLabel = app._mealResults?.length
+            ? game.i18n.localize("ionrift-respite.restResolve.campMealConsumed")
+            : game.i18n.localize("ionrift-respite.restResolve.rationsAccounted");
+        const mealDetail = game.i18n.localize("ionrift-respite.restResolve.adequateSustenance");
 
         // Incidents
         const incidents = (app._triggeredEvents ?? []).map(evt => {
@@ -1300,8 +1308,12 @@ export class RestResolveDelegate {
             }
 
             return {
-                name: evt.name ?? "Night Event",
-                verdictLabel: evt.resolvedOutcome ? (evt.resolvedOutcome === "success" ? "Passed" : (evt.resolvedOutcome === "triumph" ? "Triumph" : "Failed")) : null,
+                name: evt.name ?? game.i18n.localize("ionrift-respite.restResolve.nightEventDefault"),
+                verdictLabel: evt.resolvedOutcome ? (evt.resolvedOutcome === "success"
+                    ? game.i18n.localize("ionrift-respite.restResolve.outcomePassed")
+                    : (evt.resolvedOutcome === "triumph"
+                        ? game.i18n.localize("ionrift-respite.restResolve.outcomeTriumph")
+                        : game.i18n.localize("ionrift-respite.restResolve.outcomeFailed"))) : null,
                 narrative: evt.narrative ?? evt.description ?? "",
                 consequences,
                 category,
@@ -1317,44 +1329,51 @@ export class RestResolveDelegate {
 
         let containerClass = "ambient";
         let badgeIcon = "fas fa-campground";
-        let badgeLabel = `Night Events (${incidents.length})`;
+        let badgeLabel = game.i18n.format("ionrift-respite.restResolve.badgeNightEvents", { count: incidents.length });
 
         if (allRewarding) {
             containerClass = "rewarding";
             badgeIcon = "fas fa-gem";
-            badgeLabel = `Discoveries (${incidents.length})`;
+            badgeLabel = game.i18n.format("ionrift-respite.restResolve.badgeDiscoveries", { count: incidents.length });
         } else if (anyDanger) {
             containerClass = "hostile";
             badgeIcon = "fas fa-shield-halved";
-            badgeLabel = `Incidents Resolved (${incidents.length})`;
+            badgeLabel = game.i18n.format("ionrift-respite.restResolve.badgeIncidentsResolved", { count: incidents.length });
         }
 
         const incidentsMeta = { containerClass, badgeIcon, badgeLabel };
 
-        let securityLabel = "Night Security";
+        let securityLabel = game.i18n.localize("ionrift-respite.restResolve.securityNightSecurity");
         let securityIcon = "fas fa-shield-halved";
-        let securityValue = incidents.length === 0 ? "Quiet Night" : `${incidents.length} Incident${incidents.length > 1 ? "s" : ""}`;
+        let securityValue = incidents.length === 0
+            ? game.i18n.localize("ionrift-respite.restResolve.securityQuietNight")
+            : (incidents.length === 1
+                ? game.i18n.format("ionrift-respite.restResolve.securityIncidentSingle", { count: 1 })
+                : game.i18n.format("ionrift-respite.restResolve.securityIncidentPlural", { count: incidents.length }));
         let securityPositive = incidents.length === 0;
-        let securityDetail = "Watch completed without incident";
+        let securityDetail = game.i18n.localize("ionrift-respite.restResolve.securityWatchNoIncident");
 
         if (allRewarding) {
-            securityLabel = "Discoveries";
+            securityLabel = game.i18n.localize("ionrift-respite.restResolve.securityDiscoveries");
             securityIcon = "fas fa-gem";
-            securityValue = `${incidents.length} Found`;
+            securityValue = game.i18n.format("ionrift-respite.restResolve.securityFoundCount", { count: incidents.length });
             securityPositive = true;
-            securityDetail = "Watch uncovered beneficial discoveries";
+            securityDetail = game.i18n.localize("ionrift-respite.restResolve.securityWatchBeneficial");
         } else if (anyDanger) {
-            securityLabel = "Night Security";
+            const dangerCount = incidents.filter(i => i.isDanger).length;
+            securityLabel = game.i18n.localize("ionrift-respite.restResolve.securityNightSecurity");
             securityIcon = "fas fa-shield-halved";
-            securityValue = `${incidents.filter(i => i.isDanger).length} Threat${incidents.filter(i => i.isDanger).length > 1 ? "s" : ""}`;
+            securityValue = dangerCount === 1
+                ? game.i18n.format("ionrift-respite.restResolve.securityThreatSingle", { count: 1 })
+                : game.i18n.format("ionrift-respite.restResolve.securityThreatPlural", { count: dangerCount });
             securityPositive = false;
-            securityDetail = "Resolved during watch";
+            securityDetail = game.i18n.localize("ionrift-respite.restResolve.securityResolvedDuringWatch");
         } else if (incidents.length > 0) {
-            securityLabel = "Night Events";
+            securityLabel = game.i18n.localize("ionrift-respite.restResolve.securityNightEvents");
             securityIcon = "fas fa-campground";
-            securityValue = `${incidents.length} Resolved`;
+            securityValue = game.i18n.format("ionrift-respite.restResolve.securityResolvedCount", { count: incidents.length });
             securityPositive = true;
-            securityDetail = "Events resolved during watch";
+            securityDetail = game.i18n.localize("ionrift-respite.restResolve.securityEventsResolvedDuringWatch");
         }
 
         // Characters
@@ -1366,7 +1385,7 @@ export class RestResolveDelegate {
 
             // Activity
             const actSub = (o.outcomes ?? []).find(s => s.source === "activity");
-            let activityLabel = "Rested";
+            let activityLabel = game.i18n.localize("ionrift-respite.restResolve.activityRested");
             let activityIcon = "fas fa-bed";
             let activitySuccess = true;
             if (actSub?.activityId) {
@@ -1382,9 +1401,9 @@ export class RestResolveDelegate {
             const exhaustionDelta = recovery.exhaustionDelta ?? 0;
             const hasSetback = exhaustionDelta > 0 || (recovery.eventDamage ?? 0) > 0 || recovery.exhaustionSaveResult === "failed";
 
-            let vitalPill = "Max HP, Max HD";
+            let vitalPill = game.i18n.localize("ionrift-respite.restResolve.vitalMaxHpMaxHd");
             if (exhaustionDelta > 0) {
-                vitalPill = `+${exhaustionDelta} Exhaustion`;
+                vitalPill = game.i18n.format("ionrift-respite.restResolve.vitalExhaustionPlus", { amount: exhaustionDelta });
             } else if (recovery.eventDamage > 0) {
                 vitalPill = `-${recovery.eventDamage} HP`;
             } else if (recovery.hpRestored > 0 || recovery.hdRestored > 0) {
@@ -1397,20 +1416,22 @@ export class RestResolveDelegate {
                 if (recovery.hpRestored > 0) parts.push(`+${recovery.hpRestored} HP`);
                 if (recovery.hdRestored > 0) parts.push(`+${recovery.hdRestored} HD`);
                 if (recovery.gearBonuses?.hd) parts.push(`(+1 bedroll bonus)`);
-                notes.push(`<i class="fas fa-heartbeat" style="color:#10b981;"></i> <strong>${parts.join(", ")}</strong> restored`);
+                notes.push(`<i class="fas fa-heartbeat" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.partsRestored", { parts: parts.join(", ") })}`);
             } else {
-                notes.push(`<i class="fas fa-heart" style="color:#10b981;"></i> Vital recovery maxed (Full HP & HD)`);
+                notes.push(`<i class="fas fa-heart" style="color:#10b981;"></i> ${game.i18n.localize("ionrift-respite.restResolve.vitalRecoveryMaxed")}`);
             }
 
             if (recovery.exhaustionDelta < 0) {
-                notes.push(`<i class="fas fa-arrow-down" style="color:#10b981;"></i> ${Math.abs(recovery.exhaustionDelta)} exhaustion recovered`);
+                notes.push(`<i class="fas fa-arrow-down" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.exhRecoveredNote", { amount: Math.abs(recovery.exhaustionDelta) })}`);
             } else if (recovery.exhaustionDelta > 0) {
-                const reason = recovery.exhaustionDC ? `failed CON save DC ${recovery.exhaustionDC}` : "rest conditions";
-                notes.push(`<i class="fas fa-arrow-up" style="color:#f87171;"></i> <strong>+${recovery.exhaustionDelta} Exhaustion</strong> (${reason})`);
+                const reason = recovery.exhaustionDC
+                    ? game.i18n.format("ionrift-respite.restResolve.failedConSaveReason", { dc: recovery.exhaustionDC })
+                    : game.i18n.localize("ionrift-respite.restResolve.restConditionsReason");
+                notes.push(`<i class="fas fa-arrow-up" style="color:#f87171;"></i> ${game.i18n.format("ionrift-respite.restResolve.exhGainedNote", { amount: recovery.exhaustionDelta, reason })}`);
             } else if (recovery.exhaustionSaveResult === "failed") {
-                notes.push(`<i class="fas fa-arrow-right" style="color:#fbbf24;"></i> Failed CON save DC ${recovery.exhaustionDC} (+1 exhaustion offset by rest)`);
+                notes.push(`<i class="fas fa-arrow-right" style="color:#fbbf24;"></i> ${game.i18n.format("ionrift-respite.restResolve.failedConSaveOffset", { dc: recovery.exhaustionDC })}`);
             } else if (recovery.exhaustionSaveResult === "passed") {
-                notes.push(`<i class="fas fa-shield" style="color:#10b981;"></i> Passed CON save DC ${recovery.exhaustionDC}`);
+                notes.push(`<i class="fas fa-shield" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.passedConSave", { dc: recovery.exhaustionDC })}`);
             }
 
             for (const sub of (o.outcomes ?? [])) {
@@ -1420,18 +1441,18 @@ export class RestResolveDelegate {
                         const icon = sub.source === "event" ? "fas fa-gem" : "fas fa-plus-circle";
                         const color = sub.source === "event" ? "#fbbf24" : "#10b981";
                         const label = this._humanizeItemLabel(item);
-                        notes.push(`<i class="${icon}" style="color:${color};"></i> Obtained <strong>${label}${qty}</strong>`);
+                        notes.push(`<i class="${icon}" style="color:${color};"></i> ${game.i18n.format("ionrift-respite.restResolve.obtainedItem", { label, qty })}`);
                     }
                 }
             }
 
             if (recovery.eventDamage > 0) {
-                notes.push(`<i class="fas fa-tint" style="color:#ef4444;"></i> <strong>Took ${recovery.eventDamage} damage</strong> during night`);
+                notes.push(`<i class="fas fa-tint" style="color:#ef4444;"></i> ${game.i18n.format("ionrift-respite.restResolve.tookDamageDuringNight", { amount: recovery.eventDamage })}`);
             }
 
             const reequipped = app._reequippedArmor?.get(o.characterId);
             if (reequipped) {
-                notes.push(`<i class="fas fa-shield-alt"></i> Donned <strong>${reequipped}</strong> upon breaking camp`);
+                notes.push(`<i class="fas fa-shield-alt"></i> ${game.i18n.format("ionrift-respite.restResolve.donnedArmorOnBreak", { armor: reequipped })}`);
             }
 
             return {
@@ -1453,8 +1474,8 @@ export class RestResolveDelegate {
 
         const anySetback = outcomes.some(o => o.hasSetback);
         const partyStatus = anySetback
-            ? { label: "Setbacks Incurred", icon: "fas fa-triangle-exclamation", class: "setback" }
-            : { label: "All Rested", icon: "fas fa-sparkles", class: "positive" };
+            ? { label: game.i18n.localize("ionrift-respite.restResolve.setbacksIncurred"), icon: "fas fa-triangle-exclamation", class: "setback" }
+            : { label: game.i18n.localize("ionrift-respite.restResolve.allRested"), icon: "fas fa-sparkles", class: "positive" };
 
         const subtitleParts = [terrainLabel, comfortLabel, shelterSummary];
         if (hearthLabel) subtitleParts.push(hearthLabel);

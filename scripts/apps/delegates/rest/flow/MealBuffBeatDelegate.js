@@ -57,7 +57,7 @@ export class MealBuffBeatDelegate {
         if (!game.user.isGM) return;
         if (app._phase !== "supper") return;
         if (this.pending() > 0) {
-            ui.notifications.warn("Apply each meal and drink before the watch.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.mealBuffBeat.warnPending"));
             return;
         }
         await app._advanceToEvents();
@@ -67,7 +67,7 @@ export class MealBuffBeatDelegate {
         const actor = game.actors.get(row.actorId);
         if (!actor || !row.itemSnapshot) {
             row.applied = true;
-            row.resultLine = "Could not apply";
+            row.resultLine = game.i18n.localize("ionrift-respite.mealBuffBeat.couldNotApply");
             return;
         }
         const partyIds = row.partyIds?.length ? row.partyIds : getPartyActors().map(member => member.id);
@@ -78,7 +78,7 @@ export class MealBuffBeatDelegate {
             kind: row.kind
         });
         row.applied = true;
-        row.resultLine = (outcome?.lines ?? []).filter(Boolean).join("; ") || row.buffSummary || "Applied";
+        row.resultLine = (outcome?.lines ?? []).filter(Boolean).join("; ") || row.buffSummary || game.i18n.localize("ionrift-respite.mealBuffBeat.appliedDefault");
     }
 
     async publish() {
