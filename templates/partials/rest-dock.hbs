@@ -57,7 +57,7 @@
                     <i class="fas {{recoveryHazard.icon}}" aria-hidden="true"></i>
                     <span class="hazard-label">{{recoveryHazard.label}}</span>
                     {{#if recoveryHazard.hasAdvantage}}
-                    <span class="hazard-adv-tag" title="Advantage from Mess Kit (fire lit)">ADV</span>
+                    <span class="hazard-adv-tag" title="{{localize "ionrift-respite.restDock.messKitAdvantageTooltip"}}">{{localize "ionrift-respite.restDock.advShort"}}</span>
                     {{/if}}
                 </button>
                 {{/if}}
@@ -96,13 +96,13 @@
 
     {{!-- Dock nav: Gather / Activities / Sustenance + Examine + Hearth --}}
     <div class="rest-dock-nav">
-        <div class="rest-dock-segments" role="tablist" aria-label="Workflow segments">
+        <div class="rest-dock-segments" role="tablist" aria-label="{{localize "ionrift-respite.restDock.workflowSegmentsAriaLabel"}}">
             {{#if @root.showGatherStep}}
             <button type="button"
                 class="rest-dock-seg{{#if (eq @root.selectedWorkflowStep 'gather')}} active{{/if}}{{#if (eq @root.workflowMark.gather 'complete')}} is-complete{{else if (eq @root.workflowMark.gather 'draft')}} is-draft{{else if @root.workflowComplete.gather}} is-complete{{else}} is-draft{{/if}}"
                 data-action="switchWorkflow" data-step="gather" role="tab"
-                data-tooltip="{{#if (eq @root.workflowMark.gather 'complete')}}Gathering rolled{{else if (eq @root.workflowMark.gather 'draft')}}Gathering still open{{else if @root.workflowComplete.gather}}Gathering rolled{{else}}Gathering still open{{/if}}">
-                Gather
+                data-tooltip="{{#if (or (eq @root.workflowMark.gather 'complete') @root.workflowComplete.gather)}}{{localize "ionrift-respite.restDock.gatheringRolled"}}{{else}}{{localize "ionrift-respite.restDock.gatheringStillOpen"}}{{/if}}">
+                {{localize "ionrift-respite.restDock.gather"}}
                 {{#if (eq @root.workflowMark.gather 'complete')}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
                 {{else if (eq @root.workflowMark.gather 'draft')}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
                 {{else if @root.workflowComplete.gather}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
@@ -113,8 +113,8 @@
             <button type="button"
                 class="rest-dock-seg{{#if (eq @root.selectedWorkflowStep 'activities')}} active{{/if}}{{#if (eq @root.workflowMark.activities 'complete')}} is-complete{{else if (eq @root.workflowMark.activities 'locked')}} is-locked{{else if (eq @root.workflowMark.activities 'draft')}} is-draft{{else if @root.workflowComplete.activities}} is-complete{{else}} is-draft{{/if}}"
                 data-action="switchWorkflow" data-step="activities" role="tab"
-                data-tooltip="{{#if (eq @root.workflowMark.activities 'complete')}}Activities finished{{else if (eq @root.workflowMark.activities 'locked')}}Choices locked, rolls still open{{else if (eq @root.workflowMark.activities 'draft')}}Activities still a draft{{else if @root.workflowComplete.activities}}Activities finished{{else}}Activities still a draft{{/if}}">
-                Activities
+                data-tooltip="{{#if (or (eq @root.workflowMark.activities 'complete') @root.workflowComplete.activities)}}{{localize "ionrift-respite.restDock.activitiesFinished"}}{{else if (eq @root.workflowMark.activities 'locked')}}{{localize "ionrift-respite.restDock.choicesLockedRollsOpen"}}{{else}}{{localize "ionrift-respite.restDock.activitiesStillDraft"}}{{/if}}">
+                {{localize "ionrift-respite.restDock.activities"}}
                 {{#if (eq @root.workflowMark.activities 'complete')}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
                 {{else if (eq @root.workflowMark.activities 'locked')}}<i class="fas fa-lock seg-mark" aria-hidden="true"></i>
                 {{else if (eq @root.workflowMark.activities 'draft')}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
@@ -126,8 +126,8 @@
             <button type="button"
                 class="rest-dock-seg{{#if (eq @root.selectedWorkflowStep 'sustenance')}} active{{/if}}{{#if (eq @root.workflowMark.sustenance 'complete')}} is-complete{{else if (eq @root.workflowMark.sustenance 'draft')}} is-draft{{else if @root.workflowComplete.sustenance}} is-complete{{else}} is-draft{{/if}}"
                 data-action="switchWorkflow" data-step="sustenance" role="tab"
-                data-tooltip="{{#if (eq @root.workflowMark.sustenance 'complete')}}Meals locked{{else if (eq @root.workflowMark.sustenance 'draft')}}Meals still a draft{{else if @root.workflowComplete.sustenance}}Meals locked{{else}}Meals still a draft{{/if}}">
-                Sustenance
+                data-tooltip="{{#if (or (eq @root.workflowMark.sustenance 'complete') @root.workflowComplete.sustenance)}}{{localize "ionrift-respite.restDock.mealsLocked"}}{{else}}{{localize "ionrift-respite.restDock.mealsStillDraft"}}{{/if}}">
+                {{localize "ionrift-respite.restDock.sustenance"}}
                 {{#if (eq @root.workflowMark.sustenance 'complete')}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
                 {{else if (eq @root.workflowMark.sustenance 'draft')}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
                 {{else if @root.workflowComplete.sustenance}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
@@ -141,7 +141,7 @@
         <button type="button"
             class="rest-dock-examine{{#if @root.isIdentifyActive}} active{{/if}}"
             data-action="toggleExamine"
-            data-tooltip="Examine and identify mysterious items in inventory">Examine</button>
+            data-tooltip="{{localize "ionrift-respite.restDock.examineTooltip"}}">{{localize "ionrift-respite.restDock.examine"}}</button>
         {{/if}}
 
         <span class="rest-dock-nav-spacer"></span>
@@ -151,11 +151,11 @@
         {{#if @root.isWilderness}}
         <div class="rest-dock-hearth" data-tooltip="{{{@root.fuelStockTooltip}}}">
             <span class="rest-dock-fuel {{#unless @root.hasEnoughFuel}}is-short{{/unless}}">
-                <strong>{{@root.fuelStockTotal}}</strong> Fuel
+                <strong>{{@root.fuelStockTotal}}</strong> {{localize "ionrift-respite.restDock.fuel"}}
                 {{#if (gt @root.fuelBurnCost 0)}}<span class="rest-dock-fuel-burn">(-{{@root.fuelBurnCost}})</span>{{/if}}
             </span>
             <select class="rest-dock-hearth-select hearth-tier-select tier-{{@root.fireLevel}}"
-                aria-label="Campfire intensity">
+                aria-label="{{localize "ionrift-respite.restDock.campfireIntensity"}}">
                 {{#each @root.fireTierOptions}}
                 <option value="{{id}}" {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}>
                     {{label}} ({{costLabel}}{{#if dcDelta}} · {{dcDelta}}{{/if}}){{#if disabledReason}}; {{disabledReason}}{{/if}}
@@ -171,24 +171,24 @@
                 class="rest-dock-ready-btn is-ready"
                 data-action="toggleCharacterReady"
                 data-actor-id="{{id}}"
-                data-tooltip="{{name}} is marked ready. Click to edit choices.">
+                data-tooltip="{{localize "ionrift-respite.restDock.isMarkedReadyTooltip" name=name}}">
                 <i class="fas fa-check-circle" aria-hidden="true"></i>
-                <span>Ready</span>
-                <span class="rest-dock-ready-action">Edit</span>
+                <span>{{localize "ionrift-respite.restDock.ready"}}</span>
+                <span class="rest-dock-ready-action">{{localize "ionrift-respite.restDock.edit"}}</span>
             </button>
             {{else if @root.characterPlanComplete}}
             <button type="button"
                 class="rest-dock-ready-btn is-complete"
                 data-action="toggleCharacterReady"
                 data-actor-id="{{id}}"
-                data-tooltip="All rest duties complete. Mark {{name}} ready for the night.">
+                data-tooltip="{{localize "ionrift-respite.restDock.markReadyTooltip" name=name}}">
                 <i class="fas fa-check" aria-hidden="true"></i>
-                <span>Mark Ready</span>
+                <span>{{localize "ionrift-respite.restDock.markReady"}}</span>
             </button>
             {{else}}
-            <span class="rest-dock-ready-status" data-tooltip="Complete Gather, Activities, and Sustenance to ready up">
+            <span class="rest-dock-ready-status" data-tooltip="{{localize "ionrift-respite.restDock.readyUpRequirementsTooltip"}}">
                 <span class="rest-dock-ready-dot"></span>
-                <span>{{@root.stepsCompletedCount}} / {{@root.stepsTotalCount}} Steps</span>
+                <span>{{localize "ionrift-respite.restDock.stepsCount" completed=(concat @root.stepsCompletedCount "") total=(concat @root.stepsTotalCount "")}}</span>
             </span>
             {{/if}}
         </div>

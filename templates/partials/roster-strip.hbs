@@ -11,37 +11,37 @@
             <span class="roster-portrait-wrap">
                 <img class="roster-portrait" src="{{img}}" alt="{{name}}">
                 {{#if isBeddedDown}}<span class="roster-zzz" aria-hidden="true">Zzz</span>{{/if}}
-                {{#if hasStarvationRisk}}<span class="roster-starvation-warning" aria-hidden="true" data-tooltip="Starvation Risk"><i class="fas fa-triangle-exclamation"></i></span>{{/if}}
+                {{#if hasStarvationRisk}}<span class="roster-starvation-warning" aria-hidden="true" data-tooltip="{{localize "ionrift-respite.rosterStrip.starvationRiskTooltip"}}"><i class="fas fa-triangle-exclamation"></i></span>{{/if}}
             </span>
             <span class="roster-name">{{name}}</span>
             {{#if activityLabel}}<span class="roster-activity-label" data-tooltip="{{activityLabel}}">{{activityLabel}}</span>{{/if}}
             <span class="roster-status">
                 {{#if isReady}}
-                <i class="fas fa-check-circle roster-ready" data-tooltip="Ready"></i>
+                <i class="fas fa-check-circle roster-ready" data-tooltip="{{localize "ionrift-respite.rosterStrip.readyTooltip"}}"></i>
                 {{else if (eq rollMode 'force-pass')}}
-                <i class="fas fa-check roster-roll-force-pass" data-tooltip="Auto-pass (no roll needed)"></i>
+                <i class="fas fa-check roster-roll-force-pass" data-tooltip="{{localize "ionrift-respite.rosterStrip.autoPassTooltip"}}"></i>
                 {{else if (eq rollMode 'force-fail')}}
-                <i class="fas fa-times roster-roll-force-fail" data-tooltip="Auto-fail (no roll needed)"></i>
+                <i class="fas fa-times roster-roll-force-fail" data-tooltip="{{localize "ionrift-respite.rosterStrip.autoFailTooltip"}}"></i>
                 {{else if pendingRoll}}
-                <i class="fas fa-dice-d20 roster-roll-pending" data-tooltip="Awaiting roll{{#if (eq rollMode 'advantage')}} · Advantage{{else if (eq rollMode 'disadvantage')}} · Disadvantage{{/if}}"></i>
+                <i class="fas fa-dice-d20 roster-roll-pending" data-tooltip="{{#if (eq rollMode 'advantage')}}{{localize "ionrift-respite.rosterStrip.awaitingRollAdvantage"}}{{else if (eq rollMode 'disadvantage')}}{{localize "ionrift-respite.rosterStrip.awaitingRollDisadvantage"}}{{else}}{{localize "ionrift-respite.rosterStrip.awaitingRoll"}}{{/if}}"></i>
                 {{#if (eq rollMode 'advantage')}}<i class="fas fa-angle-up roster-roll-adv" aria-hidden="true"></i>{{/if}}
                 {{#if (eq rollMode 'disadvantage')}}<i class="fas fa-angle-down roster-roll-dis" aria-hidden="true"></i>{{/if}}
                 {{else if rolledResult}}
-                <i class="fas fa-check-circle roster-roll-done" data-tooltip="Rolled: {{rolledResult}}"></i>
+                <i class="fas fa-check-circle roster-roll-done" data-tooltip="{{localize "ionrift-respite.rosterStrip.rolledResultTooltip" result=rolledResult}}"></i>
                 {{else if exhaustion}}
-                <i class="fas fa-skull roster-exhaustion" data-tooltip="Exhaustion {{exhaustion}}"></i>
+                <i class="fas fa-skull roster-exhaustion" data-tooltip="{{localize "ionrift-respite.rosterStrip.exhaustionTooltip" level=exhaustion}}"></i>
                 {{else if (eq source 'player')}}
-                <i class="fas fa-check-circle roster-resolved" data-tooltip="Activity chosen"></i>
+                <i class="fas fa-check-circle roster-resolved" data-tooltip="{{localize "ionrift-respite.rosterStrip.activityChosenTooltip"}}"></i>
                 {{else if (eq source 'gm')}}
-                <i class="fas fa-crown roster-gm-override" data-tooltip="GM Override"></i>
+                <i class="fas fa-crown roster-gm-override" data-tooltip="{{localize "ionrift-respite.rosterStrip.gmOverrideTooltip"}}"></i>
                 {{else}}
-                <i class="fas fa-clock roster-waiting" data-tooltip="Waiting"></i>
+                <i class="fas fa-clock roster-waiting" data-tooltip="{{localize "ionrift-respite.rosterStrip.waitingTooltip"}}"></i>
                 {{/if}}
             </span>
             {{#if mealStatus}}
             <span class="roster-meal-status {{mealStatus.state}}" data-tooltip="{{mealStatus.tooltip}}">
                 {{#if mealStatus.submitted}}
-                <i class="fas fa-check-circle" aria-hidden="true"></i><span class="rms-label">sent</span>
+                <i class="fas fa-check-circle" aria-hidden="true"></i><span class="rms-label">{{localize "ionrift-respite.rosterStrip.mealSent"}}</span>
                 {{else}}
                 <i class="fas fa-drumstick-bite {{#if mealStatus.foodOk}}ok{{else}}miss{{/if}}" aria-hidden="true"></i>
                 <i class="fas fa-tint {{#if mealStatus.waterOk}}ok{{else}}miss{{/if}}" aria-hidden="true"></i>

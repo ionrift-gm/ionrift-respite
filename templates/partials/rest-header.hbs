@@ -1,7 +1,7 @@
 {{!-- Canonical Rest Header: Unified Top Bar across all Rest Interfaces --}}
 <div class="respite-phase-header rest-header-bar {{headerClasses}}">
     {{#if phaseSteps.length}}
-    <div class="phase-indicator" role="progressbar" aria-label="Rest progress">
+    <div class="phase-indicator" role="progressbar" aria-label="{{localize "ionrift-respite.restHeader.progressAriaLabel"}}">
         {{#each phaseSteps}}
         <div class="phase-dot {{#if active}}active{{/if}} {{#if complete}}complete{{/if}}"
              data-tooltip="{{label}}"></div>
@@ -16,7 +16,7 @@
     {{/if}}
 
     {{#if campConditionsBar}}
-    <div class="rest-header-conditions" role="status" aria-label="Camp conditions">
+    <div class="rest-header-conditions" role="status" aria-label="{{localize "ionrift-respite.restHeader.conditionsAriaLabel"}}">
         <div class="rest-header-env-cluster"
              data-tooltip="{{campConditionsBar.terrainLabel}} · {{campConditionsBar.weatherLabel}}{{#if campConditionsBar.weatherImpact}} ({{campConditionsBar.weatherImpact}}){{/if}}{{#if campConditionsBar.weatherShieldNote}} · {{campConditionsBar.weatherShieldNote}}{{/if}}">
             <span class="env-icon terrain-icon" aria-label="{{campConditionsBar.terrainLabel}}">
@@ -46,16 +46,16 @@
         {{#if isGM}}
         {{#if pacingActive}}
         {{#if canReturnToPlanning}}
-        <button type="button" class="btn-abandon-rest btn-pacing-return" data-action="returnToPlanning" data-tooltip="Return to camp planning overview">
-            <i class="fas fa-arrow-left"></i> Camp Planning
+        <button type="button" class="btn-abandon-rest btn-pacing-return" data-action="returnToPlanning" data-tooltip="{{localize "ionrift-respite.restHeader.returnToCampPlanning"}}">
+            <i class="fas fa-arrow-left"></i> {{localize "ionrift-respite.restHeader.campPlanning"}}
         </button>
         {{/if}}
         {{else}}
         {{#unless (or isResolvePhase isSetupPhase)}}
         <button type="button" class="btn-abandon-rest" data-action="{{abandonAction}}"
-                data-tooltip="{{#if eventsCommitPending}}Wait for the night check to finish.{{else}}Cancel and abandon this rest{{/if}}"
+                data-tooltip="{{#if eventsCommitPending}}{{localize "ionrift-respite.restHeader.waitForNightCheck"}}{{else}}{{localize "ionrift-respite.restHeader.cancelAndAbandon"}}{{/if}}"
                 {{#if eventsCommitPending}}disabled{{/if}}>
-            <i class="fas fa-ban"></i> Abandon Rest
+            <i class="fas fa-ban"></i> {{localize "ionrift-respite.restHeader.abandonRest"}}
         </button>
         {{/unless}}
         {{/if}}
@@ -63,7 +63,7 @@
 
         {{#if showDevUiToggle}}
         <button type="button" class="btn-theme-toggle" data-action="toggleUiTheme"
-                data-tooltip="{{#if isGlassTheme}}Switch to Tactical Obsidian (High Contrast){{else}}Switch to Ionrift Glass (Translucent){{/if}}">
+                data-tooltip="{{#if isGlassTheme}}{{localize "ionrift-respite.restHeader.switchToTacticalObsidian"}}{{else}}{{localize "ionrift-respite.restHeader.switchToIonriftGlass"}}{{/if}}">
             <i class="fas {{#if isGlassTheme}}fa-gem{{else}}fa-shield-halved{{/if}}" aria-hidden="true"></i>
         </button>
         {{/if}}

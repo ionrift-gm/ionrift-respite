@@ -17,14 +17,14 @@
             </span>
             {{/if}}
             {{#if songOfRest}}
-            <span class="camp-status-chip sr-song-chip" data-tooltip="Song of Rest: {{songOfRest.bardName}} rolls {{songOfRest.songDie}} extra healing for each character who spends at least one Hit Die. {{#if songOfRest.timingEnd}}Applied when the GM completes this rest.{{else}}Applied immediately with each character's first Hit Die.{{/if}}">
-                <i class="fas fa-music"></i> {{songOfRest.bardName}} · {{songOfRest.songDie}} · {{#if songOfRest.timingEnd}}on complete (if you spend HD){{else}}on 1st HD{{/if}}
+            <span class="camp-status-chip sr-song-chip" data-tooltip="{{#if songOfRest.timingEnd}}{{{localize "ionrift-respite.shortRest.songOfRest.tooltipTimingEnd" bardName=songOfRest.bardName songDie=songOfRest.songDie}}}{{else}}{{{localize "ionrift-respite.shortRest.songOfRest.tooltipTimingFirst" bardName=songOfRest.bardName songDie=songOfRest.songDie}}}{{/if}}">
+                <i class="fas fa-music"></i> {{songOfRest.bardName}} · {{songOfRest.songDie}} · {{#if songOfRest.timingEnd}}{{localize "ionrift-respite.shortRest.songOfRest.timingEnd"}}{{else}}{{localize "ionrift-respite.shortRest.songOfRest.timingFirst"}}{{/if}}
             </span>
             {{/if}}
             {{#if chefReplenishing}}
             <span class="camp-status-chip sr-chef-chip {{#if chefReplenishing.hasRemaining}}chef-glowing-badge{{else}}chef-exhausted-badge{{/if}}"
-                  data-tooltip="Replenishing Meal: {{chefReplenishing.chefName}} is cooking (+1d8 HP on Hit Dice). {{chefReplenishing.mealsRemaining}} servings left.">
-                <i class="fas fa-utensils"></i> {{chefReplenishing.chefName}} · +1d8 · {{chefReplenishing.mealsRemaining}} left
+                  data-tooltip="{{localize "ionrift-respite.shortRest.chefReplenishing.tooltip" chefName=chefReplenishing.chefName mealsRemaining=chefReplenishing.mealsRemaining}}">
+                <i class="fas fa-utensils"></i> {{chefReplenishing.chefName}} · +1d8 · {{localize "ionrift-respite.shortRest.chefReplenishing.servingsLeft" count=chefReplenishing.mealsRemaining}}
             </span>
             {{/if}}
         </div>
@@ -32,15 +32,15 @@
     {{/if}}
 
     {{#if workbenchIdentifyUiEnabled}}
-    <div class="sr-nav-row" role="tablist" aria-label="Short rest sections">
+    <div class="sr-nav-row" role="tablist" aria-label="{{localize "ionrift-respite.shortRest.sectionsAriaLabel"}}">
         <div class="rest-dock-segments">
             <button type="button" role="tab" class="rest-dock-seg {{#if (eq activeTab "recovery")}}active{{/if}}"
                 data-action="switchShortRestTab" data-tab="recovery" {{#if (eq activeTab "recovery")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
-                <i class="fas fa-heart"></i> Recovery
+                <i class="fas fa-heart"></i> {{localize "ionrift-respite.shortRest.tabs.recovery"}}
             </button>
             <button type="button" role="tab" class="rest-dock-seg {{#if (eq activeTab "workbench")}}active{{/if}}"
                 data-action="switchShortRestTab" data-tab="workbench" {{#if (eq activeTab "workbench")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
-                <i class="fas fa-search"></i> Identify
+                <i class="fas fa-search"></i> {{localize "ionrift-respite.shortRest.tabs.identify"}}
             </button>
         </div>
     </div>
@@ -54,10 +54,10 @@
         {{else}}
             {{#if isGM}}
             <div class="sr-focused-nav">
-                <button type="button" class="btn-party-overview" data-action="clearSelectedCharacter" data-tooltip="Return to party overview">
-                    <i class="fas fa-arrow-left"></i> All Characters
+                <button type="button" class="btn-party-overview" data-action="clearSelectedCharacter" data-tooltip="{{localize "ionrift-respite.shortRest.returnToPartyOverview"}}">
+                    <i class="fas fa-arrow-left"></i> {{localize "ionrift-respite.shortRest.allCharacters"}}
                 </button>
-                <span class="sr-focused-title"><i class="fas fa-user-shield"></i> Managing <strong>{{heroCharacter.name}}</strong></span>
+                <span class="sr-focused-title"><i class="fas fa-user-shield"></i> {{{localize "ionrift-respite.shortRest.managing" name=heroCharacter.name}}}</span>
             </div>
             {{/if}}
             {{> restHeroCard}}
@@ -78,9 +78,9 @@
             {{#unless isGM}}
             <button type="button" class="sr-finished-toggle {{#if shortRestFooter.myFinished}}active{{/if}}" data-action="toggleShortRestFinished">
                 {{#if shortRestFooter.myFinished}}
-                <i class="fas fa-undo"></i> Still resting
+                <i class="fas fa-undo"></i> {{localize "ionrift-respite.shortRest.stillResting"}}
                 {{else}}
-                <i class="fas fa-flag-checkered"></i> I'm finished
+                <i class="fas fa-flag-checkered"></i> {{{localize "ionrift-respite.shortRest.imFinished"}}}
                 {{/if}}
             </button>
             {{/unless}}
@@ -89,16 +89,16 @@
             <div class="sr-footer-end">
             {{#if canCompleteShortRest}}
             <button type="button" class="btn-primary-green sr-complete-btn" data-action="completeShortRest">
-                <i class="fas fa-check"></i> Complete Short Rest
+                <i class="fas fa-check"></i> {{localize "ionrift-respite.shortRest.completeShortRest"}}
             </button>
             {{else}}
-            <button type="button" class="btn-primary-green sr-complete-btn sr-complete-btn--waiting" data-action="completeShortRest" data-tooltip="{{completeBlockedHint}} Click to complete anyway.">
-                <i class="fas fa-hourglass-half"></i> Complete Short Rest
+            <button type="button" class="btn-primary-green sr-complete-btn sr-complete-btn--waiting" data-action="completeShortRest" data-tooltip="{{completeBlockedHint}} {{localize "ionrift-respite.shortRest.clickToCompleteAnyway"}}">
+                <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.shortRest.completeShortRest"}}
             </button>
             {{/if}}
             </div>
             {{else}}
-            <span class="sr-waiting sr-footer-end"><i class="fas fa-hourglass-half"></i> Waiting for GM...</span>
+            <span class="sr-waiting sr-footer-end"><i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.shortRest.waitingForGm"}}</span>
             {{/if}}
         </div>
     </div>

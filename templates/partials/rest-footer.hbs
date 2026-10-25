@@ -9,28 +9,28 @@
             <button type="button"
                     class="btn-gm-logistics {{#if logisticsDrawerOpen}}active{{/if}}"
                     data-action="toggleLogisticsDrawer"
-                    data-tooltip="{{#if logisticsDrawerOpen}}Close camp logistics{{else}}Forage DC · Hunt DC · Gear Factors{{/if}}">
+                    data-tooltip="{{#if logisticsDrawerOpen}}{{localize "ionrift-respite.restFooter.logisticsCloseTooltip"}}{{else}}{{localize "ionrift-respite.restFooter.logisticsOpenTooltip"}}{{/if}}">
                 <i class="fas fa-sliders" aria-hidden="true"></i>
-                <span>Logistics</span>
+                <span>{{localize "ionrift-respite.restFooter.logistics"}}</span>
             </button>
             {{/unless}}
             {{#if showFireRail}}
             {{> encounterDcStepper dc=encounterBar.effectiveDC adjustAction="adjustEncounterDc" tooltip="Encounter DC. Rolls below this threshold trigger a night event."}}
             {{else}}
             <span class="encounter-bar-label-wrap">
-                <span class="encounter-bar-label" data-tooltip="Base threshold: {{encounterBar.terrainLabel}} ({{encounterBar.baseDC}}). Roll a d20; meet or beat the final DC for a quiet night. Shelter, fire, and defenses shift this number.">
+                <span class="encounter-bar-label" data-tooltip="{{localize "ionrift-respite.restFooter.encounterThresholdTooltip" terrain=(concat encounterBar.terrainLabel "") dc=(concat encounterBar.baseDC "")}}">
                     <i class="fas fa-dice-d20" aria-hidden="true"></i>
                     {{encounterBar.totalLabel}}
                 </span>
             </span>
             <span class="encounter-gm-adj">
-                <button type="button" class="encounter-adj-btn" data-action="encounterAdjDown" data-tooltip="Reduce DC">−</button>
-                <button type="button" class="encounter-adj-btn" data-action="encounterAdjUp" data-tooltip="Increase DC">+</button>
+                <button type="button" class="encounter-adj-btn" data-action="encounterAdjDown" data-tooltip="{{localize "ionrift-respite.restFooter.reduceDc"}}">−</button>
+                <button type="button" class="encounter-adj-btn" data-action="encounterAdjUp" data-tooltip="{{localize "ionrift-respite.restFooter.increaseDc"}}">+</button>
             </span>
             {{/if}}
             {{else}}
             <span class="encounter-bar-label-wrap">
-                <span class="encounter-bar-label">Camp exposure</span>
+                <span class="encounter-bar-label">{{localize "ionrift-respite.restFooter.campExposure"}}</span>
             </span>
             {{#if encounterBar.playerFactors.length}}
             <span class="encounter-bar-chips encounter-bar-chips--player">
@@ -45,8 +45,8 @@
             {{/if}}
         {{else if safeRestSpot}}
             <span class="encounter-bar-label-wrap">
-                <span class="encounter-bar-label safe-spot-label" data-tooltip="Safe rest spot: no encounter checks tonight.">
-                    <i class="fas fa-shield-halved" aria-hidden="true"></i> Sanctuary
+                <span class="encounter-bar-label safe-spot-label" data-tooltip="{{localize "ionrift-respite.restFooter.safeRestSpotTooltip"}}">
+                    <i class="fas fa-shield-halved" aria-hidden="true"></i> {{localize "ionrift-respite.restFooter.sanctuary"}}
                 </span>
             </span>
         {{/if}}
@@ -61,9 +61,9 @@
             <span class="totm-footer-stat">
                 <i class="fas fa-utensils" aria-hidden="true"></i>
                 {{#if pendingDehydrationSaves}}
-                {{pendingDehydrationSaves}} pending CON save(s)
+                {{localize "ionrift-respite.restFooter.pendingConSaves" count=pendingDehydrationSaves}}
                 {{else}}
-                All rations assigned
+                {{localize "ionrift-respite.restFooter.allRationsAssigned"}}
                 {{/if}}
             </span>
             {{/if}}
@@ -74,11 +74,11 @@
             <span class="totm-footer-stat">
                 <i class="fas fa-users" aria-hidden="true"></i>
                 {{#if activityPhasePlayerOverview.viewerHasSubmitted}}
-                {{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} completed
+                {{localize "ionrift-respite.restFooter.activitiesCompleted" resolved=activityPhasePlayerOverview.resolvedCount total=activityPhasePlayerOverview.totalCharacters}}
                 {{else if isGM}}
-                {{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned
+                {{localize "ionrift-respite.restFooter.activitiesAssigned" resolved=activityPhasePlayerOverview.resolvedCount total=activityPhasePlayerOverview.totalCharacters}}
                 {{else}}
-                Choose one activity
+                {{localize "ionrift-respite.restFooter.chooseOneActivity"}}
                 {{/if}}
             </span>
             {{/if}}
@@ -89,9 +89,9 @@
             <span class="totm-footer-stat">
                 <i class="fas fa-utensils" aria-hidden="true"></i>
                 {{#if pendingDehydrationSaves}}
-                {{pendingDehydrationSaves}} pending CON save(s)
+                {{localize "ionrift-respite.restFooter.pendingConSaves" count=pendingDehydrationSaves}}
                 {{else}}
-                All rations assigned
+                {{localize "ionrift-respite.restFooter.allRationsAssigned"}}
                 {{/if}}
             </span>
             {{/if}}
@@ -105,27 +105,27 @@
             {{#if isGM}}
                 {{#if canProceedFromMakeCamp}}
                 <button type="button" class="btn-primary totm-camp-proceed" data-action="proceedFromMakeCamp">
-                    <i class="fas fa-arrow-right" aria-hidden="true"></i> Proceed to Activities
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i> {{localize "ionrift-respite.restFooter.proceedToActivities"}}
                 </button>
                 {{else}}
                 <button type="button" class="btn-primary totm-camp-proceed disabled" disabled data-tooltip="{{proceedBlockedHint}}">
-                    <i class="fas fa-lock" aria-hidden="true"></i> Proceed to Activities
+                    <i class="fas fa-lock" aria-hidden="true"></i> {{localize "ionrift-respite.restFooter.proceedToActivities"}}
                 </button>
                 {{/if}}
             {{else}}
                 <span class="totm-camp-player-wait">
                     <i class="fas fa-campground" aria-hidden="true"></i>
                     {{#if canProceedFromMakeCamp}}
-                    Camp is set. Waiting for GM.
+                    {{localize "ionrift-respite.restFooter.campIsSetWaitingForGm"}}
                     {{else}}
-                    Setting up camp...
+                    {{localize "ionrift-respite.restFooter.settingUpCamp"}}
                     {{/if}}
                 </span>
             {{/if}}
         {{else if (eq phase 'activity')}}
             {{> campfireDragHandle}}
             {{#if readyTotal}}
-            <span class="rest-ready-count" data-tooltip="Characters marked ready.">{{readyCount}} / {{readyTotal}} ready</span>
+            <span class="rest-ready-count" data-tooltip="{{localize "ionrift-respite.restFooter.charactersMarkedReady"}}">{{localize "ionrift-respite.restFooter.readyCount" ready=readyCount total=readyTotal}}</span>
             {{/if}}
             {{#if activityProceedEnabled}}
                 {{#if isGM}}
@@ -133,20 +133,20 @@
                     <i class="{{activityProceed.icon}}"></i> {{activityProceed.label}}
                 </button>
                 {{else}}
-                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
+                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> {{localize "ionrift-respite.restFooter.waitingOnGm"}}</span>
                 {{/if}}
             {{else if isGM}}
                 <button type="button" class="btn-primary totm-footer-proceed disabled" disabled
-                        data-tooltip="{{#if holdPhaseProceed}}Use Next on this card first.{{else}}{{readyCount}} / {{readyTotal}} ready. Everyone must be ready.{{/if}}">
+                        data-tooltip="{{#if holdPhaseProceed}}{{localize "ionrift-respite.restFooter.useNextFirst"}}{{else}}{{localize "ionrift-respite.restFooter.notAllReady" ready=readyCount total=readyTotal}}{{/if}}">
                     <i class="fas fa-lock" aria-hidden="true"></i> {{activityProceed.label}}
                 </button>
             {{else if activityPhasePlayerOverview.viewerHasSubmitted}}
-                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting for others</span>
+                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> {{localize "ionrift-respite.restFooter.waitingForOthers"}}</span>
             {{/if}}
         {{else if (eq phase 'meal')}}
             {{> campfireDragHandle}}
             {{#if readyTotal}}
-            <span class="rest-ready-count" data-tooltip="Characters marked ready.">{{readyCount}} / {{readyTotal}} ready</span>
+            <span class="rest-ready-count" data-tooltip="{{localize "ionrift-respite.restFooter.charactersMarkedReady"}}">{{localize "ionrift-respite.restFooter.readyCount" ready=readyCount total=readyTotal}}</span>
             {{/if}}
             {{#if isGM}}
                 {{#if allMealsConsumed}}
@@ -154,37 +154,37 @@
                         {{#if pendingDehydrationSaves}}
                             {{#if allDehydrationResolved}}
                             <button type="button" class="{{#if encountersEnabled}}btn-primary{{else}}btn-primary-green{{/if}}" data-action="proceedFromMeal" draggable="false">
-                                {{#if encountersEnabled}}<i class="fas fa-moon"></i> Proceed to Night Events{{else}}<i class="fas fa-check-circle"></i> Complete Long Rest{{/if}}
+                                {{#if encountersEnabled}}<i class="fas fa-moon"></i> {{localize "ionrift-respite.restFooter.proceedToNightEvents"}}{{else}}<i class="fas fa-check-circle"></i> {{localize "ionrift-respite.restFooter.completeLongRest"}}{{/if}}
                             </button>
                             {{else}}
                             <button type="button" class="btn-primary" disabled draggable="false">
-                                <i class="fas fa-hourglass-half"></i> Waiting for {{pendingDehydrationSaves}} CON save(s)...
+                                <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.restFooter.waitingForConSaves" count=pendingDehydrationSaves}}
                             </button>
                             {{#if hasUnresolvedSaves}}
-                            <button type="button" class="btn-secondary" data-action="skipPendingSaves" data-tooltip="Auto-fail all pending saves and apply exhaustion" draggable="false">
-                                <i class="fas fa-forward"></i> Skip Pending Saves
+                            <button type="button" class="btn-secondary" data-action="skipPendingSaves" data-tooltip="{{localize "ionrift-respite.restFooter.skipPendingSavesTooltip"}}" draggable="false">
+                                <i class="fas fa-forward"></i> {{localize "ionrift-respite.restFooter.skipPendingSaves"}}
                             </button>
                             {{/if}}
                             {{/if}}
                         {{else}}
                         <button type="button" class="{{#if encountersEnabled}}btn-primary{{else}}btn-primary-green{{/if}}" data-action="proceedFromMeal" draggable="false">
-                            {{#if encountersEnabled}}<i class="fas fa-moon"></i> Proceed to Night Events{{else}}<i class="fas fa-check-circle"></i> Complete Long Rest{{/if}}
+                            {{#if encountersEnabled}}<i class="fas fa-moon"></i> {{localize "ionrift-respite.restFooter.proceedToNightEvents"}}{{else}}<i class="fas fa-check-circle"></i> {{localize "ionrift-respite.restFooter.completeLongRest"}}{{/if}}
                         </button>
                         {{/if}}
                     {{else}}
                     <button type="button" class="{{#if encountersEnabled}}btn-primary{{else}}btn-primary-green{{/if}}" data-action="proceedFromMeal" draggable="false">
-                        {{#if encountersEnabled}}<i class="fas fa-moon"></i> Proceed to Night Events{{else}}<i class="fas fa-check-circle"></i> Complete Long Rest{{/if}}
+                        {{#if encountersEnabled}}<i class="fas fa-moon"></i> {{localize "ionrift-respite.restFooter.proceedToNightEvents"}}{{else}}<i class="fas fa-check-circle"></i> {{localize "ionrift-respite.restFooter.completeLongRest"}}{{/if}}
                     </button>
                     {{/if}}
                 {{else}}
                     {{#with (lookup mealCards 0)}}
                     {{#if (and isMultiDay (not allDaysConsumed))}}
                     <button type="button" class="btn-primary btn-consume-day" data-action="consumeMealDay">
-                        <i class="fas fa-utensils"></i> Consume Day {{currentDay}}
+                        <i class="fas fa-utensils"></i> {{localize "ionrift-respite.restFooter.consumeDay" day=currentDay}}
                     </button>
                     {{else if allDaysConsumed}}
                     <button type="button" class="btn-primary" disabled>
-                        <i class="fas fa-check"></i> {{actorName}} - All days consumed
+                        <i class="fas fa-check"></i> {{localize "ionrift-respite.restFooter.allDaysConsumed" actor=actorName}}
                     </button>
                     {{/if}}
                     {{/with}}
@@ -193,13 +193,13 @@
                 {{#with (lookup mealCards 0)}}
                 {{#if (and isMultiDay (not allDaysConsumed))}}
                 <button type="button" class="btn-primary btn-consume-day" data-action="consumeMealDay">
-                    <i class="fas fa-utensils"></i> Consume Day {{currentDay}}
+                    <i class="fas fa-utensils"></i> {{localize "ionrift-respite.restFooter.consumeDay" day=currentDay}}
                 </button>
                 {{else}}
-                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
+                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> {{localize "ionrift-respite.restFooter.waitingOnGm"}}</span>
                 {{/if}}
                 {{else}}
-                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
+                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> {{localize "ionrift-respite.restFooter.waitingOnGm"}}</span>
                 {{/with}}
             {{/if}}
         {{/if}}

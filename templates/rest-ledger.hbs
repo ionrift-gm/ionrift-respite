@@ -1,6 +1,6 @@
 <section class="rest-ledger-body">
     <header class="rest-ledger-toolbar">
-        <div class="rest-ledger-filters" role="group" aria-label="Phase filter">
+        <div class="rest-ledger-filters" role="group" aria-label="{{localize "ionrift-respite.restLedger.phaseFilter"}}">
             {{#each filters}}
             <button type="button"
                 class="rest-ledger-chip {{#if active}}active{{/if}}"
@@ -13,12 +13,12 @@
         </div>
         <div class="rest-ledger-toolbar-actions">
             <button type="button" class="rest-ledger-toolbar-btn" data-action="ledgerFreezeScroll"
-                data-tooltip="{{#if freezeScroll}}Resume auto-scroll{{else}}Freeze scroll{{/if}}"
+                data-tooltip="{{#if freezeScroll}}{{localize "ionrift-respite.restLedger.resumeAutoScroll"}}{{else}}{{localize "ionrift-respite.restLedger.freezeScroll"}}{{/if}}"
                 aria-pressed="{{#if freezeScroll}}true{{else}}false{{/if}}">
                 <i class="fas {{#if freezeScroll}}fa-play{{else}}fa-pause{{/if}}"></i>
             </button>
             <button type="button" class="rest-ledger-toolbar-btn" data-action="ledgerCopy"
-                data-tooltip="Copy to clipboard">
+                data-tooltip="{{localize "ionrift-respite.restLedger.copyToClipboard"}}">
                 <i class="fas fa-clipboard"></i>
             </button>
         </div>
@@ -56,7 +56,7 @@
     {{else}}
     <div class="rest-ledger-empty">
         <i class="fas fa-book-open"></i>
-        <p>No entries yet. The ledger records decisions as the rest progresses.</p>
+        <p>{{localize "ionrift-respite.restLedger.empty"}}</p>
     </div>
     {{/if}}
 </section>

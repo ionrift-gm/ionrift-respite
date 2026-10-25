@@ -3,7 +3,7 @@
     {{!-- Shared Terrain / Resolution Banner --}}
     {{#if showBanner}}
     <div class="master-card-banner {{bannerFireClass}}">
-        <img src="{{terrainBanner}}" alt="{{subtitle}} banner" style="object-position: {{terrainBannerPos}};" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
+        <img src="{{terrainBanner}}" alt="{{localize "ionrift-respite.masterRestCard.bannerAlt" subtitle=subtitle}}" style="object-position: {{terrainBannerPos}};" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
         <div class="master-banner-fade"></div>
         {{#if partyStatus}}
         <span class="master-banner-badge {{partyStatus.class}}" title="{{partyStatus.label}}">
@@ -72,10 +72,10 @@
             <div class="losses-summary-left">
                 <i class="fas fa-chevron-right details-chevron"></i>
                 <span class="losses-badge">
-                    <i class="fas fa-box-open"></i> Resource Losses ({{totalLossCount}})
+                    <i class="fas fa-box-open"></i> {{localize "ionrift-respite.masterRestCard.resourceLosses" count=totalLossCount}}
                 </span>
             </div>
-            <span class="losses-summary-count">{{partyLosses.length}} character{{#if (gt partyLosses.length 1)}}s{{/if}} affected</span>
+            <span class="losses-summary-count">{{#if (gt partyLosses.length 1)}}{{localize "ionrift-respite.masterRestCard.charactersAffectedOther" count=partyLosses.length}}{{else}}{{localize "ionrift-respite.masterRestCard.charactersAffectedOne" count=partyLosses.length}}{{/if}}</span>
         </summary>
         <div class="master-losses-content">
             {{#each partyLosses}}
@@ -90,7 +90,7 @@
                         {{#if img}}<img src="{{img}}" class="actor-loss-item-icon" alt="{{name}}">{{/if}}
                         <span class="actor-loss-item-name">{{name}}</span>
                         <span class="actor-loss-item-delta">-{{lossQty}}</span>
-                        {{#if isTotal}}<span class="actor-loss-pill-destroyed">Lost</span>{{/if}}
+                        {{#if isTotal}}<span class="actor-loss-pill-destroyed">{{localize "ionrift-respite.masterRestCard.lost"}}</span>{{/if}}
                     </li>
                     {{/each}}
                 </ul>

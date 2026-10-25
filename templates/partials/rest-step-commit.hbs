@@ -8,8 +8,8 @@
         </span>
         {{#unless @root.characterReady}}
         {{#unless cannotChange}}
-        <button type="button" class="totm-commit-change-btn" data-action="unlockTotmActivity" data-tooltip="Change selected activity">
-            <i class="fas fa-undo-alt" aria-hidden="true"></i> Change
+        <button type="button" class="totm-commit-change-btn" data-action="unlockTotmActivity" data-tooltip="{{localize "ionrift-respite.restStepCommit.changeActivityTooltip"}}">
+            <i class="fas fa-undo-alt" aria-hidden="true"></i> {{localize "ionrift-respite.restStepCommit.change"}}
         </button>
         {{/unless}}
         {{/unless}}

@@ -5,12 +5,12 @@
 <div class="rest-footer-dc-stepper{{#if showArm}} has-arm{{/if}}{{#if armed}} is-armed{{/if}}"{{#if tooltip}} data-tooltip="{{tooltip}}"{{/if}}>
     {{#if showArm}}
     <label class="rest-footer-dc-arm">
-        <input type="checkbox" data-action="{{armAction}}" {{#if armed}}checked{{/if}} aria-label="Run the encounter check">
+        <input type="checkbox" data-action="{{armAction}}" {{#if armed}}checked{{/if}} aria-label="{{localize "ionrift-respite.encounterDcStepper.runCheckAriaLabel"}}">
         <i class="fas fa-shield-halved" aria-hidden="true"></i>
     </label>
     {{/if}}
-    <span class="rest-footer-dc-label">Encounter DC</span>
-    <button type="button" class="rest-footer-dc-btn" data-action="{{adjustAction}}" data-delta="-1" aria-label="Lower encounter DC">−</button>
+    <span class="rest-footer-dc-label">{{localize "ionrift-respite.encounterDcStepper.encounterDc"}}</span>
+    <button type="button" class="rest-footer-dc-btn" data-action="{{adjustAction}}" data-delta="-1" aria-label="{{localize "ionrift-respite.encounterDcStepper.lowerDcAriaLabel"}}">−</button>
     <strong class="rest-footer-dc-val">{{dc}}</strong>
-    <button type="button" class="rest-footer-dc-btn" data-action="{{adjustAction}}" data-delta="1" aria-label="Raise encounter DC">+</button>
+    <button type="button" class="rest-footer-dc-btn" data-action="{{adjustAction}}" data-delta="1" aria-label="{{localize "ionrift-respite.encounterDcStepper.raiseDcAriaLabel"}}">+</button>
 </div>
