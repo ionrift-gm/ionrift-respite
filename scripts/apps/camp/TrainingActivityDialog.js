@@ -19,7 +19,7 @@ export class TrainingActivityDialog extends HandlebarsApplicationMixin(Applicati
         id: "ionrift-training-dialog",
         classes: ["ionrift-window", "glass-ui", "ionrift", "ionrift-training-dialog"],
         window: {
-            title: "Training",
+            title: "ionrift-respite.trainingDialog.defaultTitle",
             resizable: false,
             minimizable: false
         },
@@ -64,7 +64,9 @@ export class TrainingActivityDialog extends HandlebarsApplicationMixin(Applicati
     }
 
     get title() {
-        return `Training - ${this._actor?.name ?? "Character"}`;
+        return game.i18n.format("ionrift-respite.trainingDialog.windowTitle", {
+            actor: this._actor?.name ?? game.i18n.localize("ionrift-respite.trainingDialog.defaultActor")
+        });
     }
 
     async _prepareContext() {
@@ -90,7 +92,7 @@ export class TrainingActivityDialog extends HandlebarsApplicationMixin(Applicati
         const awardedXP = Math.max(0, baseXP - reduction);
 
         return {
-            actorName: this._actor?.name ?? "Character",
+            actorName: this._actor?.name ?? game.i18n.localize("ionrift-respite.trainingDialog.defaultActor"),
             abilityLabel: ctx.rollLabel ?? "",
             dc: ctx.adjustedDc ?? 13,
             numRolls,
@@ -99,7 +101,7 @@ export class TrainingActivityDialog extends HandlebarsApplicationMixin(Applicati
             allRolled,
             rolling: this._rolling,
             nextSet: rolled + 1,
-            rollButtonLabel: rolled === 0 ? "Roll set 1" : `Roll set ${rolled + 1}`,
+            rollButtonLabel: rolled === 0 ? game.i18n.localize("ionrift-respite.trainingDialog.rollSetOne") : game.i18n.format("ionrift-respite.trainingDialog.rollSetN", { count: rolled + 1 }),
             successes,
             awardedXP,
             reduction,

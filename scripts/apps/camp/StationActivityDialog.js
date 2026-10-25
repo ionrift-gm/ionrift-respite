@@ -92,7 +92,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         id: "ionrift-station-activity-dialog",
         classes: ["ionrift-window", "glass-ui", "ionrift", "ionrift-station-dialog"],
         window: {
-            title: "Choose Activity",
+            title: "ionrift-respite.stationActivity.dialogTitle",
             resizable: false,
             minimizable: false
         },
@@ -359,27 +359,27 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const stationTabs = [];
         if (hubEligible && this._station.id === "cooking_station") {
             if (mealCard) {
-                stationTabs.push({ id: "meal", label: "Rations" });
+                stationTabs.push({ id: "meal", label: game.i18n.localize("ionrift-respite.stationActivity.tabRations") });
             }
             if (this._stationHasCooking) {
                 stationTabs.push({
                     id: "cooking",
-                    label: "Cooking",
+                    label: game.i18n.localize("ionrift-respite.stationActivity.tabCooking"),
                     hintClass: this._actorHasCookingUtensils ? "" : "station-sub-tab-hint",
                     title: this._actorHasCookingUtensils
                         ? ""
-                        : "Requires cook's utensils"
+                        : game.i18n.localize("ionrift-respite.stationActivity.requiresCooksUtensils")
                 });
             }
         } else if (hubEligible && this._station.id === "workbench") {
             if (hasAnyGeneral && !this._actorChoiceLocked) {
-                stationTabs.push({ id: "activity", label: "Activities" });
+                stationTabs.push({ id: "activity", label: game.i18n.localize("ionrift-respite.stationActivity.tabActivities") });
             }
             if (isWorkbenchExamineUiEnabled()) {
-                stationTabs.push({ id: "examine", label: "Examine" });
+                stationTabs.push({ id: "examine", label: game.i18n.localize("ionrift-respite.stationActivity.tabExamine") });
             }
             if (isWorkbenchIdentifyUiEnabled() && this._canSeeSharedPool) {
-                stationTabs.push({ id: "identify", label: "Identify" });
+                stationTabs.push({ id: "identify", label: game.i18n.localize("ionrift-respite.stationActivity.tabIdentify") });
             }
         } else if (hubEligible && this._station.id === "campfire") {
             const campfireTabs = this._restApp?.getCampfireStationDialogTabs?.() ?? [];
@@ -440,13 +440,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             workbenchFocusExhausted: false,
             identifyAvailable: false,
             detectMagicAvailable: false,
-            identifyAccess: { state: "unavailable", badge: "Spell", tooltip: "Requires the Identify spell.", caption: "Requires the Identify spell." },
-            detectMagicAccess: { state: "unavailable", badge: "Spell", tooltip: "Requires the Detect Magic spell.", caption: "Requires the Detect Magic spell." },
+            identifyAccess: { state: "unavailable", badge: "Spell", tooltip: game.i18n.localize("ionrift-respite.stationActivity.requiresIdentifySpell"), caption: game.i18n.localize("ionrift-respite.stationActivity.requiresIdentifySpell") },
+            detectMagicAccess: { state: "unavailable", badge: "Spell", tooltip: game.i18n.localize("ionrift-respite.stationActivity.requiresDetectMagicSpell"), caption: game.i18n.localize("ionrift-respite.stationActivity.requiresDetectMagicSpell") },
             identifyPill: "Spell",
             detectMagicPill: "Spell",
             arcaneBadge: "Spell",
-            arcaneStatus: "Requires Identify or Detect Magic.",
-            detectMagicDisabledTooltip: "Requires the Detect Magic spell."
+            arcaneStatus: game.i18n.localize("ionrift-respite.stationActivity.requiresIdentifyOrDetectMagic"),
+            detectMagicDisabledTooltip: game.i18n.localize("ionrift-respite.stationActivity.requiresDetectMagicSpell")
         };
         const wbCtx = (isWorkbenchExamineUiEnabled()
             && this._station?.id === "workbench"
@@ -602,26 +602,26 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (this._station.id === "cooking_station") {
             const mealCard = this._restApp?.getStationMealCardForActor?.(this._actor?.id) ?? null;
             if (mealCard) {
-                stationTabs.push({ id: "meal", label: "Rations" });
+                stationTabs.push({ id: "meal", label: game.i18n.localize("ionrift-respite.stationActivity.tabRations") });
             }
             if (this._stationHasCooking) {
                 stationTabs.push({
                     id: "cooking",
-                    label: "Cooking",
+                    label: game.i18n.localize("ionrift-respite.stationActivity.tabCooking"),
                     hintClass: this._actorHasCookingUtensils ? "" : "station-sub-tab-hint",
-                    title: this._actorHasCookingUtensils ? "" : "Requires cook's utensils"
+                    title: this._actorHasCookingUtensils ? "" : game.i18n.localize("ionrift-respite.stationActivity.requiresCooksUtensils")
                 });
             }
         } else if (this._station.id === "workbench") {
             const hasGeneral = this._available.length > 0;
             if (hasGeneral && !this._actorChoiceLocked) {
-                stationTabs.push({ id: "activity", label: "Activities" });
+                stationTabs.push({ id: "activity", label: game.i18n.localize("ionrift-respite.stationActivity.tabActivities") });
             }
             if (isWorkbenchExamineUiEnabled()) {
-                stationTabs.push({ id: "examine", label: "Examine" });
+                stationTabs.push({ id: "examine", label: game.i18n.localize("ionrift-respite.stationActivity.tabExamine") });
             }
             if (isWorkbenchIdentifyUiEnabled() && this._canSeeSharedPool) {
-                stationTabs.push({ id: "identify", label: "Identify" });
+                stationTabs.push({ id: "identify", label: game.i18n.localize("ionrift-respite.stationActivity.tabIdentify") });
             }
         } else if (this._station.id === "campfire") {
             const campfireTabs = this._restApp?.getCampfireStationDialogTabs?.() ?? [];
@@ -718,8 +718,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 showMissing: this._craftShowMissing,
                 hideRiskTiers: !!selectedRecipe?.noSkillCheck,
                 riskTiers: selectedRecipe?.noSkillCheck ? [] : [
-                    { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._craftRisk === "standard" },
-                    { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: this._craftRisk === "ambitious" }
+                    { id: "standard", label: game.i18n.localize("ionrift-respite.stationActivity.riskStandard"), hint: game.i18n.localize("ionrift-respite.stationActivity.riskStandardHint"), selected: this._craftRisk === "standard" },
+                    { id: "ambitious", label: game.i18n.localize("ionrift-respite.stationActivity.riskAmbitious"), hint: game.i18n.localize("ionrift-respite.stationActivity.riskAmbitiousHint"), selected: this._craftRisk === "ambitious" }
                 ],
                 available,
                 missing,
@@ -774,7 +774,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             onCooked: () => { void dialog._onMonstrousFeastCookCompleted(); }
         });
         if (!opened) {
-            ui.notifications.warn("The Monster Cooking book is not available right now.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.stationActivity.monsterCookbookUnavailable"));
         }
     }
 
@@ -865,10 +865,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                     if (equippedArmor) {
                         const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
                         const proceed = await confirmFn({
-                            title: "Sleeping in Armor",
-                            content: `<p><strong>${equippedArmor.name}</strong> is equipped. Sleeping in medium or heavy armor limits recovery to 1/4 Hit Dice and prevents exhaustion reduction (Xanathar's rules).</p><p>Doff the armor before confirming, or proceed and accept the penalty.</p>`,
-                            yesLabel: "Confirm Anyway",
-                            noLabel: "Cancel",
+                            title: game.i18n.localize("ionrift-respite.stationActivity.sleepingInArmorTitle"),
+                            content: game.i18n.format("ionrift-respite.stationActivity.sleepingInArmorContent", { name: equippedArmor.name }),
+                            yesLabel: game.i18n.localize("ionrift-respite.stationActivity.confirmAnyway"),
+                            noLabel: game.i18n.localize("ionrift-respite.stationActivity.cancel"),
                             yesIcon: "fas fa-check",
                             noIcon: "fas fa-times",
                             defaultYes: false,
@@ -1088,7 +1088,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 choices: choicesPayload,
                 craftingResults: { [characterId]: result }
             });
-            ui.notifications.info(`${this._actor?.name}'s activity submitted.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.stationActivity.activitySubmitted", { name: this._actor?.name ?? "" }));
         }
         if (restApp.rendered) restApp.render();
         // activityChoice socket is GM-only; refresh overlays locally so committed players see faded stations.
@@ -1192,9 +1192,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             }));
             if (cur === "unlit" && !hasTinderbox) {
                 await game.ionrift.library.confirm({
-                    title: "Cannot Light Fire",
-                    content: "<p>No one in the party has a tinderbox or flint and steel. You cannot start a fire.</p>",
-                    yesLabel: "Close",
+                    title: game.i18n.localize("ionrift-respite.stationActivity.cannotLightFireTitle"),
+                    content: game.i18n.localize("ionrift-respite.stationActivity.cannotLightFireContent"),
+                    yesLabel: game.i18n.localize("ionrift-respite.stationActivity.close"),
                     noLabel: null,
                     yesIcon: "fas fa-times",
                     defaultYes: true
@@ -1213,9 +1213,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             }, 0);
             if (need > 0 && myFirewood < need) {
                 await game.ionrift.library.confirm({
-                    title: "Not Enough Firewood",
-                    content: `<p>Raising the fire to <strong>${levelLabel}</strong> requires ${need} firewood, but your characters only have ${myFirewood}.</p>`,
-                    yesLabel: "Close",
+                    title: game.i18n.localize("ionrift-respite.stationActivity.notEnoughFirewoodTitle"),
+                    content: game.i18n.format("ionrift-respite.stationActivity.notEnoughFirewoodContent", { levelLabel, need, myFirewood }),
+                    yesLabel: game.i18n.localize("ionrift-respite.stationActivity.close"),
                     noLabel: null,
                     yesIcon: "fas fa-times",
                     defaultYes: true
@@ -1223,10 +1223,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 return;
             }
             const confirmed = await game.ionrift.library.confirm({
-                title: `Raise Fire to ${levelLabel}`,
-                content: `<p>This will consume <strong>${need} firewood</strong> from your inventory. Continue?</p>`,
-                yesLabel: "Light It",
-                noLabel: "Cancel",
+                title: game.i18n.format("ionrift-respite.stationActivity.raiseFireTitle", { levelLabel }),
+                content: game.i18n.format("ionrift-respite.stationActivity.raiseFireContent", { need }),
+                yesLabel: game.i18n.localize("ionrift-respite.stationActivity.lightIt"),
+                noLabel: game.i18n.localize("ionrift-respite.stationActivity.cancel"),
                 yesIcon: "fas fa-fire",
                 noIcon: "fas fa-times",
                 defaultYes: true
@@ -1234,10 +1234,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             if (!confirmed) return;
         } else if (newCost < curCost) {
             const confirmed = await game.ionrift.library.confirm({
-                title: `Lower Fire to ${levelLabel}`,
-                content: "<p>Reducing the fire discards spent firewood. There is no refund. Continue?</p>",
-                yesLabel: "Lower Fire",
-                noLabel: "Cancel",
+                title: game.i18n.format("ionrift-respite.stationActivity.lowerFireTitle", { levelLabel }),
+                content: game.i18n.localize("ionrift-respite.stationActivity.lowerFireContent"),
+                yesLabel: game.i18n.localize("ionrift-respite.stationActivity.lowerFire"),
+                noLabel: game.i18n.localize("ionrift-respite.stationActivity.cancel"),
                 yesIcon: "fas fa-arrow-down",
                 noIcon: "fas fa-times",
                 defaultYes: false
@@ -1251,7 +1251,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             fireLevel: level
         });
         restApp.setStationFirePreviewLevel?.(null);
-        ui.notifications.info("Fire change sent to the GM.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.stationActivity.fireChangeSentToGm"));
     }
 
     static async #onSetColdCamp() {
@@ -1269,7 +1269,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (game.user.isGM) return;
         emitActivityColdCampRequest(game.user.id);
         this._restApp?.setStationFirePreviewLevel?.(null);
-        ui.notifications.info("Cold camp request sent to the GM.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.stationActivity.coldCampRequestSentToGm"));
     }
 
     /**
@@ -1360,7 +1360,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (!cookActor) return;
 
         if (!game.user.isGM && !cookActor.isOwner) {
-            ui.notifications.warn("Only the GM or the cook's player can serve party meals.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.stationActivity.warnOnlyCookCanServe"));
             return;
         }
 
@@ -1369,7 +1369,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const partyActors = getPartyActors().filter(a => a.id !== actorId);
         if (!partyActors.length) {
-            ui.notifications.warn("No other party members to serve.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.stationActivity.warnNoOtherPartyMembers"));
             return;
         }
 
@@ -1379,7 +1379,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         if (servings < partyActors.length) {
             console.warn(`[Respite:Serve] Only ${servings} serving${servings !== 1 ? "s" : ""} available, not enough for the full party (${partyActors.length} members).`);
-            ui.notifications.warn(`Only ${servings} serving${servings !== 1 ? "s" : ""} available. Not enough for the full party.`);
+            ui.notifications.warn(servings === 1 ? game.i18n.localize("ionrift-respite.stationActivity.warnOnlyOneServing") : game.i18n.format("ionrift-respite.stationActivity.warnOnlyServings", { count: servings }));
         }
 
         const itemData = sourceItem.toObject();
@@ -1423,7 +1423,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         }
 
         await ChatMessage.create({
-            content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${cookActor.name}</strong> serves <strong>${sourceItem.name}</strong> to the party.</p></div>`,
+            content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> ${game.i18n.format("ionrift-respite.stationActivity.servesToPartyChat", { cook: cookActor.name, item: sourceItem.name })}</p></div>`,
             speaker: ChatMessage.getSpeaker({ actor: cookActor })
         });
 
@@ -1467,12 +1467,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const caster = this._actor;
         const ownerActor = game.actors.get(itemActorId);
         if (!ownerActor) {
-            ui.notifications.warn("Item owner not found.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.stationActivity.warnItemOwnerNotFound"));
             return;
         }
         const itemBefore = ownerActor.items.get(itemId);
         if (!itemBefore) {
-            ui.notifications.warn("Item not found.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.stationActivity.warnItemNotFound"));
             return;
         }
         const wb = this._restApp?._workbench;
@@ -1482,7 +1482,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const names = (did.items ?? []).map(r => r.name).filter(Boolean);
         const itemAfter = ownerActor.items.get(itemId);
         const trueName = names.length ? names.join(", ") : (itemAfter?.name ?? itemBefore.name);
-        ui.notifications.info(`Identified: ${trueName}`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.stationActivity.identifiedNotification", { name: trueName }));
         // Notify the item owner when a different caster identifies their item
         if (caster && itemActorId !== caster.id) {
             const ownerUsers = game.users.filter(
@@ -1490,7 +1490,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             );
             if (ownerUsers.length > 0) {
                 ChatMessage.create({
-                    content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> <strong>${caster.name}</strong> identified your <strong>${trueName}</strong>.</div>`,
+                    content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> ${game.i18n.format("ionrift-respite.stationActivity.identifiedYourItemChat", { caster: caster.name, item: trueName })}</div>`,
                     speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
                     whisper: ownerUsers.map(u => u.id)
                 });
@@ -1752,7 +1752,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
     async close(options = {}) {
         if (this._craftRollPending) {
-            ui.notifications.info("Wait for the dice to finish.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.stationActivity.waitForDice"));
             return;
         }
         // Safety net: commit crafting result even when closed via the window X button.
@@ -1956,7 +1956,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             },
             {
                 position: { left, top, width: dialogWidth },
-                window:   { title: station?.label ?? "Choose Activity" }
+                window:   { title: station?.label ?? game.i18n.localize("ionrift-respite.stationActivity.dialogTitle") }
             }
         );
         _openDialog = dialog;

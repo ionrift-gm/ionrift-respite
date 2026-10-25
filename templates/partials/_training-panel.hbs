@@ -1,7 +1,7 @@
 <div class="ionrift-training-panel">
     <div class="ionrift-training-panel__header">
         <i class="fas fa-dumbbell" aria-hidden="true"></i>
-        Training ({{trainingPanel.rollLabel}}) · DC {{trainingPanel.dc}}
+        {{localize "ionrift-respite.trainingPanel.header" rollLabel=trainingPanel.rollLabel dc=trainingPanel.dc}}
     </div>
     {{#if trainingPanel.diminishHint}}
     <div class="ionrift-training-panel__diminish">
@@ -29,14 +29,14 @@
             data-character-id="{{trainingPanel.characterId}}"
             {{#if trainingPanel.rolling}}disabled{{/if}}>
         {{#if trainingPanel.rolling}}
-        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Rolling...
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> {{localize "ionrift-respite.trainingPanel.rolling"}}
         {{else}}
-        <i class="fas fa-dice-d20" aria-hidden="true"></i> Roll set {{trainingPanel.nextRollNumber}} of {{trainingPanel.numRolls}}
+        <i class="fas fa-dice-d20" aria-hidden="true"></i> {{localize "ionrift-respite.trainingPanel.rollSet" nextRollNumber=trainingPanel.nextRollNumber numRolls=trainingPanel.numRolls}}
         {{/if}}
     </button>
     {{else if trainingPanel.rolling}}
     <div class="ionrift-training-panel__waiting">
-        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Waiting on dice...
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> {{localize "ionrift-respite.trainingPanel.waitingOnDice"}}
     </div>
     {{/if}}
 </div>

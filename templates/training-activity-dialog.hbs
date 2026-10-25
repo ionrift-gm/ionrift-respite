@@ -32,7 +32,7 @@
 </style>
 
 <div class="training-body">
-    <p class="training-intro">Run three drills. Each set is a separate {{abilityLabel}} check against DC {{dc}}. Every set you land banks XP; the ones you miss still count for a little.</p>
+    <p class="training-intro">{{localize "ionrift-respite.trainingDialog.intro" abilityLabel=(concat abilityLabel "") dc=(concat dc "")}}</p>
 
     <div class="training-bar">
         {{#each segments}}
@@ -42,7 +42,7 @@
 
     <div class="training-rolls">
         {{#each rolls}}
-        <span class="roll {{#if this.passed}}pass{{else}}fail{{/if}}">Set {{this.set}}: rolled <strong>{{this.total}}</strong>{{#unless this.passed}} (miss){{/unless}}</span>
+        <span class="roll {{#if this.passed}}pass{{else}}fail{{/if}}">{{#if this.passed}}{{{localize "ionrift-respite.trainingDialog.rollPass" set=this.set total=this.total}}}{{else}}{{{localize "ionrift-respite.trainingDialog.rollFail" set=this.set total=this.total}}}{{/if}}</span>
         {{/each}}
     </div>
 
@@ -52,16 +52,16 @@
     </button>
     {{else}}
     <div class="training-summary">
-        <p>{{successes}} of {{numRolls}} sets landed.</p>
-        {{#if reduction}}<p class="reduction">Diminishing returns held back {{reduction}} XP this rest.</p>{{/if}}
+        <p>{{localize "ionrift-respite.trainingDialog.setsLanded" successes=successes numRolls=numRolls}}</p>
+        {{#if reduction}}<p class="reduction">{{localize "ionrift-respite.trainingDialog.diminishingReturns" reduction=reduction}}</p>{{/if}}
         {{#if noXp}}
-        <p class="award no-xp">No XP this rest</p>
+        <p class="award no-xp">{{localize "ionrift-respite.trainingDialog.noXp"}}</p>
         {{else}}
-        <p class="award">+{{awardedXP}} XP</p>
+        <p class="award">{{localize "ionrift-respite.trainingDialog.awardedXp" awardedXP=awardedXP}}</p>
         {{/if}}
     </div>
     <button type="button" data-action="confirmTraining">
-        <i class="fas fa-check"></i> Confirm and bank XP
+        <i class="fas fa-check"></i> {{localize "ionrift-respite.trainingDialog.confirmBankXp"}}
     </button>
     {{/unless}}
 </div>

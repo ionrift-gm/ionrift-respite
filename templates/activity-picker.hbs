@@ -8,7 +8,7 @@
         <div class="picker-context">
             <span class="rest-type-badge">{{restType}}</span>
             <span class="terrain-badge"
-                  data-tooltip="Terrain sets the night's event pool and the baseline encounter chance.">
+                  data-tooltip="{{{localize "ionrift-respite.activityPicker.terrainTooltip"}}}">
                 <i class="fas fa-map-marker-alt"></i> {{terrain}}
             </span>
             <span class="comfort-indicator {{comfort}}" data-tooltip="{{comfortHint comfort}}">{{comfortLabel}}</span>
@@ -24,7 +24,7 @@
     {{#if hasSubmitted}}
     <div class="respite-submitted">
         <div class="submitted-icon"><i class="fas fa-check-circle"></i></div>
-        <div class="submitted-text">Choices submitted. Waiting for the GM.</div>
+        <div class="submitted-text">{{localize "ionrift-respite.activityPicker.choicesSubmitted"}}</div>
     </div>
     {{else}}
 
@@ -36,13 +36,13 @@
             <div class="character-info">
                 <span class="character-name">{{name}}</span>
                 <select class="activity-select" data-character-id="{{id}}">
-                    <option value="">Choose activity...</option>
+                    <option value="">{{localize "ionrift-respite.activityPicker.chooseActivity"}}</option>
                     {{#each activities}}
                     <option value="{{id}}" {{#if (eq id ../currentChoice)}}selected{{/if}}
                         {{#if activityDisabled}}disabled title="{{disabledTooltip}}" class="activity-option-disabled"{{/if}}
                         data-crafting="{{isCrafting}}" data-profession="{{craftingProfession}}"
                         data-combat-hint="{{combatModifiers.description}}">
-                        {{name}} {{#if isCrafting}}(recipes){{/if}}
+                        {{name}} {{#if isCrafting}}{{localize "ionrift-respite.activityPicker.recipesParenthesis"}}{{/if}}
                     </option>
                     {{/each}}
                 </select>
@@ -53,7 +53,7 @@
                 {{#if isCrafting}}
                 <button type="button" class="btn-crafting-browse" data-action="openCrafting"
                     data-character-id="{{../id}}" data-profession="{{craftingProfession}}">
-                    <i class="fas fa-utensils"></i> Browse Recipes
+                    <i class="fas fa-utensils"></i> {{localize "ionrift-respite.activityPicker.browseRecipes"}}
                 </button>
                 {{/if}}
                 {{/each}}
@@ -65,7 +65,7 @@
     {{!-- Submit --}}
     <div class="respite-action-bar">
         <button type="button" class="btn-primary" data-action="submitChoice">
-            <i class="fas fa-paper-plane"></i> Submit Choices
+            <i class="fas fa-paper-plane"></i> {{localize "ionrift-respite.activityPicker.submitChoices"}}
         </button>
     </div>
 

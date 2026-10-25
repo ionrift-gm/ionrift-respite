@@ -12,7 +12,7 @@
             <button type="button" class="rest-night-main"
                 data-action="dumpActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}"
                 {{#unless ../../../canInteract}}disabled{{/unless}}
-                data-tooltip="{{hint}} (Click to assign remaining days, max {{maxDays}})">
+                data-tooltip="{{hint}} {{localize "ionrift-respite.downtimeStations.assignRemainingDays" maxDays=(concat maxDays "")}}">
                 {{#if icon}}<i class="{{icon}} rest-night-icon" aria-hidden="true"></i>{{/if}}
                 <span class="rest-night-copy">
                     <strong>{{label}}</strong>
@@ -22,16 +22,16 @@
             {{#if isActive}}
             <div class="activity-stepper">
                 {{#if ../../../canInteract}}
-                <button type="button" class="act-step-btn" data-action="stepActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}" data-delta="-1" {{#unless canStepDown}}disabled{{/unless}} aria-label="Decrease days" data-tooltip="Remove 1 day">
+                <button type="button" class="act-step-btn" data-action="stepActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}" data-delta="-1" {{#unless canStepDown}}disabled{{/unless}} aria-label="{{localize "ionrift-respite.downtimeStations.decreaseDays"}}" data-tooltip="{{localize "ionrift-respite.downtimeStations.removeOneDay"}}">
                     <i class="fas fa-minus"></i>
                 </button>
                 {{/if}}
                 <span class="activity-days">{{assignedDays}}d</span>
                 {{#if ../../../canInteract}}
-                <button type="button" class="act-step-btn" data-action="stepActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}" data-delta="1" {{#unless canStepUp}}disabled{{/unless}} aria-label="Increase days" data-tooltip="Add 1 day">
+                <button type="button" class="act-step-btn" data-action="stepActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}" data-delta="1" {{#unless canStepUp}}disabled{{/unless}} aria-label="{{localize "ionrift-respite.downtimeStations.increaseDays"}}" data-tooltip="{{localize "ionrift-respite.downtimeStations.addOneDay"}}">
                     <i class="fas fa-plus"></i>
                 </button>
-                <button type="button" class="act-clear-btn" data-action="clearActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}" {{#unless canClear}}disabled{{/unless}} aria-label="Clear activity" data-tooltip="Clear days">
+                <button type="button" class="act-clear-btn" data-action="clearActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}" {{#unless canClear}}disabled{{/unless}} aria-label="{{localize "ionrift-respite.downtimeStations.clearActivity"}}" data-tooltip="{{localize "ionrift-respite.downtimeStations.clearDays"}}">
                     <i class="fas fa-times"></i>
                 </button>
                 {{/if}}

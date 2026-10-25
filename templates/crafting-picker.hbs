@@ -21,10 +21,10 @@
             </div>
             {{#if craftingResult.success}}
             <div class="craft-result-item-name">{{craftingResult.output.name}}{{#if craftingResult.output.quantity}} <span class="craft-result-qty">(&times;{{craftingResult.output.quantity}})</span>{{/if}}</div>
-            <div class="craft-result-badge badge-success"><i class="fas fa-check"></i> Crafted Successfully</div>
+            <div class="craft-result-badge badge-success"><i class="fas fa-check"></i> {{localize "ionrift-respite.craftingPicker.craftedSuccessfully"}}</div>
             {{else}}
             <div class="craft-result-item-name">{{craftingResult.recipeName}}</div>
-            <div class="craft-result-badge badge-failure"><i class="fas fa-times"></i> Crafting Failed</div>
+            <div class="craft-result-badge badge-failure"><i class="fas fa-times"></i> {{localize "ionrift-respite.craftingPicker.craftingFailed"}}</div>
             {{/if}}
         </div>
         <div class="craft-result-divider"></div>
@@ -32,7 +32,7 @@
             {{#unless craftingResult.noSkillCheck}}
             <div class="craft-result-detail-row">
                 <i class="fas fa-dice-d20"></i>
-                <span>Rolled <strong>{{craftingResult.roll}}</strong> vs DC <strong>{{craftingResult.dc}}</strong></span>
+                <span>{{{localize "ionrift-respite.craftingPicker.rolledVsDc" roll=craftingResult.roll dc=craftingResult.dc}}}</span>
                 <span class="risk-tag risk-{{craftingResult.riskTier}}">{{craftingResult.riskTier}}</span>
             </div>
             {{/unless}}
@@ -43,12 +43,12 @@
             {{#if craftingResult.ingredientsConsumed}}
             <div class="craft-result-detail-row consumed">
                 <i class="fas fa-fire"></i>
-                <span>Ingredients consumed</span>
+                <span>{{localize "ionrift-respite.craftingPicker.ingredientsConsumed"}}</span>
             </div>
             {{else}}
             <div class="craft-result-detail-row preserved">
                 <i class="fas fa-shield-alt"></i>
-                <span>Ingredients preserved</span>
+                <span>{{localize "ionrift-respite.craftingPicker.ingredientsPreserved"}}</span>
             </div>
             {{/if}}
         </div>
@@ -59,7 +59,7 @@
             <div class="feast-roster-portraits">
                 {{#each craftingResult.partyRoster}}
                 <div class="feast-portrait {{#if alreadyWellFed}}already-fed{{else}}will-eat{{/if}}"
-                     data-tooltip="{{name}}{{#if alreadyWellFed}}: already Well Fed{{else}}: will eat now{{/if}}">
+                     data-tooltip="{{#if alreadyWellFed}}{{localize "ionrift-respite.craftingPicker.alreadyWellFedTooltip" name=name}}{{else}}{{localize "ionrift-respite.craftingPicker.willEatNowTooltip" name=name}}{{/if}}">
                     <img src="{{img}}" alt="{{name}}" class="feast-portrait-img">
                     <span class="feast-portrait-badge">
                         {{#if alreadyWellFed}}
@@ -71,31 +71,31 @@
                 </div>
                 {{/each}}
             </div>
-            <span class="feast-roster-label">Feeds {{craftingResult.partyRoster.length}} party members</span>
+            <span class="feast-roster-label">{{localize "ionrift-respite.craftingPicker.feedsPartyMembers" count=craftingResult.partyRoster.length}}</span>
         </div>
 
         {{#unless craftingResult.partyMealDispositionDone}}
         <div class="feast-footer-actions">
             <button type="button" class="btn-secondary feast-keep-btn" data-action="closePicker">
-                <i class="fas fa-box"></i> Keep in inventory
+                <i class="fas fa-box"></i> {{localize "ionrift-respite.craftingPicker.keepInInventory"}}
             </button>
             <button type="button" class="btn-feast-serve" data-action="serveFeastNow">
-                <i class="fas fa-utensils"></i> Serve Now
+                <i class="fas fa-utensils"></i> {{localize "ionrift-respite.craftingPicker.serveNow"}}
             </button>
         </div>
         {{else}}
         <div class="crafting-done-message">
-            <i class="fas fa-utensils"></i> Serving complete. The shared dish has been served to the party.
+            <i class="fas fa-utensils"></i> {{localize "ionrift-respite.craftingPicker.servingComplete"}}
         </div>
         {{/unless}}
         {{else}}
         <div class="crafting-done-message">
-            <i class="fas fa-moon"></i> Crafting complete for this rest.
+            <i class="fas fa-moon"></i> {{localize "ionrift-respite.craftingPicker.craftingComplete"}}
         </div>
         {{/if}}
         {{else}}
         <div class="crafting-done-message">
-            <i class="fas fa-moon"></i> Crafting complete for this rest.
+            <i class="fas fa-moon"></i> {{localize "ionrift-respite.craftingPicker.craftingComplete"}}
         </div>
         {{/if}}
     </div>
@@ -107,7 +107,7 @@
         {{!-- ── LEFT PANEL: Recipe Catalog ── --}}
         <div class="crafting-list-panel">
             <div class="crafting-list-heading">
-                <i class="fas fa-scroll"></i> Recipes
+                <i class="fas fa-scroll"></i> {{localize "ionrift-respite.craftingPicker.recipes"}}
             </div>
             {{#if available.length}}
             <div class="recipe-list recipe-list-compact">
@@ -127,14 +127,14 @@
                 {{/each}}
             </div>
             {{else}}
-            <div class="crafting-empty">No recipes available with current ingredients.</div>
+            <div class="crafting-empty">{{localize "ionrift-respite.craftingPicker.noRecipesAvailable"}}</div>
             {{/if}}
 
             {{!-- Missing Recipes --}}
             {{#if missing.length}}
             <div class="missing-toggle" data-action="toggleMissing">
                 <i class="fas fa-caret-{{#if showMissing}}down{{else}}right{{/if}}"></i>
-                Missing ({{missing.length}})
+                {{localize "ionrift-respite.craftingPicker.missingCount" count=missing.length}}
             </div>
             {{#if showMissing}}
             <div class="missing-recipes">
@@ -161,8 +161,8 @@
             {{#if mfCookbookAvailable}}
             <div class="mf-cookbook-section">
                 <button type="button" class="btn-mf-cookbook" data-action="openMonsterCookbook"
-                    data-tooltip="Cook from the Monster Cookbook instead. A finished cook uses this rest's cooking activity.">
-                    <i class="fas fa-book-open"></i> Monster Cookbook
+                    data-tooltip="{{{localize "ionrift-respite.craftingPicker.monsterCookbookTooltip"}}}">
+                    <i class="fas fa-book-open"></i> {{localize "ionrift-respite.craftingPicker.monsterCookbook"}}
                 </button>
             </div>
             {{/if}}
@@ -171,7 +171,7 @@
             {{#if ingredients.length}}
             <div class="crafting-pantry-section">
                 <div class="crafting-pantry-heading">
-                    <i class="fas fa-boxes-stacked"></i> Stock &amp; Ingredients
+                    <i class="fas fa-boxes-stacked"></i> {{{localize "ionrift-respite.craftingPicker.stockAndIngredients"}}}
                 </div>
                 <div class="crafting-pantry-grid">
                     {{#each ingredients}}
@@ -198,7 +198,7 @@
                         <div class="recipe-hero-dc-row">
                             <span class="recipe-hero-dc"><i class="fas fa-dice-d20"></i> DC {{selectedRecipe.dcDisplay}}</span>
                             {{#if selectedRecipe.dcBreakdown.hasModifiers}}
-                            <span class="dc-base-hint">{{selectedRecipe.dcBreakdown.base}} base</span>
+                            <span class="dc-base-hint">{{localize "ionrift-respite.craftingPicker.baseDc" base=selectedRecipe.dcBreakdown.base}}</span>
                             {{#each selectedRecipe.dcBreakdown.factors}}
                             <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
                             {{/each}}
@@ -206,7 +206,7 @@
                         </div>
                         {{/unless}}
                         {{#if selectedRecipe.isPartyMeal}}
-                        <span class="recipe-hero-badge badge-party-meal"><i class="fas fa-users"></i> Feeds the Party</span>
+                        <span class="recipe-hero-badge badge-party-meal"><i class="fas fa-users"></i> {{localize "ionrift-respite.craftingPicker.feedsTheParty"}}</span>
                         {{/if}}
                     </div>
                 </div>
@@ -218,7 +218,7 @@
                 {{#if selectedRecipe.ingredientList.length}}
                 <div class="recipe-hero-ingredients">
                     {{#each selectedRecipe.ingredientList}}
-                    <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" data-tooltip="{{required}}x {{name}} (have {{available}})">
+                    <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" data-tooltip="{{localize "ionrift-respite.craftingPicker.ingredientTooltip" required=required name=name available=available}}">
                         <img src="{{img}}" alt="{{name}}" class="hero-ingredient-icon">
                         <span class="hero-ingredient-qty">{{required}}</span>
                         <span class="hero-ingredient-name">{{name}}</span>
@@ -236,7 +236,7 @@
                     </span>
                     <span class="hero-buff-duration">{{selectedRecipe.buffPreview.duration}}</span>
                     {{#if (eq selectedRecipe.buffPreview.target "party")}}
-                    <span class="hero-buff-target"><i class="fas fa-users"></i> Party</span>
+                    <span class="hero-buff-target"><i class="fas fa-users"></i> {{localize "ionrift-respite.craftingPicker.party"}}</span>
                     {{/if}}
                 </div>
                 {{/if}}
@@ -246,12 +246,12 @@
                 <div class="recipe-hero-satiates">
                     {{#each selectedRecipe.satiates}}
                     <span class="hero-satiate-badge satiate-{{this}}">
-                        {{#if (eq this "food")}}<i class="fas fa-drumstick-bite"></i> Food{{/if}}
-                        {{#if (eq this "water")}}<i class="fas fa-tint"></i> Water{{/if}}
+                        {{#if (eq this "food")}}<i class="fas fa-drumstick-bite"></i> {{localize "ionrift-respite.craftingPicker.food"}}{{/if}}
+                        {{#if (eq this "water")}}<i class="fas fa-tint"></i> {{localize "ionrift-respite.craftingPicker.water"}}{{/if}}
                     </span>
                     {{/each}}
                     {{#if selectedRecipe.isWellFed}}
-                    <span class="hero-satiate-badge satiate-wellfed"><i class="fas fa-heart"></i> Well Fed</span>
+                    <span class="hero-satiate-badge satiate-wellfed"><i class="fas fa-heart"></i> {{localize "ionrift-respite.craftingPicker.wellFed"}}</span>
                     {{/if}}
                 </div>
                 {{/if}}
@@ -261,10 +261,10 @@
                 <div class="recipe-hero-placeholder">
                     {{#if noAvailableRecipes}}
                     <i class="fas fa-box-open"></i>
-                    <span>No ingredients for any recipe. Forage or check inventory.</span>
+                    <span>{{localize "ionrift-respite.craftingPicker.noIngredients"}}</span>
                     {{else}}
                     <i class="fas fa-utensils"></i>
-                    <span>Select a recipe to see details</span>
+                    <span>{{localize "ionrift-respite.craftingPicker.selectRecipe"}}</span>
                     {{/if}}
                 </div>
             </div>
@@ -276,13 +276,13 @@
             <div class="crafting-step crafting-step-guaranteed">
                 <div class="guaranteed-badge">
                     <i class="fas fa-check-circle"></i>
-                    <span>Guaranteed Preparation (No skill check or ingredients required)</span>
+                    <span>{{localize "ionrift-respite.craftingPicker.guaranteedPrep"}}</span>
                 </div>
             </div>
             {{/if}}
             {{else}}
             <div class="crafting-step crafting-step-approach">
-                <div class="step-label"><span class="step-num">2</span> Choose Your Approach</div>
+                <div class="step-label"><span class="step-num">2</span> {{localize "ionrift-respite.craftingPicker.chooseApproach"}}</div>
                 <div class="risk-selector">
                     {{#each riskTiers}}
                     <button type="button" class="btn-risk {{#if selected}}selected{{/if}}" data-action="selectRisk"
@@ -304,12 +304,12 @@
     {{!-- Footer --}}
     <div class="crafting-footer">
         <button type="button" class="btn-secondary" data-action="closePicker">
-            {{#if hasCrafted}}Close{{else}}Cancel{{/if}}
+            {{#if hasCrafted}}{{localize "ionrift-respite.craftingPicker.close"}}{{else}}{{localize "ionrift-respite.craftingPicker.cancel"}}{{/if}}
         </button>
         {{#unless hasCrafted}}
         {{#if commitSummary}}
         <button type="button" class="btn-hero-craft btn-hero-craft-promoted" data-action="craftCommit">
-            <i class="fas fa-hammer"></i> <span>{{#if commitSummary.actionLabel}}{{commitSummary.actionLabel}}{{else}}Craft{{/if}}</span>
+            <i class="fas fa-hammer"></i> <span>{{#if commitSummary.actionLabel}}{{commitSummary.actionLabel}}{{else}}{{localize "ionrift-respite.craftingPicker.craft"}}{{/if}}</span>
         </button>
         {{/if}}
         {{/unless}}

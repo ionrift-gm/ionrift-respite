@@ -8,9 +8,9 @@
     {{#if campComfortAtFire}}
     <div class="station-camp-comfort glass-ui" data-station-camp-comfort="1">
         <div class="station-camp-comfort-row">
-            <span class="station-camp-comfort-label">Camp comfort</span>
+            <span class="station-camp-comfort-label">{{localize "ionrift-respite.stationActivity.campComfort"}}</span>
             {{#if (and (eq stationPanelTab "fire") fireTabContext.campFirePreviewLevel)}}
-            <span class="station-camp-comfort-preview-tag" data-tooltip="Preview only. Press Set or Request to commit.">preview: {{fireTabContext.campFirePreviewLabel}}</span>
+            <span class="station-camp-comfort-preview-tag" data-tooltip="{{localize "ionrift-respite.stationActivity.previewOnlyTooltip"}}">{{localize "ionrift-respite.stationActivity.previewLevel" label=(concat fireTabContext.campFirePreviewLabel "")}}</span>
             {{/if}}
             <span class="comfort-tier {{campComfortAtFire.mapComfortTierClass}}{{#if (and (eq stationPanelTab "fire") fireTabContext.campFirePreviewLevel)}} comfort-tier--previewing{{/if}}"
                   data-tooltip="{{comfortHint campComfortAtFire.mapComfortTier}}">{{campComfortAtFire.mapComfortLabel}}</span>
@@ -89,7 +89,7 @@
                 {{else if (eq activityDetail.followUpData.type "actorItem")}}
                 {{#if activityDetail.followUpData.slotInfo}}
                 <div class="attunement-slots">
-                    <i class="fas fa-gem"></i> Attunement slots: {{activityDetail.followUpData.slotInfo}}
+                    <i class="fas fa-gem"></i> {{localize "ionrift-respite.stationActivity.attunementSlots" slots=activityDetail.followUpData.slotInfo}}
                 </div>
                 {{/if}}
                 <select class="followup-select station-followup-input" data-followup-type="actorItem">
@@ -111,33 +111,33 @@
                 <i class="fas fa-shield-alt"></i>
                 <span class="armor-advisory-text">
                     {{#if activityDetail.armorWarning.isDoffed}}
-                    {{activityDetail.armorWarning.name}} removed for rest
+                    {{localize "ionrift-respite.stationActivity.armorRemoved" name=activityDetail.armorWarning.name}}
                     {{else}}
-                    {{activityDetail.armorWarning.name}} ({{activityDetail.armorWarning.type}}), don time: {{activityDetail.armorWarning.donTime}}
+                    {{localize "ionrift-respite.stationActivity.armorDonTime" name=activityDetail.armorWarning.name type=activityDetail.armorWarning.type donTime=activityDetail.armorWarning.donTime}}
                     {{/if}}
                 </span>
                 <button type="button" class="btn-armor-toggle"
                     data-actor-id="{{activityDetail.armorWarning.actorId}}"
                     data-item-id="{{activityDetail.armorWarning.itemId}}"
                     data-is-doffed="{{activityDetail.armorWarning.isDoffed}}"
-                    data-tooltip="{{#if activityDetail.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                    data-tooltip="{{#if activityDetail.armorWarning.isDoffed}}{{localize "ionrift-respite.stationActivity.reEquipArmor"}}{{else}}{{localize "ionrift-respite.stationActivity.removeArmorForRest"}}{{/if}}">
                     {{#if activityDetail.armorWarning.isDoffed}}
-                    <i class="fas fa-shield-alt"></i> Don
+                    <i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.stationActivity.don"}}
                     {{else}}
-                    <i class="fas fa-bed"></i> Doff
+                    <i class="fas fa-bed"></i> {{localize "ionrift-respite.stationActivity.doff"}}
                     {{/if}}
                 </button>
             </div>
             {{/if}}
             {{#if activityDetail.combatModifiers.description}}
             <div class="combat-readiness-hint">
-                <i class="fas fa-shield-alt"></i> <em>If combat occurs:</em> {{activityDetail.combatModifiers.description}}
+                <i class="fas fa-shield-alt"></i> <em>{{localize "ionrift-respite.stationActivity.ifCombatOccurs"}}</em> {{activityDetail.combatModifiers.description}}
             </div>
             {{/if}}
         </div>
         <div class="activity-detail-footer">
             <button type="button" class="btn-detail-confirm" data-action="confirmActivity">
-                <i class="fas fa-check"></i> Confirm Activity
+                <i class="fas fa-check"></i> {{localize "ionrift-respite.stationActivity.confirmActivity"}}
             </button>
         </div>
     </div>
@@ -153,7 +153,7 @@
         {{#each stationTabs}}
         <button type="button" role="tab" class="station-sub-tab {{#if (eq ../stationPanelTab id)}}active{{/if}}{{#if hintClass}} {{hintClass}}{{/if}}"
             data-action="switchStationPanelTab" data-tab="{{id}}"
-            {{#if ../craftRollPending}}disabled aria-disabled="true" data-tooltip="Wait for the roll to finish"
+            {{#if ../craftRollPending}}disabled aria-disabled="true" data-tooltip="{{localize "ionrift-respite.stationActivity.waitForRoll"}}"
             {{else}}{{#if title}}data-tooltip="{{title}}"{{/if}}{{/if}}>
             {{label}}
         </button>
@@ -166,7 +166,7 @@
         {{#if crafting.rollPending}}
         <div class="crafting-roll-blocking-overlay" role="status" aria-live="polite">
             <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
-            <span>Waiting for the roll to finish...</span>
+            <span>{{localize "ionrift-respite.stationActivity.waitingRollFinish"}}</span>
         </div>
         {{/if}}
 
@@ -175,20 +175,20 @@
             <i class="fas fa-shield-alt"></i>
             <span class="armor-advisory-text">
                 {{#if crafting.armorWarning.isDoffed}}
-                {{crafting.armorWarning.name}} removed for rest
+                {{localize "ionrift-respite.stationActivity.armorRemoved" name=crafting.armorWarning.name}}
                 {{else}}
-                {{crafting.armorWarning.name}} ({{crafting.armorWarning.type}}), don time: {{crafting.armorWarning.donTime}}
+                {{localize "ionrift-respite.stationActivity.armorDonTime" name=crafting.armorWarning.name type=crafting.armorWarning.type donTime=crafting.armorWarning.donTime}}
                 {{/if}}
             </span>
             <button type="button" class="btn-armor-toggle"
                 data-actor-id="{{crafting.armorWarning.actorId}}"
                 data-item-id="{{crafting.armorWarning.itemId}}"
                 data-is-doffed="{{crafting.armorWarning.isDoffed}}"
-                data-tooltip="{{#if crafting.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                data-tooltip="{{#if crafting.armorWarning.isDoffed}}{{localize "ionrift-respite.stationActivity.reEquipArmor"}}{{else}}{{localize "ionrift-respite.stationActivity.removeArmorForRest"}}{{/if}}">
                 {{#if crafting.armorWarning.isDoffed}}
-                <i class="fas fa-shield-alt"></i> Don
+                <i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.stationActivity.don"}}
                 {{else}}
-                <i class="fas fa-bed"></i> Doff
+                <i class="fas fa-bed"></i> {{localize "ionrift-respite.stationActivity.doff"}}
                 {{/if}}
             </button>
         </div>
@@ -208,10 +208,10 @@
                 </div>
                 {{#if crafting.craftingResult.success}}
                 <div class="craft-result-item-name">{{crafting.craftingResult.output.name}}{{#if crafting.craftingResult.output.quantity}} <span class="craft-result-qty">(×{{crafting.craftingResult.output.quantity}})</span>{{/if}}</div>
-                <div class="craft-result-badge badge-success"><i class="fas fa-check"></i> Crafted Successfully</div>
+                <div class="craft-result-badge badge-success"><i class="fas fa-check"></i> {{localize "ionrift-respite.craftingPicker.craftedSuccessfully"}}</div>
                 {{else}}
                 <div class="craft-result-item-name">{{crafting.craftingResult.recipeName}}</div>
-                <div class="craft-result-badge badge-failure"><i class="fas fa-times"></i> Crafting Failed</div>
+                <div class="craft-result-badge badge-failure"><i class="fas fa-times"></i> {{localize "ionrift-respite.craftingPicker.craftingFailed"}}</div>
                 {{/if}}
             </div>
 
@@ -223,7 +223,7 @@
                 {{#unless crafting.craftingResult.noSkillCheck}}
                 <div class="craft-result-detail-row">
                     <i class="fas fa-dice-d20"></i>
-                    <span>Rolled <strong>{{crafting.craftingResult.roll}}</strong> vs DC <strong>{{crafting.craftingResult.dc}}</strong></span>
+                    <span>{{{localize "ionrift-respite.craftingPicker.rolledVsDc" roll=crafting.craftingResult.roll dc=crafting.craftingResult.dc}}}</span>
                     <span class="risk-tag risk-{{crafting.craftingResult.riskTier}}">{{crafting.craftingResult.riskTier}}</span>
                 </div>
                 {{/unless}}
@@ -234,12 +234,12 @@
                 {{#if crafting.craftingResult.ingredientsConsumed}}
                 <div class="craft-result-detail-row consumed">
                     <i class="fas fa-fire"></i>
-                    <span>Ingredients consumed</span>
+                    <span>{{localize "ionrift-respite.craftingPicker.ingredientsConsumed"}}</span>
                 </div>
                 {{else}}
                 <div class="craft-result-detail-row preserved">
                     <i class="fas fa-shield-alt"></i>
-                    <span>Ingredients preserved</span>
+                    <span>{{localize "ionrift-respite.craftingPicker.ingredientsPreserved"}}</span>
                 </div>
                 {{/if}}
             </div>
@@ -250,7 +250,7 @@
                 <div class="feast-roster-portraits">
                     {{#each crafting.craftingResult.partyRoster}}
                     <div class="feast-portrait {{#if alreadyWellFed}}already-fed{{else}}will-eat{{/if}}"
-                         data-tooltip="{{name}}{{#if alreadyWellFed}}: already Well Fed, goes to inventory{{else}}: will eat now{{/if}}">
+                         data-tooltip="{{#if alreadyWellFed}}{{localize "ionrift-respite.stationActivity.alreadyWellFedGoesToInventory" name=name}}{{else}}{{localize "ionrift-respite.craftingPicker.willEatNowTooltip" name=name}}{{/if}}">
                         <img src="{{img}}" alt="{{name}}" class="feast-portrait-img">
                         <span class="feast-portrait-badge">
                             {{#if alreadyWellFed}}
@@ -262,7 +262,7 @@
                     </div>
                     {{/each}}
                 </div>
-                <span class="feast-roster-label">Feeds {{crafting.craftingResult.partyRoster.length}} party members</span>
+                <span class="feast-roster-label">{{localize "ionrift-respite.craftingPicker.feedsPartyMembers" count=crafting.craftingResult.partyRoster.length}}</span>
             </div>
             {{/if}}
             {{/if}}
@@ -273,25 +273,25 @@
         {{#unless crafting.craftingResult.partyMealDispositionDone}}
         <div class="feast-footer-actions">
             <button type="button" class="btn-secondary feast-keep-btn" data-action="craftClose">
-                <i class="fas fa-box"></i> Keep in inventory
+                <i class="fas fa-box"></i> {{localize "ionrift-respite.craftingPicker.keepInInventory"}}
             </button>
             <button type="button" class="btn-feast-serve" data-action="feastServeNow">
-                <i class="fas fa-utensils"></i> Serve Now
+                <i class="fas fa-utensils"></i> {{localize "ionrift-respite.craftingPicker.serveNow"}}
             </button>
         </div>
         {{else}}
         <div class="crafting-done-message">
-            <i class="fas fa-utensils"></i> Serving complete. The shared dish is gone from the cook's inventory.
+            <i class="fas fa-utensils"></i> {{{localize "ionrift-respite.stationActivity.servingCompleteGone"}}}
         </div>
         {{/unless}}
         {{else}}
         <div class="crafting-done-message">
-            <i class="fas fa-moon"></i> Crafting complete for this rest.
+            <i class="fas fa-moon"></i> {{localize "ionrift-respite.craftingPicker.craftingComplete"}}
         </div>
         {{/if}}
         {{else}}
         <div class="crafting-done-message">
-            <i class="fas fa-moon"></i> Crafting complete for this rest.
+            <i class="fas fa-moon"></i> {{localize "ionrift-respite.craftingPicker.craftingComplete"}}
         </div>
         {{/if}}
 
@@ -302,7 +302,7 @@
             {{!-- ── LEFT PANEL: Recipe List ── --}}
             <div class="crafting-list-panel">
                 <div class="crafting-list-heading">
-                    <i class="fas fa-scroll"></i> Recipes
+                    <i class="fas fa-scroll"></i> {{localize "ionrift-respite.craftingPicker.recipes"}}
                 </div>
                 {{#if crafting.available.length}}
                 <div class="recipe-list recipe-list-compact">
@@ -322,14 +322,14 @@
                     {{/each}}
                 </div>
                 {{else}}
-                <div class="crafting-empty">No recipes available with current ingredients.</div>
+                <div class="crafting-empty">{{localize "ionrift-respite.craftingPicker.noRecipesAvailable"}}</div>
                 {{/if}}
 
                 {{!-- Missing Recipes (partial matches + fully unmet / locked) --}}
                 {{#if crafting.missing.length}}
                 <div class="missing-toggle" data-action="craftToggleMissing">
                     <i class="fas fa-caret-{{#if crafting.showMissing}}down{{else}}right{{/if}}"></i>
-                    Missing ({{crafting.missing.length}})
+                    {{localize "ionrift-respite.craftingPicker.missingCount" count=crafting.missing.length}}
                 </div>
                 {{#if crafting.showMissing}}
                 <div class="missing-recipes">
@@ -367,7 +367,7 @@
                             <div class="recipe-hero-dc-row">
                                 <span class="recipe-hero-dc"><i class="fas fa-dice-d20"></i> DC {{crafting.selectedRecipe.dcDisplay}}</span>
                                 {{#if crafting.selectedRecipe.dcBreakdown.hasModifiers}}
-                                <span class="dc-base-hint">{{crafting.selectedRecipe.dcBreakdown.base}} base</span>
+                                <span class="dc-base-hint">{{localize "ionrift-respite.craftingPicker.baseDc" base=crafting.selectedRecipe.dcBreakdown.base}}</span>
                                 {{#each crafting.selectedRecipe.dcBreakdown.factors}}
                                 <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
                                 {{/each}}
@@ -375,7 +375,7 @@
                             </div>
                             {{/unless}}
                             {{#if crafting.selectedRecipe.isPartyMeal}}
-                            <span class="recipe-hero-badge badge-party-meal"><i class="fas fa-users"></i> Feeds the Party</span>
+                            <span class="recipe-hero-badge badge-party-meal"><i class="fas fa-users"></i> {{localize "ionrift-respite.craftingPicker.feedsTheParty"}}</span>
                             {{/if}}
                         </div>
                     </div>
@@ -387,7 +387,7 @@
                     {{#if crafting.selectedRecipe.ingredientList.length}}
                     <div class="recipe-hero-ingredients">
                         {{#each crafting.selectedRecipe.ingredientList}}
-                        <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" data-tooltip="{{required}}x {{name}} (have {{available}})">
+                        <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" data-tooltip="{{localize "ionrift-respite.craftingPicker.ingredientTooltip" required=required name=name available=available}}">
                             <img src="{{img}}" alt="{{name}}" class="hero-ingredient-icon">
                             <span class="hero-ingredient-qty">{{required}}</span>
                             <span class="hero-ingredient-name">{{name}}</span>
@@ -406,7 +406,7 @@
                         </span>
                         <span class="hero-buff-duration">{{crafting.selectedRecipe.buffPreview.duration}}</span>
                         {{#if (eq crafting.selectedRecipe.buffPreview.target "party")}}
-                        <span class="hero-buff-target"><i class="fas fa-users"></i> Party</span>
+                        <span class="hero-buff-target"><i class="fas fa-users"></i> {{localize "ionrift-respite.craftingPicker.party"}}</span>
                         {{/if}}
                     </div>
                     {{/if}}
@@ -416,12 +416,12 @@
                     <div class="recipe-hero-satiates">
                         {{#each crafting.selectedRecipe.satiates}}
                         <span class="hero-satiate-badge satiate-{{this}}">
-                            {{#if (eq this "food")}}<i class="fas fa-drumstick-bite"></i> Food{{/if}}
-                            {{#if (eq this "water")}}<i class="fas fa-tint"></i> Water{{/if}}
+                            {{#if (eq this "food")}}<i class="fas fa-drumstick-bite"></i> {{localize "ionrift-respite.craftingPicker.food"}}{{/if}}
+                            {{#if (eq this "water")}}<i class="fas fa-tint"></i> {{localize "ionrift-respite.craftingPicker.water"}}{{/if}}
                         </span>
                         {{/each}}
                         {{#if crafting.selectedRecipe.isWellFed}}
-                        <span class="hero-satiate-badge satiate-wellfed"><i class="fas fa-heart"></i> Well Fed</span>
+                        <span class="hero-satiate-badge satiate-wellfed"><i class="fas fa-heart"></i> {{localize "ionrift-respite.craftingPicker.wellFed"}}</span>
                         {{/if}}
                     </div>
                     {{/if}}
@@ -432,10 +432,10 @@
                     <div class="recipe-hero-placeholder">
                         {{#if crafting.noAvailableRecipes}}
                         <i class="fas fa-box-open"></i>
-                        <span>No ingredients for any recipe. Forage or check inventory.</span>
+                        <span>{{localize "ionrift-respite.craftingPicker.noIngredients"}}</span>
                         {{else}}
                         <i class="fas fa-utensils"></i>
-                        <span>Select a recipe to see details</span>
+                        <span>{{localize "ionrift-respite.craftingPicker.selectRecipe"}}</span>
                         {{/if}}
                     </div>
                 </div>
@@ -444,7 +444,7 @@
                 {{!-- Step 2: Choose Approach --}}
                 {{#unless crafting.hideRiskTiers}}
                 <div class="crafting-step crafting-step-approach">
-                    <div class="step-label"><span class="step-num">2</span> Choose Your Approach</div>
+                    <div class="step-label"><span class="step-num">2</span> {{localize "ionrift-respite.craftingPicker.chooseApproach"}}</div>
                     <div class="risk-selector">
                         {{#each crafting.riskTiers}}
                         <button type="button" class="btn-risk {{#if selected}}selected{{/if}}" data-action="craftSelectRisk"
@@ -468,13 +468,13 @@
         <div class="crafting-footer">
             <button type="button" class="btn-secondary" data-action="craftClose"
                 {{#if crafting.rollPending}}disabled aria-disabled="true"{{/if}}>
-                {{#if crafting.hasCrafted}}Close{{else}}Cancel{{/if}}
+                {{#if crafting.hasCrafted}}{{localize "ionrift-respite.craftingPicker.close"}}{{else}}{{localize "ionrift-respite.craftingPicker.cancel"}}{{/if}}
             </button>
             {{#if mfCookbookAvailable}}
             <button type="button" class="btn-secondary station-mf-cookbook-btn" data-action="openMonsterCookbook"
-                data-tooltip="Cook from the Monster Cookbook instead. A finished cook uses this rest's cooking activity."
+                data-tooltip="{{{localize "ionrift-respite.craftingPicker.monsterCookbookTooltip"}}}"
                 {{#if crafting.rollPending}}disabled aria-disabled="true"{{/if}}>
-                <i class="fas fa-book-open"></i> Monster Cookbook
+                <i class="fas fa-book-open"></i> {{localize "ionrift-respite.craftingPicker.monsterCookbook"}}
             </button>
             {{/if}}
         </div>
@@ -500,7 +500,7 @@
         </div>
         <div class="result-footer">
             <button type="button" class="btn-result-dismiss" data-action="dismissResult">
-                <i class="fas fa-check"></i> Done
+                <i class="fas fa-check"></i> {{localize "ionrift-respite.stationActivity.done"}}
             </button>
         </div>
     </div>
@@ -534,21 +534,21 @@
     {{else}}
     <div class="station-fire-tab station-fire-tab-scroll ionrift-list glass-ui" data-station-fire-tab="1">
         <div class="station-fire-tier-section">
-            <h4 class="station-fire-tier-heading">Fire levels</h4>
-            <div class="camp-fire-tier-strip station-campfire-tier-strip" role="list" aria-label="Fire intensity tiers">
+            <h4 class="station-fire-tier-heading">{{localize "ionrift-respite.stationActivity.fireLevels"}}</h4>
+            <div class="camp-fire-tier-strip station-campfire-tier-strip" role="list" aria-label="{{localize "ionrift-respite.stationActivity.fireIntensityTiers"}}">
                 {{#if fireTabContext.campFireColdCampCard}}
                 <div class="camp-fire-tier-card cold-camp-card{{#if fireTabContext.campFireColdCampCard.active}} active{{/if}}" data-fire-level="cold_camp" role="listitem">
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-moon"></i></span>
-                    <span class="camp-fire-tier-label">Cold Camp</span>
-                    <span class="camp-fire-tier-cost">(No fire)</span>
-                    <span class="camp-fire-tier-body">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot (lower encounter chance).</span> No cooking.</span>
+                    <span class="camp-fire-tier-label">{{localize "ionrift-respite.stationActivity.coldCamp"}}</span>
+                    <span class="camp-fire-tier-cost">{{localize "ionrift-respite.stationActivity.noFireCost"}}</span>
+                    <span class="camp-fire-tier-body">{{{localize "ionrift-respite.stationActivity.coldCampBody"}}}</span>
                     <div class="station-fire-set-row">
                         {{#if fireTabContext.campFireColdCampCard.active}}
-                        <span class="station-fire-current-label">Current</span>
+                        <span class="station-fire-current-label">{{localize "ionrift-respite.stationActivity.currentFire"}}</span>
                         {{else if @root.isGmUser}}
-                        <button type="button" class="station-fire-set-btn" data-action="setColdCamp" {{#if fireTabContext.campFireColdCampCard.setDisabled}}disabled{{/if}}>Set</button>
+                        <button type="button" class="station-fire-set-btn" data-action="setColdCamp" {{#if fireTabContext.campFireColdCampCard.setDisabled}}disabled{{/if}}>{{localize "ionrift-respite.stationActivity.setFire"}}</button>
                         {{else}}
-                        <button type="button" class="station-fire-set-btn" data-action="requestColdCamp" {{#if fireTabContext.campFireColdCampCard.requestDisabled}}disabled{{/if}}>Request</button>
+                        <button type="button" class="station-fire-set-btn" data-action="requestColdCamp" {{#if fireTabContext.campFireColdCampCard.requestDisabled}}disabled{{/if}}>{{localize "ionrift-respite.stationActivity.requestFire"}}</button>
                         {{/if}}
                     </div>
                 </div>
@@ -556,7 +556,7 @@
                 {{#each fireTabContext.campFireTierCards}}
                 <div class="camp-fire-tier-card{{#if active}} active{{/if}}{{#if previewActive}} previewing{{/if}}{{#if actionBlocked}} camp-fire-tier-card--set-disabled{{/if}}"
                      data-fire-level="{{id}}" role="listitem"
-                     {{#unless active}}data-action="previewFireLevel" data-tooltip="Preview this fire size"{{/unless}}>
+                     {{#unless active}}data-action="previewFireLevel" data-tooltip="{{localize "ionrift-respite.stationActivity.previewFireSize"}}"{{/unless}}>
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
                     <span class="camp-fire-tier-label">{{label}}</span>
                     <span class="camp-fire-tier-cost">({{costLabel}})</span>
@@ -564,22 +564,22 @@
                     <span class="camp-fire-tier-comfort{{#if comfortChanged}} comfort-changed{{/if}}">{{comfortHint}}</span>
                     <div class="station-fire-set-row">
                         {{#if active}}
-                        <span class="station-fire-current-label">Current</span>
+                        <span class="station-fire-current-label">{{localize "ionrift-respite.stationActivity.currentFire"}}</span>
                         {{else if @root.isGmUser}}
-                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled{{#if disabledReason}} data-tooltip="{{disabledReason}}"{{else}} data-tooltip="Not enough firewood"{{/if}}{{/if}}>{{#if previewActive}}Set to {{label}}{{else}}Set{{/if}}</button>
+                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled{{#if disabledReason}} data-tooltip="{{disabledReason}}"{{else}} data-tooltip="{{localize "ionrift-respite.stationActivity.notEnoughFirewood"}}"{{/if}}{{/if}}>{{#if previewActive}}{{localize "ionrift-respite.stationActivity.setToLevel" label=label}}{{else}}{{localize "ionrift-respite.stationActivity.setFire"}}{{/if}}</button>
                         {{else}}
-                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled{{#if disabledReason}} data-tooltip="{{disabledReason}}"{{else}} data-tooltip="Not enough party firewood"{{/if}}{{/if}}>{{#if previewActive}}Request {{label}}{{else}}Request{{/if}}</button>
+                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled{{#if disabledReason}} data-tooltip="{{disabledReason}}"{{else}} data-tooltip="{{localize "ionrift-respite.stationActivity.notEnoughPartyFirewood"}}"{{/if}}{{/if}}>{{#if previewActive}}{{localize "ionrift-respite.stationActivity.requestLevel" label=label}}{{else}}{{localize "ionrift-respite.stationActivity.requestFire"}}{{/if}}</button>
                         {{/if}}
                     </div>
                 </div>
                 {{/each}}
             </div>
-            <p class="station-fire-tier-footnote">Larger fires make the camp easier for enemies to spot. Bonfire can move camp comfort up one step. Reducing the fire discards spent firewood with no refund.</p>
+            <p class="station-fire-tier-footnote">{{localize "ionrift-respite.stationActivity.fireTierFootnote"}}</p>
         </div>
         {{#if fireTabContext.campFirewoodPledgeList.length}}
         <div class="station-fire-pledge-block">
-            <div class="station-fire-pledge-title">Wood pile (Make Camp)</div>
-            {{#each fireTabContext.campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
+            <div class="station-fire-pledge-title">{{localize "ionrift-respite.stationActivity.woodPileMakeCamp"}}</div>
+            {{#each fireTabContext.campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{localize "ionrift-respite.stationActivity.woodPledgeRow" actorName=actorName count=count}}</span></div>{{/each}}
         </div>
         {{/if}}
     </div>
@@ -587,7 +587,7 @@
     {{else}}
     {{#if campGearFlavorPanel}}
     <div class="camp-gear-flavor-panel glass-ui" data-camp-gear-row="1" data-station-personal-gear="1">
-        <p class="camp-gear-flavor-lead">Place gear on the map for flavor. These tokens do not change rest rules.</p>
+        <p class="camp-gear-flavor-lead">{{localize "ionrift-respite.stationActivity.campGearFlavorLead"}}</p>
         <div class="comfort-factor-list">
             {{#each campGearFlavorPanel.gearSlots}}
             <div class="comfort-factor">
@@ -595,26 +595,26 @@
                 <span class="comfort-factor-name">{{title}}</span>
                 {{#if isMissing}}
                 <span class="comfort-factor-status">{{flavorLine}}</span>
-                <span class="comfort-factor-badge missing"><i class="fas fa-times"></i> missing</span>
+                <span class="comfort-factor-badge missing"><i class="fas fa-times"></i> {{localize "ionrift-respite.stationActivity.missing"}}</span>
                 {{else}}
                 <span class="comfort-factor-status">{{flavorLine}}</span>
-                <span class="comfort-factor-badge placed"><i class="fas fa-check"></i> owned</span>
+                <span class="comfort-factor-badge placed"><i class="fas fa-check"></i> {{localize "ionrift-respite.stationActivity.owned"}}</span>
                 {{#if canDrag}}
                 <span class="camp-gear-placeable-wrap comfort-factor-drag" draggable="true"
                       data-drag-type="player-gear" data-gear-type="{{gearType}}" data-actor-id="{{actorId}}"
-                      data-tooltip="Place on map for ambiance">
-                    <i class="fas fa-grip-vertical"></i> map
+                      data-tooltip="{{localize "ionrift-respite.stationActivity.placeOnMapForAmbiance"}}">
+                    <i class="fas fa-grip-vertical"></i> {{localize "ionrift-respite.stationActivity.map"}}
                 </span>
                 {{/if}}
                 {{#if isPlaced}}
                 <button type="button" class="comfort-factor-drag" data-action="reclaimCampGear"
                         data-actor-id="{{actorId}}" data-gear-type="{{gearType}}"
-                        data-tooltip="Pick up from map">
-                    <i class="fas fa-check"></i> on map
+                        data-tooltip="{{localize "ionrift-respite.stationActivity.pickUpFromMap"}}">
+                    <i class="fas fa-check"></i> {{localize "ionrift-respite.stationActivity.onMap"}}
                 </button>
                 {{/if}}
                 {{#if isReadonlyOwned}}
-                <span class="comfort-factor-readonly">This character places their own gear</span>
+                <span class="comfort-factor-readonly">{{localize "ionrift-respite.stationActivity.placesOwnGear"}}</span>
                 {{/if}}
                 {{/if}}
             </div>
@@ -624,7 +624,7 @@
     {{else if campPersonalCard}}
     <div class="comfort-hero tier-{{campPersonalCard.personalComfort}} glass-ui" data-camp-gear-row="1" data-station-personal-gear="1">
         <div class="comfort-hero-row">
-            <span class="comfort-hero-label">Camp comfort</span>
+            <span class="comfort-hero-label">{{localize "ionrift-respite.stationActivity.campComfort"}}</span>
             <span class="comfort-hero-tier-wrap">
                 <span class="comfort-tier comfort-{{campPersonalCard.personalComfort}}"
                       data-tooltip="{{comfortHint campPersonalCard.personalComfort}}"
@@ -633,14 +633,14 @@
                     {{campPersonalCard.personalComfortLabel}}
                 </span>
                 {{#if campPersonalCard.personalMatchesCamp}}
-                <span class="station-personal-comfort-same comfort-hero-match-hint" data-tooltip="Personal rest tier matches the camp baseline above.">(same as camp)</span>
+                <span class="station-personal-comfort-same comfort-hero-match-hint" data-tooltip="{{localize "ionrift-respite.stationActivity.personalComfortSameTooltip"}}">{{localize "ionrift-respite.stationActivity.sameAsCamp"}}</span>
                 {{/if}}
             </span>
         </div>
         {{#if campComfortLine}}
         <p class="comfort-hero-reason">{{campComfortLine}}</p>
         {{/if}}
-        <div class="comfort-factors-divider"><span>Contributing Factors</span></div>
+        <div class="comfort-factors-divider"><span>{{localize "ionrift-respite.stationActivity.contributingFactors"}}</span></div>
         <div class="comfort-factor-list">
             {{#each campPersonalCard.gearSlots}}
             <div class="comfort-factor">
@@ -648,26 +648,26 @@
                 <span class="comfort-factor-name">{{title}}</span>
                 {{#if isMissing}}
                 <span class="comfort-factor-status">{{missingLine}}</span>
-                <span class="comfort-factor-badge missing"><i class="fas fa-times"></i> missing</span>
+                <span class="comfort-factor-badge missing"><i class="fas fa-times"></i> {{localize "ionrift-respite.stationActivity.missing"}}</span>
                 {{else}}
                 <span class="comfort-factor-status">{{benefitLine}}</span>
-                <span class="comfort-factor-badge placed"><i class="fas fa-check"></i> owned</span>
+                <span class="comfort-factor-badge placed"><i class="fas fa-check"></i> {{localize "ionrift-respite.stationActivity.owned"}}</span>
                 {{#if canDrag}}
                 <span class="camp-gear-placeable-wrap comfort-factor-drag" draggable="true"
                       data-drag-type="player-gear" data-gear-type="{{gearType}}" data-actor-id="{{actorId}}"
-                      data-tooltip="Place on map for ambiance">
-                    <i class="fas fa-grip-vertical"></i> map
+                      data-tooltip="{{localize "ionrift-respite.stationActivity.placeOnMapForAmbiance"}}">
+                    <i class="fas fa-grip-vertical"></i> {{localize "ionrift-respite.stationActivity.map"}}
                 </span>
                 {{/if}}
                 {{#if isPlaced}}
                 <button type="button" class="comfort-factor-drag" data-action="reclaimCampGear"
                         data-actor-id="{{actorId}}" data-gear-type="{{gearType}}"
-                        data-tooltip="Pick up from map">
-                    <i class="fas fa-check"></i> on map
+                        data-tooltip="{{localize "ionrift-respite.stationActivity.pickUpFromMap"}}">
+                    <i class="fas fa-check"></i> {{localize "ionrift-respite.stationActivity.onMap"}}
                 </button>
                 {{/if}}
                 {{#if isReadonlyOwned}}
-                <span class="comfort-factor-readonly">This character places their own gear</span>
+                <span class="comfort-factor-readonly">{{localize "ionrift-respite.stationActivity.placesOwnGear"}}</span>
                 {{/if}}
                 {{/if}}
             </div>
@@ -675,7 +675,7 @@
             {{#if campPersonalCard.fireFactorRow}}
             <div class="comfort-factor">
                 <span class="comfort-factor-icon"><i class="fas fa-fire" aria-hidden="true"></i></span>
-                <span class="comfort-factor-name">Fire Level</span>
+                <span class="comfort-factor-name">{{localize "ionrift-respite.stationActivity.fireLevel"}}</span>
                 <span class="comfort-factor-status">{{campPersonalCard.fireFactorRow.statusLine}}</span>
                 <span class="comfort-factor-badge active">
                     <i class="fas fa-fire"></i> {{campPersonalCard.fireFactorRow.tierLabel}}
@@ -698,7 +698,7 @@
             {{/if}}
         </div>
         {{#if campPersonalCard.hasMitigationHints}}
-        <div class="comfort-hero-hints" aria-label="Ways to improve this rest">
+        <div class="comfort-hero-hints" aria-label="{{localize "ionrift-respite.stationActivity.waysToImprove"}}">
             {{#each campPersonalCard.mitigationHints}}
             <p class="comfort-hero-hint-line">{{this}}</p>
             {{/each}}
@@ -714,7 +714,7 @@
     {{#if actorChoiceLocked}}
     <div class="station-choice-locked">
         <i class="fas fa-check-circle" aria-hidden="true"></i>
-        <span>{{actorName}} is already set to <strong>{{actorChoiceLocked}}</strong> this rest.</span>
+        <span>{{{localize "ionrift-respite.stationActivity.alreadySetTo" actorName=actorName choice=actorChoiceLocked}}}</span>
     </div>
     {{/if}}
     {{#if hasAny}}
@@ -756,7 +756,7 @@
     {{else}}
     {{#unless hideNoActivitiesMessage}}
     {{#unless actorChoiceLocked}}
-    <p class="station-no-activities">No activities available here for {{actorName}}.</p>
+    <p class="station-no-activities">{{localize "ionrift-respite.stationActivity.noActivitiesForActor" actorName=actorName}}</p>
     {{/unless}}
     {{/unless}}
     {{/if}}
@@ -768,7 +768,7 @@
     {{#if actorChoiceLocked}}
     <div class="station-choice-locked">
         <i class="fas fa-check-circle" aria-hidden="true"></i>
-        <span>{{actorName}} is already set to <strong>{{actorChoiceLocked}}</strong> this rest.</span>
+        <span>{{{localize "ionrift-respite.stationActivity.alreadySetTo" actorName=actorName choice=actorChoiceLocked}}}</span>
     </div>
     {{/if}}
     {{#if hasAny}}
@@ -810,7 +810,7 @@
     {{else}}
     {{#unless hideNoActivitiesMessage}}
     {{#unless actorChoiceLocked}}
-    <p class="station-no-activities">No activities available here for {{actorName}}.</p>
+    <p class="station-no-activities">{{localize "ionrift-respite.stationActivity.noActivitiesForActor" actorName=actorName}}</p>
     {{/unless}}
     {{/unless}}
     {{/if}}
@@ -823,22 +823,22 @@
     <div class="station-meal-embed">
         {{#if mealCard}}
         {{#if mealCardNeedsEssence}}
-        <p class="station-essence-hint"><i class="fas fa-bolt" aria-hidden="true"></i> Essence slots: use the main rest window if this character needs them.</p>
+        <p class="station-essence-hint"><i class="fas fa-bolt" aria-hidden="true"></i> {{localize "ionrift-respite.stationActivity.essenceHint"}}</p>
         {{/if}}
         {{#with mealCard}}
         {{#if (or allDaysConsumed playerSubmitted)}}
         <div class="station-meal-rations-done-lead" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
-            <p>Food and water for this rest are already submitted. Status below is read-only.</p>
+            <p>{{localize "ionrift-respite.stationActivity.rationsSubmittedReadOnly"}}</p>
         </div>
         <div class="meal-summary-status">
             <span class="meal-summary-stat {{#if foodSufficient}}stat-ok{{else}}stat-warn{{/if}}">
                 <i class="fas {{#if foodSufficient}}fa-check-circle{{else}}fa-drumstick-bite{{/if}}"></i>
-                {{#if foodSufficient}}Fed{{else}}Hungry{{/if}}
+                {{#if foodSufficient}}{{localize "ionrift-respite.stationActivity.fed"}}{{else}}{{localize "ionrift-respite.stationActivity.hungry"}}{{/if}}
             </span>
             <span class="meal-summary-stat {{#if waterSufficient}}stat-ok{{else}}stat-warn{{/if}}">
                 <i class="fas {{#if waterSufficient}}fa-check-circle{{else}}fa-tint-slash{{/if}}"></i>
-                {{#if waterSufficient}}Hydrated{{else}}Thirsty{{/if}}
+                {{#if waterSufficient}}{{localize "ionrift-respite.stationActivity.hydrated"}}{{else}}{{localize "ionrift-respite.stationActivity.thirsty"}}{{/if}}
             </span>
         </div>
         {{else}}
@@ -852,8 +852,8 @@
         <div class="meal-drop-columns">
             <div class="meal-panel food-panel {{#unless hasFood}}panel-empty{{/unless}}">
                 <div class="meal-panel-heading meal-panel-heading--food">
-                    <span class="meal-panel-heading-title"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Food</span>
-                    <span class="meal-panel-req-note">{{foodRequired}} ration{{#unless (eq foodRequired 1)}}s{{/unless}} needed</span>
+                    <span class="meal-panel-heading-title"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> {{localize "ionrift-respite.stationActivity.food"}}</span>
+                    {{#if (eq foodRequired 1)}}<span class="meal-panel-req-note">{{localize "ionrift-respite.stationActivity.foodRequiredOne" count=foodRequired}}</span>{{else}}<span class="meal-panel-req-note">{{localize "ionrift-respite.stationActivity.foodRequiredOther" count=foodRequired}}</span>{{/if}}
                 </div>
                 {{#if hasFood}}
                 {{#each foodSlots}}
@@ -881,7 +881,7 @@
                         {{/if}}
                         {{/each}}
                         {{else}}
-                        <span class="meal-drop-hint-text">drag from below</span>
+                        <span class="meal-drop-hint-text">{{localize "ionrift-respite.stationActivity.dragFromBelow"}}</span>
                         {{/if}}
                     </div>
                 </div>
@@ -906,14 +906,14 @@
                 {{else}}
                 <div class="panel-no-inventory">
                     <i class="fas fa-drumstick-bite"></i>
-                    <span>No rations in inventory</span>
+                    <span>{{localize "ionrift-respite.stationActivity.noRationsInInventory"}}</span>
                 </div>
                 {{/if}}
             </div>
             <div class="meal-panel water-panel {{#unless hasWater}}panel-empty{{/unless}}">
                 <div class="meal-panel-heading meal-panel-heading--water">
-                    <span class="meal-panel-heading-title"><i class="fas fa-tint" aria-hidden="true"></i> Water</span>
-                    <span class="meal-panel-req-note">{{waterRequired}} pints needed</span>
+                    <span class="meal-panel-heading-title"><i class="fas fa-tint" aria-hidden="true"></i> {{localize "ionrift-respite.stationActivity.water"}}</span>
+                    <span class="meal-panel-req-note">{{localize "ionrift-respite.stationActivity.pintsNeeded" count=waterRequired}}</span>
                 </div>
                 {{#if hasWater}}
                 <div class="water-pool-target meal-drop-zone water-drop-zone{{#if waterSufficient}} water-pool-target--complete{{/if}}"
@@ -925,7 +925,7 @@
                         <i class="fas fa-tint drop-zone-goblet"></i>
                         {{/if}}
                     </div>
-                    <span class="meal-drop-hint-text">{{#if waterSufficient}}Water needs met{{else}}drop water here{{/if}}</span>
+                    <span class="meal-drop-hint-text">{{#if waterSufficient}}{{localize "ionrift-respite.stationActivity.waterNeedsMet"}}{{else}}{{localize "ionrift-respite.stationActivity.dropWaterHere"}}{{/if}}</span>
                 </div>
                 <div class="water-pool-bar" data-target="{{waterRequired}}" data-filled="{{waterFilledCount}}">
                     {{#each waterPoolSegments}}
@@ -934,17 +934,17 @@
                 </div>
                 <div class="water-pool-status">
                     {{#if waterSufficient}}
-                    <span class="pool-status-ok"><i class="fas fa-check"></i> {{waterFilledCount}}/{{waterRequired}} pints. Hydrated</span>
+                    <span class="pool-status-ok"><i class="fas fa-check"></i> {{localize "ionrift-respite.stationActivity.pintsHydrated" count=waterFilledCount total=waterRequired}}</span>
                     {{else if waterFilledCount}}
-                    <span class="pool-status-partial">{{waterFilledCount}} of {{waterRequired}} pints</span>
+                    <span class="pool-status-partial">{{localize "ionrift-respite.stationActivity.pintsOfPints" count=waterFilledCount total=waterRequired}}</span>
                     {{else}}
-                    <span class="pool-status-empty">0 of {{waterRequired}} pints</span>
+                    <span class="pool-status-empty">{{localize "ionrift-respite.stationActivity.zeroOfPints" total=waterRequired}}</span>
                     {{/if}}
                 </div>
                 {{#if waterPoolSources.length}}
                 <div class="water-pool-sources">
                     {{#each waterPoolSources}}
-                    <span class="pool-source-pill{{#if isMealCredit}} pool-source-pill--meal{{/if}}">{{#if isMealCredit}}<i class="fas fa-utensils" aria-hidden="true"></i> {{/if}}{{name}}{{#unless isMealCredit}}: {{pintsUsed}} pints used{{/unless}}</span>
+                    <span class="pool-source-pill{{#if isMealCredit}} pool-source-pill--meal{{/if}}">{{#if isMealCredit}}<i class="fas fa-utensils" aria-hidden="true"></i> {{/if}}{{name}}{{#unless isMealCredit}}: {{localize "ionrift-respite.stationActivity.pintsUsed" count=pintsUsed}}{{/unless}}</span>
                     {{/each}}
                 </div>
                 {{/if}}
@@ -958,7 +958,7 @@
                              data-available="{{available}}"
                              data-total-pints="{{totalPints}}"
                              data-character-id="{{../characterId}}"
-                             data-tooltip="{{label}}: ×{{available}} carried, {{totalPints}}p pourable">
+                             data-tooltip="{{localize "ionrift-respite.stationActivity.waterCarriedTooltip" label=label available=available totalPints=totalPints}}">
                             <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
                             <span class="meal-inv-card-qty meal-inv-card-qty--water">
                                 <span class="meal-inv-qty-stack">×{{available}}</span>
@@ -972,19 +972,19 @@
                 {{else}}
                 <div class="panel-no-inventory">
                     <i class="fas fa-tint"></i>
-                    <span>No water in inventory</span>
+                    <span>{{localize "ionrift-respite.stationActivity.noWaterInInventory"}}</span>
                 </div>
                 {{/if}}
             </div>
         </div>
         </div>
         <div class="station-meal-submit-row">
-            <button type="button" class="station-meal-submit-btn" data-action="submitStationRations">Submit rations</button>
+            <button type="button" class="station-meal-submit-btn" data-action="submitStationRations">{{localize "ionrift-respite.stationActivity.submitRations"}}</button>
         </div>
         {{/if}}
         {{/with}}
         {{else}}
-        <p class="station-no-activities">Rations data is not ready yet. Reopen from the station or use the main rest panel.</p>
+        <p class="station-no-activities">{{localize "ionrift-respite.stationActivity.rationsDataNotReady"}}</p>
         {{/if}}
     </div>
     {{/if}}
@@ -996,13 +996,13 @@
     {{#if actorChoiceLocked}}
     <div class="station-cooking-gate station-cooking-gate--activity-locked">
         <i class="fas fa-check-circle station-cooking-gate-icon" aria-hidden="true"></i>
-        <p class="station-cooking-gate-text">{{actorName}} already chose <strong>{{actorChoiceLocked}}</strong> for this rest.</p>
+        <p class="station-cooking-gate-text">{{{localize "ionrift-respite.stationActivity.alreadyChoseForRest" actorName=actorName choice=actorChoiceLocked}}}</p>
     </div>
     {{/if}}
     {{#unless actorHasCookingUtensils}}
     <div class="station-cooking-gate">
         <i class="fas fa-utensils station-cooking-gate-icon"></i>
-        <p class="station-cooking-gate-text">{{actorName}} doesn't have the right tools. Add cook's utensils, alchemist's supplies, brewer's supplies, or an herbalism kit to unlock this station.</p>
+        <p class="station-cooking-gate-text">{{{localize "ionrift-respite.stationActivity.cookingNoTools" actorName=actorName}}}</p>
     </div>
     {{else}}
     {{#if hasCookingAny}}
@@ -1041,7 +1041,7 @@
         {{/each}}
     </ul>
     {{else}}
-    <p class="station-no-activities">No cook or brew activities available for {{actorName}}.</p>
+    <p class="station-no-activities">{{localize "ionrift-respite.stationActivity.noCookingAvailable" actorName=actorName}}</p>
     {{/if}}
     {{/unless}}
     {{/if}}
@@ -1064,7 +1064,7 @@
     <div class="station-identify-embed wb-ident-party-list-tab">
         {{#if unidentifiedItemsByOwner.length}}
         <div class="wb-ident-pool-heading">
-            <i class="fas fa-hat-wizard"></i> Cast Identify: select an item
+            <i class="fas fa-hat-wizard"></i> {{localize "ionrift-respite.stationActivity.castIdentifySelect"}}
         </div>
         {{#each unidentifiedItemsByOwner}}
         <div class="wb-ident-owner-group">
@@ -1073,7 +1073,7 @@
             <button type="button" class="wb-ident-pool-row wb-ident-pool-btn"
                  data-action="identifyPoolItem"
                  data-item-actor-id="{{actorId}}" data-item-id="{{itemId}}"
-                 data-tooltip="Identify {{name}}: owned by {{actorName}}">
+                 data-tooltip="{{localize "ionrift-respite.stationActivity.identifyItemTooltip" name=name actorName=actorName}}">
                 <img src="{{img}}" alt="" class="wb-ident-pool-icon"
                      onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
                 <span class="wb-ident-pool-name">{{name}}</span>
@@ -1085,7 +1085,7 @@
         {{/each}}
         {{else}}
         <div class="wb-ident-pool-empty">
-            <i class="fas fa-check-circle"></i> No unidentified items in the party.
+            <i class="fas fa-check-circle"></i> {{localize "ionrift-respite.stationActivity.noUnidentifiedItems"}}
         </div>
         {{/if}}
     </div>
