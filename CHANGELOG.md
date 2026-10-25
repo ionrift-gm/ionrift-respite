@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.3.1] - 2026-10-25
+
+### Added
+- Camp disaster events show consequence notes and toll tags as each check resolves.
+
+### Fixed
+- Fletched arrows and crossbow bolts now stack onto the character's existing mundane ammunition instead of creating a separate item.
+- Removed the placeholder Craft entry from the downtime activity list.
+- Improvised night checks display the terrain name instead of its internal key.
+- Removed a duplicate pack note from the Event Browser.
+
 ## [4.3.0] - 2026-10-18
 
 ### Changed
