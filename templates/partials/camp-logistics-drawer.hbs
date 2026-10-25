@@ -2,65 +2,65 @@
 {{#if isGM}}
 <div class="camp-logistics-drawer {{#if logisticsDrawerOpen}}open{{/if}}">
     <div class="camp-logistics-drawer-inner">
-        <span class="drawer-heading"><i class="fas fa-sliders"></i> Camp Logistics:</span>
+        <span class="drawer-heading"><i class="fas fa-sliders"></i> {{localize "ionrift-respite.campLogistics.heading"}}</span>
 
         <div class="logistics-control-group">
-            <span class="control-label"><i class="fas fa-leaf"></i> Forage DC:</span>
+            <span class="control-label"><i class="fas fa-leaf"></i> {{localize "ionrift-respite.campLogistics.forageDc"}}</span>
             <div class="stepper-cluster">
-                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="forage" data-delta="-1" aria-label="Decrease Forage DC">−</button>
+                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="forage" data-delta="-1" aria-label="{{localize "ionrift-respite.campLogistics.decreaseForageDc"}}">−</button>
                 <span class="stepper-val">{{forageDC}}</span>
-                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="forage" data-delta="1" aria-label="Increase Forage DC">+</button>
+                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="forage" data-delta="1" aria-label="{{localize "ionrift-respite.campLogistics.increaseForageDc"}}">+</button>
             </div>
         </div>
 
         <div class="logistics-control-group">
-            <span class="control-label"><i class="fas fa-crosshairs"></i> Hunt DC:</span>
+            <span class="control-label"><i class="fas fa-crosshairs"></i> {{localize "ionrift-respite.campLogistics.huntDc"}}</span>
             <div class="stepper-cluster">
-                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="hunt" data-delta="-1" aria-label="Decrease Hunt DC">−</button>
+                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="hunt" data-delta="-1" aria-label="{{localize "ionrift-respite.campLogistics.decreaseHuntDc"}}">−</button>
                 <span class="stepper-val">{{huntDC}}</span>
-                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="hunt" data-delta="1" aria-label="Increase Hunt DC">+</button>
+                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="hunt" data-delta="1" aria-label="{{localize "ionrift-respite.campLogistics.increaseHuntDc"}}">+</button>
             </div>
         </div>
 
         <div class="logistics-control-group">
-            <span class="control-label"><i class="fas fa-bread-slice"></i> Food Needed:</span>
+            <span class="control-label"><i class="fas fa-bread-slice"></i> {{localize "ionrift-respite.campLogistics.foodNeeded"}}</span>
             <div class="stepper-cluster">
-                <button type="button" class="stepper-btn" data-action="stepFoodDays" data-delta="-1" aria-label="Decrease food days needed">−</button>
-                <span class="stepper-val">{{foodDaysNeeded}} Days</span>
-                <button type="button" class="stepper-btn" data-action="stepFoodDays" data-delta="1" aria-label="Increase food days needed">+</button>
+                <button type="button" class="stepper-btn" data-action="stepFoodDays" data-delta="-1" aria-label="{{localize "ionrift-respite.campLogistics.decreaseFoodDays"}}">−</button>
+                <span class="stepper-val">{{foodDaysNeeded}} {{localize "ionrift-respite.campLogistics.days"}}</span>
+                <button type="button" class="stepper-btn" data-action="stepFoodDays" data-delta="1" aria-label="{{localize "ionrift-respite.campLogistics.increaseFoodDays"}}">+</button>
             </div>
         </div>
 
         <div class="logistics-control-group">
-            <span class="control-label"><i class="fas fa-fire"></i> Firewood:</span>
-            <button type="button" class="btn-logistics-action btn-gift-wood" data-action="giftWood" data-qty="2" data-tooltip="Grant 2 camp firewood to the party inventory">
-                <i class="fas fa-tree"></i> +2 Wood
+            <span class="control-label"><i class="fas fa-fire"></i> {{localize "ionrift-respite.campLogistics.firewood"}}</span>
+            <button type="button" class="btn-logistics-action btn-gift-wood" data-action="giftWood" data-qty="2" data-tooltip="{{localize "ionrift-respite.campLogistics.giftWoodTooltip"}}">
+                <i class="fas fa-tree"></i> {{localize "ionrift-respite.campLogistics.giftWood"}}
             </button>
         </div>
 
         <div class="logistics-control-group logistics-factors-group">
-            <span class="control-label"><i class="fas fa-shield-alt"></i> Gear Factors:</span>
+            <span class="control-label"><i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.campLogistics.gearFactors"}}</span>
             <div class="logistics-factors-cluster">
                 <button type="button"
                         class="logistics-factor-btn {{#if enforceTent}}enforced{{else}}waived{{/if}}"
                         data-action="toggleGearFactor"
                         data-factor="tent"
-                        data-tooltip="{{#if enforceTent}}Tent factor required: physical tents needed for weather shelter and night defense bonus. Click to waive.{{else}}Tent factor waived: characters receive full shelter benefits without physical items. Click to require.{{/if}}">
-                    <i class="fas fa-campground"></i> Tent: <span class="factor-state">{{#if enforceTent}}Required{{else}}Waived{{/if}}</span>
+                        data-tooltip="{{#if enforceTent}}{{localize "ionrift-respite.campLogistics.tentRequiredTooltip"}}{{else}}{{localize "ionrift-respite.campLogistics.tentWaivedTooltip"}}{{/if}}">
+                    <i class="fas fa-campground"></i> {{localize "ionrift-respite.campLogistics.tent"}} <span class="factor-state">{{#if enforceTent}}{{localize "ionrift-respite.campLogistics.required"}}{{else}}{{localize "ionrift-respite.campLogistics.waived"}}{{/if}}</span>
                 </button>
                 <button type="button"
                         class="logistics-factor-btn {{#if enforceBedroll}}enforced{{else}}waived{{/if}}"
                         data-action="toggleGearFactor"
                         data-factor="bedroll"
-                        data-tooltip="{{#if enforceBedroll}}Bedroll factor required: physical bedrolls needed for +1 comfort tier and save advantages. Click to waive.{{else}}Bedroll factor waived: characters receive +1 comfort boost without physical items. Click to require.{{/if}}">
-                    <i class="fas fa-bed"></i> Bedroll: <span class="factor-state">{{#if enforceBedroll}}Required{{else}}Waived{{/if}}</span>
+                        data-tooltip="{{#if enforceBedroll}}{{localize "ionrift-respite.campLogistics.bedrollRequiredTooltip"}}{{else}}{{localize "ionrift-respite.campLogistics.bedrollWaivedTooltip"}}{{/if}}">
+                    <i class="fas fa-bed"></i> {{localize "ionrift-respite.campLogistics.bedroll"}} <span class="factor-state">{{#if enforceBedroll}}{{localize "ionrift-respite.campLogistics.required"}}{{else}}{{localize "ionrift-respite.campLogistics.waived"}}{{/if}}</span>
                 </button>
                 <button type="button"
                         class="logistics-factor-btn {{#if enforceMessKit}}enforced{{else}}waived{{/if}}"
                         data-action="toggleGearFactor"
                         data-factor="messKit"
-                        data-tooltip="{{#if enforceMessKit}}Mess kit factor required: physical mess kit needed for sustenance preparation advantage. Click to waive.{{else}}Mess kit factor waived: characters receive preparation benefits without physical items. Click to require.{{/if}}">
-                    <i class="fas fa-utensils"></i> Mess Kit: <span class="factor-state">{{#if enforceMessKit}}Required{{else}}Waived{{/if}}</span>
+                        data-tooltip="{{#if enforceMessKit}}{{localize "ionrift-respite.campLogistics.messKitRequiredTooltip"}}{{else}}{{localize "ionrift-respite.campLogistics.messKitWaivedTooltip"}}{{/if}}">
+                    <i class="fas fa-utensils"></i> {{localize "ionrift-respite.campLogistics.messKit"}} <span class="factor-state">{{#if enforceMessKit}}{{localize "ionrift-respite.campLogistics.required"}}{{else}}{{localize "ionrift-respite.campLogistics.waived"}}{{/if}}</span>
                 </button>
             </div>
         </div>

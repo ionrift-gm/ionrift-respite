@@ -14,34 +14,34 @@
             <div class="bivouac-stance-toggles">
                 <button type="button" class="bivouac-stance-btn {{#if isWarm}}active{{/if}}"
                     data-action="toggleStance" data-stance="warm"
-                    data-tooltip="Warm Camp: Campfire lit, {{fireWarmthLabel}} healing per Hit Die. Consumes 1 fuel.">
-                    <i class="fas fa-fire"></i> Warm Camp
+                    data-tooltip="{{localize "ionrift-respite.bivouac.hud.warmTooltip" healing=fireWarmthLabel}}">
+                    <i class="fas fa-fire"></i> {{localize "ionrift-respite.bivouac.stance.warm"}}
                 </button>
                 <button type="button" class="bivouac-stance-btn {{#if isColdDark}}active{{/if}}"
                     data-action="toggleStance" data-stance="cold_dark"
-                    data-tooltip="Cold & Dark: No fire, -3 Encounter DC (stealth). Consumes 0 fuel.">
-                    <i class="fas fa-moon"></i> Cold & Dark
+                    data-tooltip="{{{localize "ionrift-respite.bivouac.hud.coldDarkTooltip"}}}">
+                    <i class="fas fa-moon"></i> {{{localize "ionrift-respite.bivouac.stance.coldDark"}}}
                 </button>
             </div>
 
             {{#if isWarm}}
             {{!-- Campfire Fuel Status Pill --}}
             <div class="bivouac-firewood-pill {{#if (gt totalFirewood 0)}}warm{{else}}empty{{/if}}"
-                data-tooltip="Campfire Fuel: 1 unit will be consumed upon rest completion. Party currently has {{totalFirewood}} fuel in stock.">
+                data-tooltip="{{localize "ionrift-respite.bivouac.hud.fuelTooltip" count=totalFirewood}}">
                 <i class="fas {{#if (gt totalFirewood 0)}}fa-fire{{else}}fa-triangle-exclamation{{/if}}"></i>
-                <span class="firewood-usage">{{#if (gt totalFirewood 0)}}1 Fuel{{else}}0 Fuel{{/if}}</span>
+                <span class="firewood-usage">{{#if (gt totalFirewood 0)}}{{localize "ionrift-respite.bivouac.hud.oneFuel"}}{{else}}{{localize "ionrift-respite.bivouac.hud.zeroFuel"}}{{/if}}</span>
             </div>
             {{/if}}
 
             {{#if shelterActive}}
-            <span class="bivouac-status-badge shelter-badge" data-tooltip="Concealed / Magical Shelter active: cancels campfire detection penalty.">
-                <i class="fas fa-shield-halved"></i> Sheltered
+            <span class="bivouac-status-badge shelter-badge" data-tooltip="{{localize "ionrift-respite.bivouac.hud.shelterTooltip"}}">
+                <i class="fas fa-shield-halved"></i> {{localize "ionrift-respite.bivouac.hud.sheltered"}}
             </span>
             {{/if}}
 
             {{#if stanceCooldownSeconds}}
-            <span class="bivouac-cooldown-pill" data-tooltip="Cooldown active to prevent toggle conflicts">
-                <i class="fas fa-hourglass-half"></i> {{stanceCooldownSeconds}}s
+            <span class="bivouac-cooldown-pill" data-tooltip="{{localize "ionrift-respite.bivouac.hud.cooldownTooltip"}}">
+                <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.bivouac.hud.cooldownSeconds" seconds=stanceCooldownSeconds}}
             </span>
             {{/if}}
         </div>
@@ -51,26 +51,26 @@
         {{#if (or (and chefStatus.eligible chefVolunteered) outlanderStatus.isEligible songOfRest)}}
         <div class="bivouac-perks-cluster">
             {{#if songOfRest}}
-            <div class="bivouac-perk-chip sr-song-chip" data-tooltip="Song of Rest: {{songOfRest.bardName}} rolls {{songOfRest.songDie}} extra healing for each character who spends at least one Hit Die.">
+            <div class="bivouac-perk-chip sr-song-chip" data-tooltip="{{localize "ionrift-respite.bivouac.hud.songTooltip" bard=songOfRest.bardName die=songOfRest.songDie}}">
                 <i class="fas fa-music"></i>
                 <span>{{songOfRest.bardName}} · {{songOfRest.songDie}}</span>
             </div>
             {{/if}}
 
             {{#if outlanderStatus.isEligible}}
-            <div class="bivouac-perk-chip outlander-chip" data-tooltip="{{#if outlanderStatus.foragerName}}{{outlanderStatus.foragerName}}'s Outlander feature (Wanderer) gathered wild forage. All party rations covered tonight.{{else}}Wanderer feature gathered wild forage. All party rations covered tonight.{{/if}}">
-                <i class="fas fa-tree"></i> Foraged Meals
+            <div class="bivouac-perk-chip outlander-chip" data-tooltip="{{#if outlanderStatus.foragerName}}{{{localize "ionrift-respite.bivouac.hud.outlanderTooltip" name=outlanderStatus.foragerName}}}{{else}}{{localize "ionrift-respite.bivouac.hud.wandererTooltip"}}{{/if}}">
+                <i class="fas fa-tree"></i> {{localize "ionrift-respite.bivouac.hud.foragedMeals"}}
             </div>
             {{/if}}
 
             {{#if (and chefStatus.eligible chefVolunteered)}}
             <div class="bivouac-perk-chip chef-chip {{#if (gt chefMealsRemaining 0)}}chef-glowing-badge{{else}}chef-exhausted-badge{{/if}}"
-                 data-tooltip="Chef's Replenishing Meal ({{#if chefVolunteer}}{{chefVolunteer.chefName}}{{else}}{{chefStatus.leadChef.chefName}}{{/if}}): (+1d8 HP on Hit Dice). {{chefMealsRemaining}} servings remaining.">
+                 data-tooltip="{{#if chefVolunteer}}{{{localize "ionrift-respite.bivouac.hud.chefTooltip" chef=chefVolunteer.chefName count=chefMealsRemaining}}}{{else}}{{{localize "ionrift-respite.bivouac.hud.chefTooltip" chef=chefStatus.leadChef.chefName count=chefMealsRemaining}}}{{/if}}">
                 <i class="fas fa-utensils"></i>
-                <span>Chef: <strong>{{#if chefVolunteer}}{{chefVolunteer.chefName}}{{else}}{{chefStatus.leadChef.chefName}}{{/if}}</strong></span>
-                <span class="chef-servings">({{chefMealsRemaining}} left)</span>
+                <span>{{localize "ionrift-respite.bivouac.hud.chefLabel"}} <strong>{{#if chefVolunteer}}{{chefVolunteer.chefName}}{{else}}{{chefStatus.leadChef.chefName}}{{/if}}</strong></span>
+                <span class="chef-servings">({{localize "ionrift-respite.bivouac.hud.servingsLeft" count=chefMealsRemaining}})</span>
                 {{#if canManageChef}}
-                <button type="button" class="btn-chef-optout" data-action="optOutChef" data-tooltip="Cancel chef meal volunteering">✕</button>
+                <button type="button" class="btn-chef-optout" data-action="optOutChef" data-tooltip="{{localize "ionrift-respite.bivouac.hud.chefOptOutTooltip"}}">✕</button>
                 {{/if}}
             </div>
             {{/if}}
@@ -80,15 +80,15 @@
     {{/if}}
 
     {{#if workbenchIdentifyUiEnabled}}
-    <div class="sr-nav-row" role="tablist" aria-label="Overnight rest sections">
+    <div class="sr-nav-row" role="tablist" aria-label="{{localize "ionrift-respite.bivouac.hud.sectionsAria"}}">
         <div class="rest-dock-segments">
             <button type="button" role="tab" class="rest-dock-seg {{#if (eq activeTab "camp")}}active{{/if}}"
                 data-action="switchBivouacTab" data-tab="camp" {{#if (eq activeTab "camp")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
-                <i class="fas fa-campground"></i> Camp
+                <i class="fas fa-campground"></i> {{localize "ionrift-respite.bivouac.hud.tabCamp"}}
             </button>
             <button type="button" role="tab" class="rest-dock-seg {{#if (eq activeTab "workbench")}}active{{/if}}"
                 data-action="switchBivouacTab" data-tab="workbench" {{#if (eq activeTab "workbench")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
-                <i class="fas fa-search"></i> Identify
+                <i class="fas fa-search"></i> {{localize "ionrift-respite.bivouac.hud.tabIdentify"}}
             </button>
         </div>
     </div>
@@ -101,10 +101,10 @@
         {{else}}
             {{#if isGM}}
             <div class="sr-focused-nav">
-                <button type="button" class="btn-party-overview" data-action="clearSelectedCharacter" data-tooltip="Return to party overview">
-                    <i class="fas fa-arrow-left"></i> All Characters
+                <button type="button" class="btn-party-overview" data-action="clearSelectedCharacter" data-tooltip="{{localize "ionrift-respite.bivouac.hud.partyOverviewTooltip"}}">
+                    <i class="fas fa-arrow-left"></i> {{localize "ionrift-respite.bivouac.hud.allCharacters"}}
                 </button>
-                <span class="sr-focused-title"><i class="fas fa-user-shield"></i> Managing <strong>{{heroCharacter.name}}</strong></span>
+                <span class="sr-focused-title"><i class="fas fa-user-shield"></i> {{{localize "ionrift-respite.bivouac.hud.managing" name=heroCharacter.name}}}</span>
             </div>
             {{/if}}
             {{> restHeroCard}}
@@ -126,15 +126,15 @@
         <div class="bivouac-footer-left">
             {{#if isGM}}
             {{#if safePassage}}
-            <div class="bivouac-safe-status" data-tooltip="Safe Rest active from setup: overnight encounter checks are suppressed.">
-                <i class="fas fa-shield-halved"></i> Safe Rest
+            <div class="bivouac-safe-status" data-tooltip="{{localize "ionrift-respite.bivouac.hud.safeRestTooltip"}}">
+                <i class="fas fa-shield-halved"></i> {{localize "ionrift-respite.bivouac.hud.safeRest"}}
             </div>
             {{else}}
-            <div class="bivouac-dc-stepper" data-tooltip="Encounter DC: overnight encounter check threshold. Roll d20 below this DC triggers an encounter.">
-                <span class="bivouac-dc-label">Danger DC</span>
-                <button type="button" class="btn-dc-stepper" data-action="adjustBivouacDC" data-delta="-1" data-tooltip="Decrease DC">−</button>
+            <div class="bivouac-dc-stepper" data-tooltip="{{localize "ionrift-respite.bivouac.hud.dangerDcTooltip"}}">
+                <span class="bivouac-dc-label">{{localize "ionrift-respite.bivouac.hud.dangerDc"}}</span>
+                <button type="button" class="btn-dc-stepper" data-action="adjustBivouacDC" data-delta="-1" data-tooltip="{{localize "ionrift-respite.bivouac.hud.decreaseDc"}}">−</button>
                 <span class="bivouac-dc-value">{{dangerDC}}</span>
-                <button type="button" class="btn-dc-stepper" data-action="adjustBivouacDC" data-delta="1" data-tooltip="Increase DC">+</button>
+                <button type="button" class="btn-dc-stepper" data-action="adjustBivouacDC" data-delta="1" data-tooltip="{{localize "ionrift-respite.bivouac.hud.increaseDc"}}">+</button>
             </div>
             {{/if}}
             {{/if}}
@@ -142,14 +142,14 @@
 
         {{#if isGM}}
         <button type="button" class="btn-primary-green" data-action="passTheNight">
-            <i class="fas fa-check"></i> Complete Overnight Rest
+            <i class="fas fa-check"></i> {{localize "ionrift-respite.bivouac.completeRest"}}
         </button>
         {{else}}
         <button type="button" class="sr-finished-toggle {{#if bivouacFooter.myFinished}}active{{/if}}" data-action="toggleBivouacFinished">
             {{#if bivouacFooter.myFinished}}
-            <i class="fas fa-undo"></i> Still resting
+            <i class="fas fa-undo"></i> {{localize "ionrift-respite.bivouac.hud.stillResting"}}
             {{else}}
-            <i class="fas fa-flag-checkered"></i> I'm finished
+            <i class="fas fa-flag-checkered"></i> {{{localize "ionrift-respite.bivouac.hud.imFinished"}}}
             {{/if}}
         </button>
         {{/if}}

@@ -48,7 +48,7 @@ export class BivouacApp extends BaseShortRestApp {
         classes: ["ionrift-window", "glass-ui", "bivouac-hud-window"],
         tag: "div",
         window: {
-            title: "Overnight Rest",
+            title: "ionrift-respite.bivouac.windowTitle",
             resizable: true,
         },
         position: {
@@ -375,8 +375,8 @@ export class BivouacApp extends BaseShortRestApp {
             if (isOutlanderShielded) {
                 waterPlate = {
                     isShielded: true,
-                    label: "Spring Water",
-                    tooltip: `${outlanderStatus.label} provides fresh drinking water for camp.`
+                    label: game.i18n.localize("ionrift-respite.bivouac.water.springLabel"),
+                    tooltip: game.i18n.format("ionrift-respite.bivouac.water.springTooltip", { source: outlanderStatus.label })
                 };
             } else {
                 const wChoice = this._waterChoices.get(actor.id);
@@ -394,14 +394,14 @@ export class BivouacApp extends BaseShortRestApp {
                     waterPlate = {
                         isWater: true,
                         label: waterItem.name,
-                        tooltip: `Personal water: ${waterItem.name}. Click to cycle drink options.`,
+                        tooltip: game.i18n.format("ionrift-respite.bivouac.water.personalTooltip", { item: waterItem.name }),
                         canInteract: isOwner
                     };
                 } else {
                     waterPlate = {
                         isDehydrated: true,
-                        label: "Dehydrated (+1 Rest)",
-                        tooltip: "No water selected! Resting without water will advance dehydration. Click to check or select available drink.",
+                        label: game.i18n.localize("ionrift-respite.bivouac.water.dehydratedLabel"),
+                        tooltip: game.i18n.localize("ionrift-respite.bivouac.water.dehydratedTooltip"),
                         canInteract: isOwner
                     };
                 }
@@ -802,13 +802,13 @@ export class BivouacApp extends BaseShortRestApp {
         if (!this._isGM) return;
 
         const confirmed = await confirmAbandonRest({
-            title: "Abandon Rest?",
-            message: "This will cancel the rest for all players. Any unsaved progress will be lost."
+            title: game.i18n.localize("ionrift-respite.bivouac.abandon.title"),
+            message: game.i18n.localize("ionrift-respite.bivouac.abandon.message")
         });
         if (!confirmed) return;
 
         emitRestSessionAbandoned("bivouac");
-        ui.notifications?.info?.("Rest abandoned.");
+        ui.notifications?.info?.(game.i18n.localize("ionrift-respite.bivouac.abandon.done"));
         this.close({ abandoned: true });
     }
 
@@ -824,7 +824,7 @@ export class BivouacApp extends BaseShortRestApp {
         } else {
             const { allowed } = this._campStanceManager.canToggle(userId, false);
             if (!allowed) {
-                ui.notifications.warn("Camp stance toggle is on cooldown.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.bivouac.stanceCooldown"));
                 return;
             }
             // Start the local cooldown too. Without this the player can spam
@@ -837,7 +837,7 @@ export class BivouacApp extends BaseShortRestApp {
 
     static #onVolunteerChef(event, target) {
         if (!this._campStanceManager.cookingAllowed) {
-            ui.notifications.warn("Cooking is disabled in a Cold & Dark camp.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.bivouac.cookingDisabledColdDark"));
             return;
         }
 
@@ -912,7 +912,7 @@ export class BivouacApp extends BaseShortRestApp {
 
         if (!this._chefVolunteered || !this._chefVolunteer) return;
         if (!this._campStanceManager.cookingAllowed) {
-            ui.notifications?.warn?.("Cooking is not permitted in a cold camp.");
+            ui.notifications?.warn?.(game.i18n.localize("ionrift-respite.bivouac.cookingNotPermittedCold"));
             return;
         }
 
@@ -925,7 +925,7 @@ export class BivouacApp extends BaseShortRestApp {
 
         const capacity = this._chefVolunteer.mealCapacity ?? 4;
         if (claimedActorIds.size >= capacity) {
-            ui.notifications?.warn?.("No servings of the Chef's meal remaining.");
+            ui.notifications?.warn?.(game.i18n.localize("ionrift-respite.bivouac.noChefServings"));
             return;
         }
 
@@ -977,7 +977,7 @@ export class BivouacApp extends BaseShortRestApp {
         const party = getPartyActors();
         const candidate = party.find(a => (this._isGM ? true : a.isOwner) && !this._chefMealBonusByActor.has(a.id) && this._plateChoices.get(a.id) !== "chef");
         if (!candidate) {
-            ui.notifications?.info?.("All your party members already have a Chef treat.");
+            ui.notifications?.info?.(game.i18n.localize("ionrift-respite.bivouac.allHaveChefTreat"));
             return;
         }
 
@@ -1078,7 +1078,7 @@ export class BivouacApp extends BaseShortRestApp {
         if (this._chefVolunteered && this._chefVolunteer && treatsProvideSustenance) {
             options.push({
                 id: "chef",
-                label: `Chef's Replenishing Meal (${this._chefVolunteer.chefName})`
+                label: game.i18n.format("ionrift-respite.bivouac.plate.chefMeal", { chef: this._chefVolunteer.chefName })
             });
         }
 
@@ -1086,7 +1086,7 @@ export class BivouacApp extends BaseShortRestApp {
         if (outlanderStatus.isEligible) {
             options.push({
                 id: "forage",
-                label: `Wild Forage (${outlanderStatus.outlanderActor?.name ?? "Outlander"})`
+                label: game.i18n.format("ionrift-respite.bivouac.plate.wildForage", { name: outlanderStatus.outlanderActor?.name ?? game.i18n.localize("ionrift-respite.bivouac.plate.outlanderFallback") })
             });
         }
 
@@ -1102,14 +1102,14 @@ export class BivouacApp extends BaseShortRestApp {
             const qty = item.system?.quantity ?? 1;
             options.push({
                 id: item.id,
-                label: `${item.name}${qty > 1 ? ` (x${qty})` : ""}`
+                label: qty > 1 ? game.i18n.format("ionrift-respite.bivouac.plate.itemQuantity", { name: item.name, count: qty }) : `${item.name}`
             });
         }
 
         // 4. Fasting / Starve option
         options.push({
             id: "starve",
-            label: "Fast / Go Hungry (No Food)"
+            label: game.i18n.localize("ionrift-respite.bivouac.plate.fast")
         });
 
         if (!options.length) return;
@@ -1158,14 +1158,14 @@ export class BivouacApp extends BaseShortRestApp {
             const qty = item.system?.quantity ?? 1;
             options.push({
                 id: item.id,
-                label: `${item.name}${qty > 1 ? ` (x${qty})` : ""}`
+                label: qty > 1 ? game.i18n.format("ionrift-respite.bivouac.plate.itemQuantity", { name: item.name, count: qty }) : `${item.name}`
             });
         }
 
         // 2. Dehydrated / Go Thirsty option
         options.push({
             id: "thirsty",
-            label: "Go Thirsty (No Water)"
+            label: game.i18n.localize("ionrift-respite.bivouac.plate.thirsty")
         });
 
         if (!options.length) return;
@@ -1214,10 +1214,10 @@ export class BivouacApp extends BaseShortRestApp {
             const names = unfinishedPlayers.map(u => u.name);
             const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
             const proceed = await confirmFn({
-                title: "Players Still Resting",
-                content: `<p>The following players haven't finished resting:</p><ul>${names.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>Complete the overnight rest anyway?</p>`,
-                yesLabel: "Complete Overnight Rest",
-                noLabel: "Wait",
+                title: game.i18n.localize("ionrift-respite.bivouac.unfinished.title"),
+                content: game.i18n.format("ionrift-respite.bivouac.unfinished.content", { list: names.map(n => `<li><strong>${n}</strong></li>`).join("") }),
+                yesLabel: game.i18n.localize("ionrift-respite.bivouac.completeRest"),
+                noLabel: game.i18n.localize("ionrift-respite.bivouac.wait"),
                 yesIcon: "fas fa-moon",
                 noIcon: "fas fa-hourglass-half",
                 defaultYes: false,
@@ -1235,12 +1235,12 @@ export class BivouacApp extends BaseShortRestApp {
         });
 
         if (encounterCheck.triggered) {
-            ui.notifications.warn("Overnight rest interrupted by an ambush.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.bivouac.ambushInterrupted"));
             return;
         }
 
         if (encounterCheck.state === "amber") {
-            ui.notifications.info("The night was restless, but the camp completes their rest safely.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.bivouac.restlessNight"));
         }
 
         // 2. Safe night: resolve Sustenance for all party members
@@ -1263,9 +1263,9 @@ export class BivouacApp extends BaseShortRestApp {
             });
 
             if (result.ate) {
-                sustenanceLines.push(`<li><strong>${actor.name}</strong> ate <em>${result.itemName}</em> (${result.source})</li>`);
+                sustenanceLines.push(game.i18n.format("ionrift-respite.bivouac.summary.ate", { actor: actor.name, item: result.itemName, source: result.source }));
             } else {
-                sustenanceLines.push(`<li><strong style="color:#ef4444;">${actor.name}</strong> starved! (Missed food: ${result.restsSinceFood} rests)</li>`);
+                sustenanceLines.push(game.i18n.format("ionrift-respite.bivouac.summary.starved", { actor: actor.name, count: result.restsSinceFood }));
             }
 
             // Resolve Water
@@ -1291,13 +1291,13 @@ export class BivouacApp extends BaseShortRestApp {
                         await actor.update({ "system.attributes.exhaustion": current + 1 });
                     }
                 }
-                sustenanceLines.push(`<li><strong style="color:#ef4444;">${actor.name}</strong> drank less than half the day's water. 1 level of exhaustion, no save.</li>`);
+                sustenanceLines.push(game.i18n.format("ionrift-respite.bivouac.summary.waterAutoFail", { actor: actor.name }));
             } else if (waterResult.dehydrationSaveDC > 0) {
-                sustenanceLines.push(`<li><strong>${actor.name}</strong> drank ${waterResult.unitsDeducted} pints, half the day's water. Constitution save DC ${waterResult.dehydrationSaveDC}.</li>`);
+                sustenanceLines.push(game.i18n.format("ionrift-respite.bivouac.summary.waterHalf", { actor: actor.name, pints: waterResult.unitsDeducted, dc: waterResult.dehydrationSaveDC }));
             } else if (waterResult.drank) {
-                sustenanceLines.push(`<li><strong>${actor.name}</strong> drank <em>${waterResult.itemName}</em> (${waterResult.source})</li>`);
+                sustenanceLines.push(game.i18n.format("ionrift-respite.bivouac.summary.drank", { actor: actor.name, item: waterResult.itemName, source: waterResult.source }));
             } else if (waterResult.dehydrated) {
-                sustenanceLines.push(`<li><strong style="color:#ef4444;">${actor.name}</strong> is dehydrated! (Missed water: ${waterResult.restsSinceWater} rests)</li>`);
+                sustenanceLines.push(game.i18n.format("ionrift-respite.bivouac.summary.dehydrated", { actor: actor.name, count: waterResult.restsSinceWater }));
             }
         }
 
@@ -1312,13 +1312,13 @@ export class BivouacApp extends BaseShortRestApp {
                     const woodItem = findConsumableFirewoodItem(contributor);
                     if (woodItem) {
                         await consumeItem(contributor, woodItem.id, 1);
-                        firewoodLine = `<li><i class="fas fa-fire" style="color:#f59e0b;"></i> <strong>Campfire Fuel:</strong> ${contributor.name} provided 1 fuel (${woodItem.name}).</li>`;
+                        firewoodLine = game.i18n.format("ionrift-respite.bivouac.summary.fuelProvided", { actor: contributor.name, item: woodItem.name });
                     }
                 } else {
-                    firewoodLine = `<li><i class="fas fa-triangle-exclamation" style="color:#f87171;"></i> <strong>Campfire Fuel:</strong> No fuel in stock; campfire burned down to cold ash.</li>`;
+                    firewoodLine = game.i18n.localize("ionrift-respite.bivouac.summary.noFuel");
                 }
             } else {
-                firewoodLine = `<li><i class="fas fa-moon" style="color:#94a3b8;"></i> <strong>Camp Stance:</strong> Cold & dark camp (0 fuel burned).</li>`;
+                firewoodLine = game.i18n.localize("ionrift-respite.bivouac.summary.coldStance");
             }
         }
 
@@ -1350,17 +1350,17 @@ export class BivouacApp extends BaseShortRestApp {
         }
 
         // 5. Post dawn summary chat card
-        const stanceLabel = this._campStanceManager.isWarm ? "Warm Camp" : "Cold & Dark";
+        const stanceLabel = this._campStanceManager.isWarm ? game.i18n.localize("ionrift-respite.bivouac.stance.warm") : game.i18n.localize("ionrift-respite.bivouac.stance.coldDark");
         await ChatMessage.create({
             content: `<div class="respite-chat-parchment ionrift-window">` +
-                `<h3><i class="fas fa-sun" style="color:#f59e0b;"></i> Dawn Breaks: Overnight Rest Complete</h3>` +
-                `<p>The party completed an 8-hour overnight rest (${stanceLabel}). Class features recovered.</p>` +
+                game.i18n.localize("ionrift-respite.bivouac.dawn.heading") +
+                game.i18n.format("ionrift-respite.bivouac.dawn.body", { stance: stanceLabel }) +
                 `<ul>${firewoodLine}${sustenanceLines.join("")}</ul>` +
                 `</div>`,
-            speaker: { alias: "Overnight Rest" }
+            speaker: { alias: game.i18n.localize("ionrift-respite.bivouac.dawn.speaker") }
         });
 
-        ui.notifications.info("Overnight rest complete. 8 hours elapsed.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.bivouac.restComplete"));
         emitRestSessionResolved("bivouac", {});
         this.close({ resolved: true });
     }
