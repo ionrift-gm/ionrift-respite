@@ -40,9 +40,9 @@ function _resolveArmorHint(actor, activity, armorRuleEnabled) {
     });
     if (!equippedArmor) return null;
     if (activity.armorSleepWaiver) {
-        return { text: "Sleeping light between rotations. Armor stays on, weapon close. No HP or HD recovery penalty.", type: "positive" };
+        return { text: game.i18n.localize("ionrift-respite.activityStations.armorSleepWaiverHint"), type: "positive" };
     }
-    return { text: "Sleeping in armor. Recover only 1/4 Hit Dice, exhaustion not reduced (Xanathar's). Consider doffing first.", type: "warning" };
+    return { text: game.i18n.localize("ionrift-respite.activityStations.armorSleepPenaltyHint"), type: "warning" };
 }
 
 function equippedRestArmor(actor) {
@@ -73,10 +73,10 @@ export async function promptArmorSleepIfNeeded(actor, activity) {
     if (!equippedArmor) return true;
     const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
     const proceed = await confirmFn({
-        title: "Sleeping in Armor",
-        content: `<p><strong>${equippedArmor.name}</strong> is equipped. Sleeping in medium or heavy armor limits recovery to 1/4 Hit Dice and prevents exhaustion reduction (Xanathar's rules).</p><p>Doff the armor before confirming, or proceed and accept the penalty.</p>`,
-        yesLabel: "Confirm Anyway",
-        noLabel: "Cancel",
+        title: game.i18n.localize("ionrift-respite.activityDetail.sleepingInArmorTitle"),
+        content: game.i18n.format("ionrift-respite.activityDetail.sleepingInArmorContent", { name: equippedArmor.name }),
+        yesLabel: game.i18n.localize("ionrift-respite.activityDetail.confirmAnyway"),
+        noLabel: game.i18n.localize("ionrift-respite.activityDetail.cancel"),
         yesIcon: "fas fa-check",
         noIcon: "fas fa-times",
         defaultYes: false
@@ -196,8 +196,8 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
         const yieldLabel = getFletchingTierLabel();
         const kind = followUpValue === "bolts" ? "bolts" : "arrows";
         const text = yieldLabel && getFletchingTier() > 0
-            ? `Pass the check, then roll ${yieldLabel} ${kind}.`
-            : "Replenishes ammunition on a successful check.";
+            ? game.i18n.format("ionrift-respite.activityDetail.fletchRollPrompt", { yield: yieldLabel, kind })
+            : game.i18n.localize("ionrift-respite.activityDetail.fletchReplenishes");
         outcomeHints.push({ text, type: "success" });
     }
 

@@ -22,7 +22,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         id: "ionrift-respite-crafting",
         classes: ["ionrift-window", "glass-ui", "ionrift-crafting-app"],
         window: {
-            title: "Respite: Crafting & Cooking",
+            title: "ionrift-respite.craftingPickerApp.title",
             resizable: true
         },
         position: {
@@ -141,9 +141,9 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             showMissing: this._showMissing,
             mfCookbookAvailable: this._isMonsterCookbookAvailable(),
             riskTiers: [
-                { id: "safe", label: "Safe", hint: "DC -3 · Ingredients kept", selected: this._selectedRisk === "safe" },
-                { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._selectedRisk === "standard" },
-                { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: this._selectedRisk === "ambitious" }
+                { id: "safe", label: game.i18n.localize("ionrift-respite.craftingDelegate.riskSafeLabel"), hint: game.i18n.localize("ionrift-respite.craftingPickerApp.riskSafeHint"), selected: this._selectedRisk === "safe" },
+                { id: "standard", label: game.i18n.localize("ionrift-respite.craftingDelegate.riskStandardLabel"), hint: game.i18n.localize("ionrift-respite.craftingPickerApp.riskStandardHint"), selected: this._selectedRisk === "standard" },
+                { id: "ambitious", label: game.i18n.localize("ionrift-respite.craftingDelegate.riskAmbitiousLabel"), hint: game.i18n.localize("ionrift-respite.craftingPickerApp.riskAmbitiousHint"), selected: this._selectedRisk === "ambitious" }
             ],
             available: list.available,
             missing: list.missing,
@@ -211,7 +211,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         if (this._restApp) {
             if (this._restApp.hasCompletedCrafting?.(this._actor.id) || this._restApp._lockedCharacters?.has(this._actor.id)) {
-                ui.notifications.warn("This character has already completed an activity this rest.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.craftingPickerApp.alreadyCompletedActivity"));
                 return;
             }
         }
@@ -220,7 +220,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             ? GrantLedger.craftingSlotKey(this._actor.id, this._professionId, this._selectedRecipeId)
             : null;
         if (this._ledger && slotKey && this._ledger.has(slotKey)) {
-            ui.notifications.warn("That recipe was already crafted this rest.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.craftingPickerApp.recipeAlreadyCrafted"));
             return;
         }
 
@@ -282,7 +282,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             onCooked: () => { void this._onMonstrousFeastCookCompleted(); }
         });
         if (!opened) {
-            ui.notifications.warn("The Monster Cooking book is not available right now.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.craftingPickerApp.monsterCookingUnavailable"));
         }
         return opened;
     }

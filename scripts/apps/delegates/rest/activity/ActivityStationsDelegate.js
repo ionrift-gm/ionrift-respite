@@ -74,7 +74,7 @@ export class ActivityStationsDelegate {
         const isCrafting = !!(activity?.crafting?.enabled || craftingProfession);
 
         if (!isCrafting && (app._lockedCharacters?.has(characterId) || app.hasCompletedCrafting?.(characterId))) {
-            ui.notifications.warn("This character has already submitted their activity.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.activityStations.alreadySubmitted"));
             return null;
         }
 
@@ -120,7 +120,7 @@ export class ActivityStationsDelegate {
             if (app.rendered) app.render();
         } else if (activityId === "act_train" && actor && app._engine) {
             app._initTrainingState(characterId, activityId, actor);
-            ui.notifications.info(`${actor.name}: Training started. Roll your sets in the rest window.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.activityStations.trainingStarted", { actor: actor.name }));
             if (app.rendered) app.render();
         } else if (actor && (app._engine || app._activityResolver)) {
             const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? app._selectedTerrain ?? "forest";
@@ -187,12 +187,12 @@ export class ActivityStationsDelegate {
                 }
             );
             app._earlyResults.set(characterId, activityResult);
-            const tier = activityResult.result === "exceptional" ? "Exceptional!"
-                : activityResult.result === "success" ? "Success"
-                : activityResult.result === "failure_complication" ? "Failed (complication)"
-                : activityResult.result === "failure" ? "Failed" : activityResult.result;
+            const tier = activityResult.result === "exceptional" ? game.i18n.localize("ionrift-respite.activityStations.tierExceptional")
+                : activityResult.result === "success" ? game.i18n.localize("ionrift-respite.activityStations.tierSuccess")
+                : activityResult.result === "failure_complication" ? game.i18n.localize("ionrift-respite.activityStations.tierFailedComplication")
+                : activityResult.result === "failure" ? game.i18n.localize("ionrift-respite.activityStations.tierFailed") : activityResult.result;
             const actName = activity?.name ?? activityId;
-            ui.notifications.info(`${actor.name}: ${actName}: ${tier}`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.activityStations.resultNotification", { actor: actor.name, activity: actName, tier }));
             if (app.rendered) app.render();
         }
 
@@ -216,7 +216,7 @@ export class ActivityStationsDelegate {
                 );
 
         const actName = activity?.name ?? activityId;
-        ui.notifications.info(`${game.actors.get(characterId)?.name ?? "Character"} will ${actName}.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.activityStations.willDoActivity", { actor: game.actors.get(characterId)?.name ?? game.i18n.localize("ionrift-respite.common.characterFallback"), activity: actName }));
 
         if (canvasStationId) {
             app._stationCanvasIdByCharacter.set(characterId, canvasStationId);
@@ -486,7 +486,7 @@ export class ActivityStationsDelegate {
                     userId: game.user.id,
                     partyIds: roster.map(a => a.id)
                 });
-                ui.notifications.warn("No character assigned for you in app rest. Ask the GM to check the party roster.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.activityStations.noCharacterAssigned"));
                 return;
             }
             const terrainTagForStation = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
@@ -503,9 +503,9 @@ export class ActivityStationsDelegate {
                 if (bedrollOwnerActorId !== actor.id) {
                     if (!game.user.isGM) {
                         const ownerName = bedrollOwnerActorId
-                            ? (game.actors.get(bedrollOwnerActorId)?.name ?? "someone else")
-                            : "someone else";
-                        ui.notifications.warn(`That bedroll belongs to ${ownerName}.`);
+                            ? (game.actors.get(bedrollOwnerActorId)?.name ?? game.i18n.localize("ionrift-respite.activityStations.someoneElse"))
+                            : game.i18n.localize("ionrift-respite.activityStations.someoneElse");
+                        ui.notifications.warn(game.i18n.format("ionrift-respite.activityStations.bedrollBelongsTo", { owner: ownerName }));
                     }
                     return;
                 }
@@ -526,7 +526,7 @@ export class ActivityStationsDelegate {
                 ?? "long";
 
             const dialogStation = (stationId === "bedroll" && !isSharedBedroll)
-                ? { ...station, label: `${actor.name}'s ${station.label}` }
+                ? { ...station, label: game.i18n.format("ionrift-respite.activityStations.actorsStationLabel", { actor: actor.name, label: station.label }) }
                 : station;
 
             try {
@@ -767,7 +767,7 @@ export class ActivityStationsDelegate {
         if (!item) return;
         const att = item.system?.attunement;
         if ((att !== "required" && att !== 1) || item.system?.attuned) {
-            ui.notifications.warn("That item cannot be attuned here.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.activityStations.cannotAttuneHere"));
             return;
         }
         const attuneSlots = actor.system?.attributes?.attunement;
@@ -775,17 +775,17 @@ export class ActivityStationsDelegate {
             const current = attuneSlots.value ?? 0;
             const max = attuneSlots.max ?? 3;
             if (current >= max) {
-                ui.notifications.warn(`${actor.name} is already attuned to the maximum number of items (${max}).`);
+                ui.notifications.warn(game.i18n.format("ionrift-respite.activityStations.alreadyAttunedMax", { actor: actor.name, max }));
                 return;
             }
         }
         try {
             await item.update({ "system.attuned": true });
-            ui.notifications.info(`${actor.name} attunes to ${item.name}.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.activityStations.attunesToItem", { actor: actor.name, item: item.name }));
         } catch (e) {
 
             console.warn(`${MODULE_ID} | attuneWorkbenchItemForActor:`, e);
-            ui.notifications.error("Could not attune that item.");
+            ui.notifications.error(game.i18n.localize("ionrift-respite.activityStations.couldNotAttune"));
             return;
         }
         if (app.rendered) app.render();
@@ -813,13 +813,13 @@ export class ActivityStationsDelegate {
                     overlay.classList.add("ionrift-armor-modal-overlay");
                     overlay.innerHTML = `
                     <div class="ionrift-armor-modal">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Skip Meals?</h3>
-                        <p>The following meals are empty:</p>
+                        <h3><i class="fas fa-exclamation-triangle"></i> ${game.i18n.localize("ionrift-respite.activityStations.skipMealsTitle")}</h3>
+                        <p>${game.i18n.localize("ionrift-respite.activityStations.emptyMealsPrompt")}</p>
                         <ul>${skippedSlots.map(s => `<li>${s}</li>`).join("")}</ul>
-                        <p>Skipping meals has consequences.</p>
+                        <p>${game.i18n.localize("ionrift-respite.activityStations.skipConsequences")}</p>
                         <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Skip Meals</button>
-                            <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
+                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> ${game.i18n.localize("ionrift-respite.activityStations.skipMealsConfirm")}</button>
+                            <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> ${game.i18n.localize("ionrift-respite.activityStations.skipMealsCancel")}</button>
                         </div>
                     </div>`;
                     document.body.appendChild(overlay);
@@ -925,7 +925,7 @@ export class ActivityStationsDelegate {
             }
             if (app.rendered) app.render();
             _refreshGmRestIndicator(app);
-            ui.notifications.info(`${actor.name}: rations recorded for app rest.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.activityStations.rationsRecorded", { actor: actor.name }));
             return;
         }
 
@@ -1035,7 +1035,7 @@ export class ActivityStationsDelegate {
         if (app.rendered) app.render();
         _refreshGmRestIndicator(app);
         _refreshRejoinBar(app);
-        ui.notifications.info(`${actor.name}: sustenance unlocked for editing.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.activityStations.sustenanceUnlocked", { actor: actor.name }));
     }
 
     _buildActivityDetailContext(selectedCharacter) {
@@ -1104,7 +1104,7 @@ export class ActivityStationsDelegate {
                         const canAfford = currentGold >= cost;
                         return {
                             ...opt,
-                            label: canAfford ? opt.label : `${opt.label} (can't afford)`,
+                            label: canAfford ? opt.label : game.i18n.format("ionrift-respite.activityStations.cantAffordOption", { label: opt.label }),
                             isSelected: opt.value === selectedVal,
                             isDisabled: !canAfford
                         };
@@ -1152,9 +1152,9 @@ export class ActivityStationsDelegate {
                     const actorForHint = game.actors.get(selectedCharacter.id);
                     const equippedArmor = actorForHint?.items?.find(i => i.type === "equipment" && i.system?.equipped && ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type));
                     if (equippedArmor && tile.armorSleepWaiver) {
-                        armorHint = { text: "Sleeping light between rotations. Armor stays on, weapon close. No HP or HD recovery penalty.", type: "positive" };
+                        armorHint = { text: game.i18n.localize("ionrift-respite.activityStations.armorSleepWaiverHint"), type: "positive" };
                     } else if (equippedArmor && !tile.armorSleepWaiver) {
-                        armorHint = { text: "Sleeping in armor. Recover only 1/4 Hit Dice, exhaustion not reduced (Xanathar's). Consider doffing first.", type: "warning" };
+                        armorHint = { text: game.i18n.localize("ionrift-respite.activityStations.armorSleepPenaltyHint"), type: "warning" };
                     }
                 }
             } catch (e) { /* setting may not exist yet */ }
@@ -1166,7 +1166,7 @@ export class ActivityStationsDelegate {
         return {
             id: tile.id,
             name: tile.name,
-            description: tile.description || "No additional details available.",
+            description: tile.description || game.i18n.localize("ionrift-respite.activityStations.noAdditionalDetails"),
             icon: tile.icon,
             typeTag: tile.typeTag,
             isCrafting: tile.isCrafting,
@@ -1209,7 +1209,7 @@ export class ActivityStationsDelegate {
                     actorId: a.id,
                     isDoffed: false,
                     donTime,
-                    hint: `${equippedArmor.name} (${armorType}) equipped. Don time: ${donTime}.`
+                    hint: game.i18n.format("ionrift-respite.activityStations.armorEquippedHint", { name: equippedArmor.name, type: armorType, donTime })
                 };
             }
             if (doffedItemId) {
@@ -1224,7 +1224,7 @@ export class ActivityStationsDelegate {
                         actorId: a.id,
                         isDoffed: true,
                         donTime,
-                        hint: `${doffedItem.name} removed for rest. Better recovery, but vulnerable if attacked. Don time: ${donTime}.`
+                        hint: game.i18n.format("ionrift-respite.activityStations.armorDoffedHint", { name: doffedItem.name, donTime })
                     };
                 }
             }
@@ -1243,7 +1243,7 @@ export class ActivityStationsDelegate {
                     actorId: a.id,
                     isDoffed: true,
                     donTime,
-                    hint: `${inventoryArmor.name} available in inventory. Don time: ${donTime}.`
+                    hint: game.i18n.format("ionrift-respite.activityStations.armorInventoryHint", { name: inventoryArmor.name, donTime })
                 };
             }
         } catch (e) { /* setting may not exist yet */ }
@@ -1273,33 +1273,33 @@ export class ActivityStationsDelegate {
             gearSlots: [
                 slot({
                     gearType: "bedroll",
-                    title: "Bedroll",
+                    title: game.i18n.localize("ionrift-respite.activityStations.gearBedroll"),
                     icon: "fas fa-bed",
                     owned: g.hasBedroll,
                     deployed: g.bedrollDeployed,
                     canDrag: g.canDragBedroll,
-                    ownedLine: "Lay out on the map for roleplay.",
-                    missingLine: "Not in inventory."
+                    ownedLine: game.i18n.localize("ionrift-respite.activityStations.gearBedrollOwned"),
+                    missingLine: game.i18n.localize("ionrift-respite.activityStations.gearMissing")
                 }),
                 slot({
                     gearType: "tent",
-                    title: "Tent",
+                    title: game.i18n.localize("ionrift-respite.activityStations.gearTent"),
                     icon: "fas fa-campground",
                     owned: g.hasTent,
                     deployed: g.tentDeployed,
                     canDrag: g.canDragTent,
-                    ownedLine: "Pitch on the map for roleplay.",
-                    missingLine: "Not in inventory."
+                    ownedLine: game.i18n.localize("ionrift-respite.activityStations.gearTentOwned"),
+                    missingLine: game.i18n.localize("ionrift-respite.activityStations.gearMissing")
                 }),
                 slot({
                     gearType: "messkit",
-                    title: g.messKitSource === "utensils" ? "Cook's Utensils" : "Mess kit",
+                    title: g.messKitSource === "utensils" ? game.i18n.localize("ionrift-respite.activityStations.gearCooksUtensils") : game.i18n.localize("ionrift-respite.activityStations.gearMessKit"),
                     icon: g.messKitSource === "utensils" ? "fas fa-mortar-pestle" : "fas fa-utensils",
                     owned: g.hasMessKit,
                     deployed: g.messKitDeployed,
                     canDrag: g.canDragMessKit,
-                    ownedLine: "Place on the map for roleplay.",
-                    missingLine: "Not in inventory."
+                    ownedLine: game.i18n.localize("ionrift-respite.activityStations.gearMessKitOwned"),
+                    missingLine: game.i18n.localize("ionrift-respite.activityStations.gearMissing")
                 })
             ]
         };
@@ -1383,7 +1383,7 @@ export class ActivityStationsDelegate {
                 picker.render(true);
                 return;
             }
-            ui.notifications.warn("This character has already completed crafting for this rest.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.activityStations.alreadyCraftedRest"));
             return;
         }
 
@@ -1437,7 +1437,7 @@ export class ActivityStationsDelegate {
                         choices: Object.fromEntries(app._characterChoices),
                         craftingResults: { [characterId]: result }
                     });
-                    ui.notifications.info(`${actor.name}'s activity submitted.`);
+                    ui.notifications.info(game.i18n.format("ionrift-respite.activityStations.activitySubmitted", { actor: actor.name }));
                 }
                 app._saveRestState?.();
                 if (app.rendered) app.render();

@@ -161,11 +161,13 @@ export class DetectMagicScanner {
 
         const school = item.system?.school;
         const schoolLabel = school ? ` (${school})` : "";
-        const attunement = (item.system?.attunement === "required" || item.system?.attunement === 1) ? " Requires attunement." : "";
+        const attunement = (item.system?.attunement === "required" || item.system?.attunement === 1)
+            ? (" " + game.i18n.localize("ionrift-respite.detectMagicScanner.requiresAttunement"))
+            : "";
 
         await ChatMessage.create({
             content: `<div class="ionrift-identify-reveal">
-                <strong>${actor.name}</strong> identifies: <strong>${item.name}</strong>${schoolLabel}${attunement}
+                ${game.i18n.format("ionrift-respite.detectMagicScanner.chatIdentified", { actor: actor.name, item: item.name })}${schoolLabel}${attunement}
             </div>`,
             speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
             whisper: game.users.filter(u => u.isGM).map(u => u.id)
@@ -182,9 +184,14 @@ export class DetectMagicScanner {
      * Map school abbreviations to readable names.
      */
     static SCHOOL_LABELS = {
-        abj: "Abjuration", con: "Conjuration", div: "Divination",
-        enc: "Enchantment", evo: "Evocation", ill: "Illusion",
-        nec: "Necromancy", trs: "Transmutation"
+        get abj() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.detectMagicScanner.schools.abj") : "Abjuration"; },
+        get con() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.detectMagicScanner.schools.con") : "Conjuration"; },
+        get div() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.detectMagicScanner.schools.div") : "Divination"; },
+        get enc() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.detectMagicScanner.schools.enc") : "Enchantment"; },
+        get evo() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.detectMagicScanner.schools.evo") : "Evocation"; },
+        get ill() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.detectMagicScanner.schools.ill") : "Illusion"; },
+        get nec() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.detectMagicScanner.schools.nec") : "Necromancy"; },
+        get trs() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.detectMagicScanner.schools.trs") : "Transmutation"; }
     };
 
     /**
@@ -193,7 +200,7 @@ export class DetectMagicScanner {
      * @returns {string}
      */
     static schoolLabel(school) {
-        if (!school) return "unknown school";
+        if (!school) return game.i18n?.localize ? game.i18n.localize("ionrift-respite.detectMagicScanner.unknownSchool") : "unknown school";
         return this.SCHOOL_LABELS[school] ?? school;
     }
 

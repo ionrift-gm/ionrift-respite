@@ -56,9 +56,7 @@ const RECIPE_CHECK_KEYS = {
     cha: "Charisma"
 };
 
-const PROFESSION_LABELS = Object.fromEntries(
-    Object.entries(HOMEBREW_PROFESSION_DISPLAY).map(([id, meta]) => [id, meta.label])
-);
+const getProfessionLabel = (id) => HOMEBREW_PROFESSION_DISPLAY[id]?.label ?? id;
 
 const PROFESSION_ICONS = Object.fromEntries(
     Object.entries(HOMEBREW_PROFESSION_DISPLAY).map(([id, meta]) => [id, meta.icon])
@@ -76,7 +74,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
     static DEFAULT_OPTIONS = {
         id: "respite-recipe-editor",
         window: {
-            title: "Custom Recipes",
+            title: "ionrift-respite.recipeEditor.windowTitle",
             icon: "fas fa-mortar-pestle",
             resizable: true
         },
@@ -189,7 +187,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 if (preview.duration) parts.push(preview.duration);
                 return parts.join(" · ");
             }
-            return rf?.wellFed ? "Custom Well Fed (JSON)" : "No buff";
+            return rf?.wellFed ? game.i18n.localize("ionrift-respite.recipeEditor.customWellFed") : game.i18n.localize("ionrift-respite.recipeEditor.noBuff");
         }
         const preset = getMealBuffPreset(presetId);
         return formatMealBuffPresetTitle(preset);
@@ -274,13 +272,13 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const satiatesWater = satiates.includes("water");
         const summary = this._mealBuffSummaryText(presetId, rf);
         const tierLabel = tier === "ambitious"
-            ? (showMealFields ? "Ambitious meal effects" : "Ambitious output effects")
-            : (showMealFields ? "Meal effects" : "Output effects");
+            ? (showMealFields ? game.i18n.localize("ionrift-respite.recipeEditor.ambitiousMealEffects") : game.i18n.localize("ionrift-respite.recipeEditor.ambitiousOutputEffects"))
+            : (showMealFields ? game.i18n.localize("ionrift-respite.recipeEditor.mealEffects") : game.i18n.localize("ionrift-respite.recipeEditor.outputEffects"));
         const tierHint = tier === "ambitious"
-            ? "Applied when players craft at Ambitious risk (+5 DC)."
+            ? game.i18n.localize("ionrift-respite.recipeEditor.ambitiousEffectsHint")
             : (showMealFields
-                ? "Applied when the crafted item is eaten or used in the meal phase."
-                : "Applied when the crafted item is consumed or used.");
+                ? game.i18n.localize("ionrift-respite.recipeEditor.mealEffectsHint")
+                : game.i18n.localize("ionrift-respite.recipeEditor.outputEffectsHint"));
 
         const foodTagOptions = FOOD_TAG_OPTIONS.map(opt => {
             const selected = opt.id === foodTag ? " selected" : "";
@@ -292,26 +290,26 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             <div class="recipe-editor-meal-toggles">
                 <label class="recipe-editor-check">
                     <input type="checkbox" name="${prefix}PartyMeal" ${partyMeal ? "checked" : ""} />
-                    <span>Party meal</span>
+                    <span>${game.i18n.localize("ionrift-respite.recipeEditor.partyMeal")}</span>
                 </label>
                 <label class="recipe-editor-check">
                     <input type="checkbox" name="${prefix}SatiatesFood" ${satiatesFood ? "checked" : ""} />
-                    <span>Satiates food</span>
+                    <span>${game.i18n.localize("ionrift-respite.recipeEditor.satiatesFood")}</span>
                 </label>
                 <label class="recipe-editor-check">
                     <input type="checkbox" name="${prefix}SatiatesWater" ${satiatesWater ? "checked" : ""} />
-                    <span>Satiates water</span>
+                    <span>${game.i18n.localize("ionrift-respite.recipeEditor.satiatesWater")}</span>
                 </label>
             </div>
             <div class="recipe-editor-fields recipe-editor-fields--double">
                 <div class="recipe-editor-field">
-                    <label class="recipe-editor-label">Food tag</label>
+                    <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.foodTag")}</label>
                     <select class="recipe-editor-select" name="${prefix}FoodTag">${foodTagOptions}</select>
                 </div>
                 <div class="recipe-editor-field">
-                    <label class="recipe-editor-label">Spoils after (rests)</label>
+                    <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.spoilsAfter")}</label>
                     <input type="number" class="recipe-editor-input" name="${prefix}SpoilsAfter"
-                        min="1" placeholder="Never" value="${this._esc(spoilsAttr)}" />
+                        min="1" placeholder="${game.i18n.localize("ionrift-respite.recipeEditor.spoilsNeverPlaceholder")}" value="${this._esc(spoilsAttr)}" />
                 </div>
             </div>` : "";
 
@@ -322,7 +320,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             ${mealFieldsMarkup}
             <div class="recipe-editor-buff-row">
                 <div class="recipe-editor-buff-summary">
-                    <span class="recipe-editor-label">Buff</span>
+                    <span class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.buff")}</span>
                     <div class="recipe-editor-buff-summary-line">
                         <span class="recipe-editor-buff-summary-text">${this._esc(summary)}</span>
                         <span class="recipe-editor-buff-pack-attribution">${attributionMarkup}</span>
@@ -331,7 +329,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 <input type="hidden" name="${prefix}BuffPresetId" value="${this._esc(presetId)}" />
                 <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
                     data-action="openBuffPicker" data-tier="${tier}">
-                    <i class="fas fa-star"></i> Choose buff
+                    <i class="fas fa-star"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.chooseBuff")}
                 </button>
             </div>
         </div>`;
@@ -352,7 +350,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const ambImg = draft.ambitiousOutput?.img ?? outputImg;
         const ambDesc = draft.ambitiousOutput?.description ?? "";
         const ambCompendiumId = draft.ambitiousOutput?.compendiumId ?? "";
-        const profLabel = PROFESSION_LABELS[context.professionId] ?? context.professionId;
+        const profLabel = getProfessionLabel(context.professionId);
         const toolKey = getProfessionToolRequired(context.professionId);
         const toolLabel = toolKey
             ? (TOOL_PROFICIENCY_LABELS[toolKey] ?? toolKey)
@@ -368,7 +366,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                     ?? "icons/consumables/food/bowl-stew-brown.webp";
                 const missingOutput = context.missingOutputIndices?.has(i);
                 const missingBadge = missingOutput
-                    ? `<span class="recipe-editor-list-warn" title="Output missing from compendium. Save recipe to recreate."><i class="fas fa-unlink" aria-hidden="true"></i></span>`
+                    ? `<span class="recipe-editor-list-warn" title="${game.i18n.localize("ionrift-respite.recipeEditor.outputMissingTooltip")}"><i class="fas fa-unlink" aria-hidden="true"></i></span>`
                     : "";
                 recipeListHtml += `
                 <button type="button" class="recipe-editor-list-item${active}${flash}"
@@ -383,7 +381,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             recipeListHtml = `
                 <p class="recipe-editor-empty">
                     <i class="fas fa-mortar-pestle"></i>
-                    No custom recipes yet.
+                    ${game.i18n.localize("ionrift-respite.recipeEditor.noCustomRecipes")}
                 </p>`;
         }
 
@@ -399,7 +397,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             if (advancedOpen) this.#ingredientAdvancedOpen.add(i);
             const removeBtn = canRemoveIngredient ? `
                 <button type="button" class="recipe-editor-ingredient-remove" data-action="removeIngredient"
-                    data-ing-index="${i}" title="Remove ingredient" aria-label="Remove ingredient">
+                    data-ing-index="${i}" title="${game.i18n.localize("ionrift-respite.recipeEditor.removeIngredient")}" aria-label="${game.i18n.localize("ionrift-respite.recipeEditor.removeIngredient")}">
                     <i class="fas fa-times"></i>
                 </button>` : "";
             let altRowsHtml = "";
@@ -408,10 +406,10 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 altRowsHtml += `
                 <div class="recipe-editor-ingredient-alt-row">
                     <input type="text" class="recipe-editor-input" name="ingAlt"
-                        value="${this._esc(altList[altIdx])}" placeholder="Or this item name" />
+                        value="${this._esc(altList[altIdx])}" placeholder="${game.i18n.localize("ionrift-respite.recipeEditor.altNamePlaceholder")}" />
                     <button type="button" class="recipe-editor-ingredient-remove" data-action="removeAlternate"
                         data-ing-index="${i}" data-alt-index="${altIdx}"
-                        title="Remove alternate" aria-label="Remove alternate">
+                        title="${game.i18n.localize("ionrift-respite.recipeEditor.removeAlternate")}" aria-label="${game.i18n.localize("ionrift-respite.recipeEditor.removeAlternate")}">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>`;
@@ -420,22 +418,22 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             <div class="recipe-editor-ingredient-block" data-ing-index="${i}">
                 <div class="recipe-editor-ingredient-row">
                     <input type="text" class="recipe-editor-input" name="ingName"
-                        value="${this._esc(ing.name)}" placeholder="Compendium item name" />
+                        value="${this._esc(ing.name)}" placeholder="${game.i18n.localize("ionrift-respite.recipeEditor.ingNamePlaceholder")}" />
                     <input type="number" class="recipe-editor-input recipe-editor-input--qty" name="ingQty"
-                        min="1" value="${ing.quantity ?? 1}" aria-label="Quantity" />
+                        min="1" value="${ing.quantity ?? 1}" aria-label="${game.i18n.localize("ionrift-respite.recipeEditor.quantityAria")}" />
                     ${removeBtn}
                 </div>
                 <details class="recipe-editor-ingredient-advanced" data-ing-index="${i}"${advancedOpen ? " open" : ""}>
                     <summary class="recipe-editor-ingredient-advanced-toggle">
-                        <i class="fas fa-exchange-alt" aria-hidden="true"></i> Alternates
+                        <i class="fas fa-exchange-alt" aria-hidden="true"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.alternates")}
                         ${alts.length ? `<span class="recipe-editor-ingredient-alt-count">${alts.length}</span>` : ""}
                     </summary>
                     <div class="recipe-editor-ingredient-advanced-body">
-                        <p class="recipe-editor-hint">Any of these names also satisfy this ingredient slot.</p>
+                        <p class="recipe-editor-hint">${game.i18n.localize("ionrift-respite.recipeEditor.alternatesHint")}</p>
                         <div class="recipe-editor-ingredient-alts">${altRowsHtml}</div>
                         <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
                             data-action="addAlternate" data-ing-index="${i}">
-                            <i class="fas fa-plus"></i> Add alternate
+                            <i class="fas fa-plus"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.addAlternate")}
                         </button>
                     </div>
                 </details>
@@ -456,59 +454,54 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
 
         return `
         <p class="recipe-editor-lead">
-            Homebrew recipes for this world. Match ingredient names to compendium items
-            (Forage or Reagents). Saving creates or updates output items in
-            <strong>Respite Custom Items ,  ${this._esc(outputFolderLabel)}</strong>.
-            Deleting a recipe here does not remove its compendium item. Export or import JSON for bulk edits.
-            ${context.professionId === "cooking"
-                ? " Drinks and water crafts belong under Brewing when that profession is available from Craft Professions Pack."
-                : ""}
+            ${game.i18n.format("ionrift-respite.recipeEditor.lead", { folder: outputFolderLabel })}
+            ${context.professionId === "cooking" ? (" " + game.i18n.localize("ionrift-respite.recipeEditor.leadCookingExtra")) : ""}
         </p>
         <div class="recipe-editor-filter">
             <label class="recipe-editor-filter-label">
-                <i class="${context.professionIcon}"></i> Profession
+                <i class="${context.professionIcon}"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.profession")}
             </label>
             <select class="recipe-editor-select" data-action="changeProfession">${professionOptions}</select>
             <span class="recipe-editor-count">${context.recipes.length}/${context.maxRecipes}</span>
         </div>
         <div class="recipe-editor-layout">
-            <aside class="recipe-editor-list" aria-label="Recipe list">
-                <div class="recipe-editor-list-heading">${this._esc(profLabel)} recipes</div>
+            <aside class="recipe-editor-list" aria-label="${game.i18n.localize("ionrift-respite.recipeEditor.recipeListAria")}">
+                <div class="recipe-editor-list-heading">${game.i18n.format("ionrift-respite.recipeEditor.recipesHeading", { profession: profLabel })}</div>
                 ${recipeListHtml}
                 <button type="button" class="recipe-editor-list-new${newRecipeActive}" data-action="newRecipe">
-                    <i class="fas fa-plus"></i> New recipe
+                    <i class="fas fa-plus"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.newRecipe")}
                 </button>
             </aside>
             <section class="recipe-editor-detail">
                 ${context.isNewDraft ? `
                 <p class="recipe-editor-draft-note">
                     <i class="fas fa-pen" aria-hidden="true"></i>
-                    Unsaved draft. Nothing is added to the list until you save.
+                    ${game.i18n.localize("ionrift-respite.recipeEditor.unsavedDraft")}
                 </p>` : ""}
                 <div class="recipe-editor-section">
-                    <div class="recipe-editor-section-title">Recipe</div>
+                    <div class="recipe-editor-section-title">${game.i18n.localize("ionrift-respite.recipeEditor.recipeSectionTitle")}</div>
                     <div class="recipe-editor-fields recipe-editor-fields--triple">
                         <div class="recipe-editor-field">
-                            <label class="recipe-editor-label">Name</label>
+                            <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.recipeName")}</label>
                             <input type="text" class="recipe-editor-input" name="name"
-                                value="${this._esc(draft.name)}" placeholder="Camp stew" />
+                                value="${this._esc(draft.name)}" placeholder="${game.i18n.localize("ionrift-respite.recipeEditor.recipeNamePlaceholder")}" />
                         </div>
                         <div class="recipe-editor-field">
-                            <label class="recipe-editor-label">DC</label>
+                            <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.recipeDc")}</label>
                             <input type="number" class="recipe-editor-input" name="dc"
                                 min="1" value="${draft.dc ?? 12}" />
                         </div>
                         <div class="recipe-editor-field">
-                            <label class="recipe-editor-label">Skill</label>
+                            <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.recipeSkill")}</label>
                             <select class="recipe-editor-select" name="skill"
-                                aria-label="Skill check">${this._buildSkillOptions(skillVal)}</select>
+                                aria-label="${game.i18n.localize("ionrift-respite.recipeEditor.skillCheckAria")}">${this._buildSkillOptions(skillVal)}</select>
                         </div>
                     </div>
                     ${toolLabel ? `
                     <div class="recipe-editor-fields recipe-editor-fields--double">
                         <div class="recipe-editor-field">
-                            <label class="recipe-editor-label">Tool proficiency</label>
-                            <div class="recipe-editor-locked-value" title="Set by profession">
+                            <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.toolProficiency")}</label>
+                            <div class="recipe-editor-locked-value" title="${game.i18n.localize("ionrift-respite.recipeEditor.toolProficiencyLocked")}">
                                 <i class="fas fa-lock" aria-hidden="true"></i>
                                 <span>${this._esc(toolLabel)}</span>
                             </div>
@@ -516,50 +509,50 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                     </div>` : ""}
                 </div>
                 <div class="recipe-editor-section">
-                    <div class="recipe-editor-section-title">Ingredients</div>
-                    <p class="recipe-editor-hint">Names must match inventory or compendium items. Open Alternates on a row to accept substitute names for that slot.</p>
+                    <div class="recipe-editor-section-title">${game.i18n.localize("ionrift-respite.recipeEditor.ingredientsTitle")}</div>
+                    <p class="recipe-editor-hint">${game.i18n.localize("ionrift-respite.recipeEditor.ingredientsHint")}</p>
                     <div class="recipe-editor-ingredients">${ingredientsHtml}</div>
                     <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost" data-action="addIngredient">
-                        <i class="fas fa-plus"></i> Add ingredient
+                        <i class="fas fa-plus"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.addIngredient")}
                     </button>
                 </div>
                 ${context.selectedOutputMissing ? `
                 <p class="recipe-editor-sync-warn">
                     <i class="fas fa-unlink" aria-hidden="true"></i>
-                    Compendium output missing. Save this recipe to recreate it in ${this._esc(outputFolderLabel)}.
+                    ${game.i18n.format("ionrift-respite.recipeEditor.compendiumOutputMissing", { folder: outputFolderLabel })}
                 </p>` : ""}
                 <div class="recipe-editor-section">
-                    <div class="recipe-editor-section-title">Standard output</div>
-                    <p class="recipe-editor-hint">Granted on a normal craft roll (Standard risk). Saved as a compendium item in ${this._esc(outputFolderLabel)}.</p>
+                    <div class="recipe-editor-section-title">${game.i18n.localize("ionrift-respite.recipeEditor.standardOutputTitle")}</div>
+                    <p class="recipe-editor-hint">${game.i18n.format("ionrift-respite.recipeEditor.standardOutputHint", { folder: outputFolderLabel })}</p>
                     <div class="recipe-editor-img-row">
                         <img class="recipe-editor-img-preview" src="${this._esc(outputImg)}" alt="" />
                         <input type="hidden" name="outputImg" value="${this._esc(outputImg)}" />
                         <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
                             data-action="pickOutputImg">
-                            <i class="fas fa-image"></i> Choose image
+                            <i class="fas fa-image"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.chooseImage")}
                         </button>
                         ${outputCompendiumId ? `
                         <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
                             data-action="openStdOutput" data-compendium-id="${this._esc(outputCompendiumId)}">
-                            <i class="fas fa-book"></i> Open compendium item
+                            <i class="fas fa-book"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.openCompendiumItem")}
                         </button>` : ""}
                     </div>
                     <div class="recipe-editor-fields recipe-editor-fields--double">
                         <div class="recipe-editor-field">
-                            <label class="recipe-editor-label">Item name</label>
+                            <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.itemName")}</label>
                             <input type="text" class="recipe-editor-input" name="outputName"
-                                value="${this._esc(outputName)}" placeholder="Matches recipe name unless changed" />
+                                value="${this._esc(outputName)}" placeholder="${game.i18n.localize("ionrift-respite.recipeEditor.outputNamePlaceholder")}" />
                         </div>
                         <div class="recipe-editor-field">
-                            <label class="recipe-editor-label">Quantity</label>
+                            <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.quantity")}</label>
                             <input type="number" class="recipe-editor-input" name="outputQty"
                                 min="1" value="${outputQty}" />
                         </div>
                     </div>
                     <div class="recipe-editor-field recipe-editor-field--full">
-                        <label class="recipe-editor-label">Item description</label>
+                        <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.itemDescription")}</label>
                         <textarea class="recipe-editor-textarea" name="outputDesc" rows="2"
-                            placeholder="Flavor text shown on the compendium item and crafted inventory row.">${this._esc(this._stripHtmlForTextarea(outputDesc))}</textarea>
+                            placeholder="${game.i18n.localize("ionrift-respite.recipeEditor.stdDescPlaceholder")}">${this._esc(this._stripHtmlForTextarea(outputDesc))}</textarea>
                     </div>
                     ${showOutputBuffEffects ? this._buildMealEffectsMarkup("standard", stdRf, context.professionId) : ""}
                 </div>
@@ -567,8 +560,8 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                     <label class="recipe-editor-ambitious-toggle">
                         <input type="checkbox" name="enableAmbitious" ${hasAmbitious ? "checked" : ""} />
                         <span class="recipe-editor-ambitious-copy">
-                            <span class="recipe-editor-ambitious-title">Ambitious output</span>
-                            <span class="recipe-editor-hint">Players can pick Ambitious (+5 DC) at craft time for this upgraded item.</span>
+                            <span class="recipe-editor-ambitious-title">${game.i18n.localize("ionrift-respite.recipeEditor.ambitiousOutputTitle")}</span>
+                            <span class="recipe-editor-hint">${game.i18n.localize("ionrift-respite.recipeEditor.ambitiousOutputHint")}</span>
                         </span>
                     </label>
                     <div class="recipe-editor-ambitious-fields${hasAmbitious ? "" : " is-hidden"}">
@@ -577,30 +570,30 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                             <input type="hidden" name="ambOutputImg" value="${this._esc(ambImg)}" />
                             <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
                                 data-action="pickAmbOutputImg">
-                                <i class="fas fa-image"></i> Choose image
+                                <i class="fas fa-image"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.chooseImage")}
                             </button>
                             ${ambCompendiumId ? `
                             <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
                                 data-action="openAmbOutput" data-compendium-id="${this._esc(ambCompendiumId)}">
-                                <i class="fas fa-book"></i> Open compendium item
+                                <i class="fas fa-book"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.openCompendiumItem")}
                             </button>` : ""}
                         </div>
                         <div class="recipe-editor-fields recipe-editor-fields--double">
                             <div class="recipe-editor-field">
-                                <label class="recipe-editor-label">Upgraded item name</label>
+                                <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.upgradedItemName")}</label>
                                 <input type="text" class="recipe-editor-input" name="ambOutputName"
-                                    value="${this._esc(ambName)}" placeholder="Rich hunter's stew" />
+                                    value="${this._esc(ambName)}" placeholder="${game.i18n.localize("ionrift-respite.recipeEditor.ambNamePlaceholder")}" />
                             </div>
                             <div class="recipe-editor-field">
-                                <label class="recipe-editor-label">Quantity</label>
+                                <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.quantity")}</label>
                                 <input type="number" class="recipe-editor-input" name="ambOutputQty"
                                     min="1" value="${ambQty}" />
                             </div>
                         </div>
                         <div class="recipe-editor-field recipe-editor-field--full">
-                            <label class="recipe-editor-label">Item description</label>
+                            <label class="recipe-editor-label">${game.i18n.localize("ionrift-respite.recipeEditor.itemDescription")}</label>
                             <textarea class="recipe-editor-textarea" name="ambOutputDesc" rows="2"
-                                placeholder="Flavor text for the upgraded compendium item.">${this._esc(this._stripHtmlForTextarea(ambDesc))}</textarea>
+                                placeholder="${game.i18n.localize("ionrift-respite.recipeEditor.ambDescPlaceholder")}">${this._esc(this._stripHtmlForTextarea(ambDesc))}</textarea>
                         </div>
                         ${showOutputBuffEffects ? this._buildMealEffectsMarkup("ambitious", ambRf, context.professionId) : ""}
                     </div>
@@ -610,16 +603,16 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         <footer class="recipe-editor-footer">
             <div class="recipe-editor-footer-left">
                 <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
-                    data-action="exportJson"><i class="fas fa-download"></i> Export</button>
+                    data-action="exportJson"><i class="fas fa-download"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.export")}</button>
                 <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
-                    data-action="importJson"><i class="fas fa-upload"></i> Import</button>
+                    data-action="importJson"><i class="fas fa-upload"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.import")}</button>
                 <button type="button" class="recipe-editor-btn recipe-editor-btn--danger"
                     data-action="deleteRecipe"${deleteDisabled}>
-                    <i class="fas fa-trash"></i> Delete
+                    <i class="fas fa-trash"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.delete")}
                 </button>
             </div>
             <button type="button" class="recipe-editor-btn recipe-editor-btn--primary" data-action="saveRecipe">
-                <i class="fas fa-save"></i> Save recipe
+                <i class="fas fa-save"></i> ${game.i18n.localize("ionrift-respite.recipeEditor.saveRecipe")}
             </button>
         </footer>`;
     }
@@ -811,7 +804,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 type: "consumable",
                 quantity: 1,
                 img: defaultImg,
-                description: "<p>Custom crafted output.</p>",
+                description: `<p>${game.i18n.localize("ionrift-respite.recipeEditor.defaultOutputDescription")}</p>`,
                 rarity: "common",
                 system: { type: { value: systemSubtype, subtype: "" } }
             },
@@ -975,10 +968,10 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const body = messages.map(line => `<p>${this._esc(line)}</p>`).join("");
         const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
         return await confirmFn({
-            title: "Replace existing recipe?",
+            title: game.i18n.localize("ionrift-respite.recipeEditor.replaceTitle"),
             content: body,
-            yesLabel: "Replace",
-            noLabel: "Cancel",
+            yesLabel: game.i18n.localize("ionrift-respite.recipeEditor.replaceYes"),
+            noLabel: game.i18n.localize("ionrift-respite.recipeEditor.replaceNo"),
             yesIcon: "fas fa-save",
             noIcon: "fas fa-times",
             defaultYes: false
@@ -1026,7 +1019,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         } catch (err) {
             const detail = formatSyncError(err);
             console.error(`${MODULE_ID} | RecipeEditorApp sync outputs`, detail, err);
-            ui.notifications.error(`Could not write output items to Respite Custom compendium. ${detail}`);
+            ui.notifications.error(game.i18n.format("ionrift-respite.recipeEditor.syncOutputError", { detail }));
             return;
         }
 
@@ -1036,7 +1029,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             savedIndex = this.#selectedIndex;
         } else {
             if (list.length >= CUSTOM_RECIPE_MAX_PER_PROFESSION) {
-                ui.notifications.warn(`Maximum ${CUSTOM_RECIPE_MAX_PER_PROFESSION} custom recipes per profession.`);
+                ui.notifications.warn(game.i18n.format("ionrift-respite.recipeEditor.maxRecipesWarn", { max: CUSTOM_RECIPE_MAX_PER_PROFESSION }));
                 return;
             }
             list.push(draft);
@@ -1050,7 +1043,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         this.#flashSavedIndex = savedIndex;
         this.#selectedIndex = savedIndex;
         this.#draft = null;
-        ui.notifications.info(`Saved "${draft.name}". Output item: ${draft.output?.name ?? draft.name}.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.recipeEditor.savedNotification", { name: draft.name, output: draft.output?.name ?? draft.name }));
         await this.render();
         this.#flashSavedIndex = null;
         this._flashSavedListItem(savedIndex);
@@ -1090,9 +1083,9 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         this.#selectedIndex = Math.max(0, this.#selectedIndex - 1);
         this.#draft = null;
         const compendiumNote = outputName
-            ? ` Compendium item "${outputName}" may still be in ${folderLabel}.`
+            ? (" " + game.i18n.format("ionrift-respite.recipeEditor.deleteCompendiumNote", { name: outputName, folder: folderLabel }))
             : "";
-        ui.notifications.info(`Recipe removed.${compendiumNote}`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.recipeEditor.deletedNotification", { note: compendiumNote }));
         this.render();
     }
 
@@ -1119,13 +1112,13 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 const parsed = JSON.parse(text);
                 await game.settings.set(MODULE_ID, "customRecipes", sanitizeCustomRecipes(parsed));
                 applyCustomRecipesToLiveEngines({ render: true });
-                ui.notifications.info("Custom recipes imported.");
+                ui.notifications.info(game.i18n.localize("ionrift-respite.recipeEditor.importedNotification"));
                 this.#selectedIndex = 0;
                 this.#draft = null;
                 this.render();
             } catch (err) {
                 console.error(err);
-                ui.notifications.error("Could not parse recipe JSON.");
+                ui.notifications.error(game.i18n.localize("ionrift-respite.recipeEditor.importParseError"));
             }
         });
         input.click();

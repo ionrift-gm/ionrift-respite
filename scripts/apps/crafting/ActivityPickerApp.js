@@ -16,7 +16,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         id: "ionrift-respite-picker",
         classes: ["ionrift-window", "glass-ui", "ionrift-respite-app"],
         window: {
-            title: "Rest: Choose Activity",
+            title: "ionrift-respite.activityPickerApp.title",
             resizable: false
         },
         position: {
@@ -84,7 +84,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             comfort: this._restData.comfort,
             comfortLabel: comfortLabels[this._restData.comfort] ?? this._restData.comfort,
             comfortWarning: comfortWarnings[this._restData.comfort] ?? null,
-            restType: this._restData.restType === "long" ? "Long Rest" : "Short Rest",
+            restType: this._restData.restType === "long" ? game.i18n.localize("ionrift-respite.common.longRest") : game.i18n.localize("ionrift-respite.common.shortRest"),
             characters: myCharacters.map(a => ({
                 id: a.id,
                 name: a.name,
@@ -114,7 +114,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 const selected = sel.options[sel.selectedIndex];
                 const hint = selected?.dataset?.combatHint;
                 if (hint) {
-                    hintEl.innerHTML = `<i class="fas fa-shield-alt"></i> <em>If combat occurs:</em> ${hint}`;
+                    hintEl.innerHTML = `<i class="fas fa-shield-alt"></i> <em>${game.i18n.localize("ionrift-respite.activityPickerApp.combatOccursPrefix")}</em> ${hint}`;
                     hintEl.style.display = "";
                 } else {
                     hintEl.textContent = "";
@@ -217,7 +217,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         for (const actor of myCharacters) {
             if (!this._choices.get(actor.id)) {
-                ui.notifications.warn(`Choose an activity for ${actor.name}.`);
+                ui.notifications.warn(game.i18n.format("ionrift-respite.activityPickerApp.chooseActivityForActor", { actor: actor.name }));
                 return;
             }
             // Validate follow-up is set for Tier 2 activities
@@ -240,7 +240,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         this._hasSubmitted = true;
         this.render();
 
-        ui.notifications.info("Choices submitted. Waiting for GM.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.activityPickerApp.submittedWaitingGm"));
     }
 
     /**

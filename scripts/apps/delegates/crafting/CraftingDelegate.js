@@ -51,9 +51,9 @@ export class CraftingDelegate {
             hasCrafted: app._craftingDrawerHasCrafted,
             showMissing: app._craftingDrawerShowMissing,
             riskTiers: [
-                { id: "safe", label: "Safe", hint: "DC -3, ingredients preserved on failure", selected: app._craftingDrawerRisk === "safe" },
-                { id: "standard", label: "Standard", hint: "Base DC, ingredients consumed", selected: app._craftingDrawerRisk === "standard" },
-                { id: "ambitious", label: "Ambitious", hint: "DC +5, enhanced output on success", selected: app._craftingDrawerRisk === "ambitious" }
+                { id: "safe", label: game.i18n.localize("ionrift-respite.craftingDelegate.riskSafeLabel"), hint: game.i18n.localize("ionrift-respite.craftingDelegate.riskSafeHint"), selected: app._craftingDrawerRisk === "safe" },
+                { id: "standard", label: game.i18n.localize("ionrift-respite.craftingDelegate.riskStandardLabel"), hint: game.i18n.localize("ionrift-respite.craftingDelegate.riskStandardHint"), selected: app._craftingDrawerRisk === "standard" },
+                { id: "ambitious", label: game.i18n.localize("ionrift-respite.craftingDelegate.riskAmbitiousLabel"), hint: game.i18n.localize("ionrift-respite.craftingDelegate.riskAmbitiousHint"), selected: app._craftingDrawerRisk === "ambitious" }
             ],
             available,
             missing,
@@ -134,7 +134,7 @@ export class CraftingDelegate {
                         craftingResults: { [characterId]: result }
                     });
                     const actor = game.actors.get(characterId);
-                    if (actor) ui.notifications.info(`${actor.name}'s activity submitted.`);
+                    if (actor) ui.notifications.info(game.i18n.format("ionrift-respite.craftingDelegate.activitySubmitted", { actor: actor.name }));
                     if (app._phase === "activity" && isStationLayerActive()) {
                         app._refreshStationOverlayForFocusChange?.();
                     }
@@ -210,14 +210,14 @@ export class CraftingDelegate {
         }
 
         if (restApp.hasCompletedCrafting?.(actor.id, profession)) {
-            ui.notifications.warn(`${actor.name} has already crafted during this rest.`);
+            ui.notifications.warn(game.i18n.format("ionrift-respite.craftingDelegate.alreadyCraftedRest", { actor: actor.name }));
             return { ok: false, reason: "already-crafted" };
         }
 
         const ledger = restApp._grantLedger;
         const slotKey = GrantLedger.craftingSlotKey(actor.id, profession, recipeId);
         if (ledger?.has(slotKey)) {
-            ui.notifications.warn("That recipe was already crafted this rest.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.craftingDelegate.recipeAlreadyCraftedRest"));
             return { ok: false, reason: "slot-taken" };
         }
 
@@ -243,7 +243,7 @@ export class CraftingDelegate {
             && i.flags?.[MODULE_ID]?.partyMeal === true
         );
         if (!item) {
-            ui.notifications.warn("Could not find the feast item in inventory.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.craftingDelegate.feastItemNotFound"));
             return { ok: false, reason: "no-item" };
         }
 
@@ -270,10 +270,10 @@ export class CraftingDelegate {
 
         const consumed = await MealPhaseHandler._consumeItem(actor, item.id, 1);
         if (consumed < 1) {
-            ui.notifications.error("Serving finished but the feast item could not be removed from inventory.");
+            ui.notifications.error(game.i18n.localize("ionrift-respite.craftingDelegate.feastItemNotRemoved"));
             return { ok: false, reason: "consume-failed" };
         }
-        ui.notifications.info(`${actor.name} serves ${craftResult.output.name} to the party!`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.craftingDelegate.servesFeastToParty", { actor: actor.name, item: craftResult.output.name }));
 
         if (restApp) {
             const feastFlags = snapshot.flags?.[MODULE_ID] ?? {};

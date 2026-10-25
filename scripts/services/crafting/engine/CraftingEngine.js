@@ -212,11 +212,11 @@ export class CraftingEngine {
             factors.push({ label: `${riskMod > 0 ? "+" : ""}${riskMod} ${label}`, value: riskMod, sign: riskMod > 0 ? "pos" : "neg" });
         }
         if (terrainMod !== 0) {
-            const tLabel = terrainTag ? terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1) : "Terrain";
+            const tLabel = terrainTag ? terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1) : game.i18n.localize("ionrift-respite.craftingEngine.terrainFallback");
             factors.push({ label: `${terrainMod > 0 ? "+" : ""}${terrainMod} ${tLabel}`, value: terrainMod, sign: terrainMod > 0 ? "pos" : "neg" });
         }
         if (chefMod !== 0) {
-            factors.push({ label: `${chefMod} Chef`, value: chefMod, sign: "neg" });
+            factors.push({ label: `${chefMod} ${game.i18n.localize("ionrift-respite.craftingEngine.chefModifier")}`, value: chefMod, sign: "neg" });
         }
 
         return {
@@ -274,7 +274,7 @@ export class CraftingEngine {
             } else if (ingredientStatus.hasAny) {
                 partial.push({ ...recipe, ingredientStatus });
             } else {
-                locked.push({ ...recipe, ingredientStatus, reason: "Missing all ingredients" });
+                locked.push({ ...recipe, ingredientStatus, reason: game.i18n.localize("ionrift-respite.craftingEngine.missingAllIngredients") });
             }
         }
 
@@ -294,16 +294,16 @@ export class CraftingEngine {
         const allRecipes = this.recipes.get(professionId) ?? [];
         const recipe = allRecipes.find(r => r.id === recipeId);
         if (!recipe) {
-            return { success: false, error: "Recipe not found." };
+            return { success: false, error: game.i18n.localize("ionrift-respite.craftingEngine.recipeNotFound") };
         }
         if (!isAlcoholBrewRecipeVisible(recipe)) {
-            return { success: false, error: "Alcoholic brewing recipes are disabled for this world." };
+            return { success: false, error: game.i18n.localize("ionrift-respite.craftingEngine.alcoholDisabled") };
         }
 
         const inventory = this._buildInventoryMap(actor);
         const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory, partySize, actor);
         if (!ingredientStatus.canCraft) {
-            return { success: false, error: "Missing ingredients.", ingredientStatus };
+            return { success: false, error: game.i18n.localize("ionrift-respite.craftingEngine.missingIngredients"), ingredientStatus };
         }
 
         if (recipe.noSkillCheck) {
@@ -393,7 +393,7 @@ export class CraftingEngine {
                 output,
                 createdItems,
                 ingredientsConsumed: !duplicate && consumeIngredients,
-                narrative: recipe.successNarrative ?? `You successfully prepare ${recipe.name}.`
+                narrative: recipe.successNarrative ?? game.i18n.format("ionrift-respite.craftingEngine.defaultSuccessNarrative", { name: recipe.name })
             };
         } else {
             if (consumeIngredients) {
@@ -408,8 +408,8 @@ export class CraftingEngine {
                 dc: adjustedDc,
                 ingredientsConsumed: consumeIngredients,
                 narrative: riskTier === "safe"
-                    ? (recipe.safeFailNarrative ?? "The attempt doesn't quite work, but your ingredients are intact.")
-                    : (recipe.failNarrative ?? "The attempt fails. Your ingredients are spent.")
+                    ? (recipe.safeFailNarrative ?? game.i18n.localize("ionrift-respite.craftingEngine.safeFailNarrative"))
+                    : (recipe.failNarrative ?? game.i18n.localize("ionrift-respite.craftingEngine.failNarrative"))
             };
         }
     }
@@ -467,7 +467,7 @@ export class CraftingEngine {
             output,
             createdItems,
             ingredientsConsumed: false,
-            narrative: recipe.successNarrative ?? `You prepare ${recipe.name}.`
+            narrative: recipe.successNarrative ?? game.i18n.format("ionrift-respite.craftingEngine.defaultNoSkillNarrative", { name: recipe.name })
         };
     }
 
@@ -636,7 +636,7 @@ export class CraftingEngine {
         });
 
         const chargeItems = waterItems.filter(i => (i.system?.uses?.max ?? 0) > 1);
-        const qtyOnlyItems = waterItems.filter(i => (i.system?.uses?.max ?? 0) <= 1);
+        const qtyOnlyItems = waterItems.filter(i => 1 >= (i.system?.uses?.max ?? 0));
 
         const updates = [];
         const deletes = [];
@@ -769,7 +769,9 @@ export class CraftingEngine {
         } catch (err) {
             console.error(`${MODULE_ID} | CraftingEngine._createOutputItems`, err);
             ui.notifications.error(
-                `Could not add ${output.name ?? "crafted item"} to inventory. Open the dev console (F12) for details.`
+                game.i18n.format("ionrift-respite.craftingEngine.createOutputFailed", {
+                    name: output.name ?? game.i18n.localize("ionrift-respite.craftingEngine.craftedItemFallback")
+                })
             );
             return [];
         }

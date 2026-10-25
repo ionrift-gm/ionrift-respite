@@ -7,11 +7,11 @@ import { normalizeRecipeOutputImg } from "../recipes/RecipeIcons.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
 const RARITY_LABELS = {
-    common: "Common",
-    uncommon: "Uncommon",
-    rare: "Rare",
-    veryrare: "Very Rare",
-    legendary: "Legendary"
+    get common() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.craftOutputPreview.rarity.common") : "Common"; },
+    get uncommon() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.craftOutputPreview.rarity.uncommon") : "Uncommon"; },
+    get rare() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.craftOutputPreview.rarity.rare") : "Rare"; },
+    get veryrare() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.craftOutputPreview.rarity.veryRare") : "Very Rare"; },
+    get legendary() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.craftOutputPreview.rarity.legendary") : "Legendary"; }
 };
 
 /**
@@ -43,7 +43,7 @@ export function buildCraftOutputPreview(output, outputFlags) {
     const buffPreview = formatMealBuffPreview(rf.buff);
     const rarityKey = (output.rarity ?? "common").toLowerCase().replace(/\s+/g, "");
     return {
-        name: output.name ?? "Unknown",
+        name: output.name ?? game.i18n.localize("ionrift-respite.craftOutputPreview.unknown"),
         img: normalizeRecipeOutputImg(output.img, "icons/svg/mystery-man.svg"),
         quantity: output.quantity ?? 1,
         rarity: RARITY_LABELS[rarityKey] ?? output.rarity ?? "",
@@ -81,12 +81,12 @@ export function buildCommitOutputPreviewBundle(selectedRecipe, risk) {
     if (ambitious && standard && standard.name !== ambitious.name) {
         if (useAmbitious) {
             alternate = {
-                label: "Standard success",
+                label: game.i18n.localize("ionrift-respite.craftOutputPreview.standardSuccess"),
                 ...standard
             };
         } else {
             alternate = {
-                label: "Ambitious success",
+                label: game.i18n.localize("ionrift-respite.craftOutputPreview.ambitiousSuccess"),
                 ...ambitious
             };
         }

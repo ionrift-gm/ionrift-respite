@@ -33,7 +33,7 @@ export class CopySpellHandler {
             dc
         });
 
-        ui.notifications.info(`Sent Copy Spell proposal to ${actor.name}'s player: Level ${level} (${cost}gp, DC ${dc}).`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.proposalSent", { actor: actor.name, level, cost, dc }));
     }
 
     /**
@@ -73,7 +73,7 @@ export class CopySpellHandler {
                 actorId: data.actorId,
                 actorName: data.actorName
             });
-            ui.notifications.warn(`Rejected Copy Spell from ${data.actorName}: another transaction is in progress.`);
+            ui.notifications.warn(game.i18n.format("ionrift-respite.copySpell.rejectedBusy", { actor: data.actorName }));
             return;
         }
 
@@ -81,7 +81,7 @@ export class CopySpellHandler {
         const currentGold = actor?.system?.currency?.gp ?? 0;
         const canAfford = currentGold >= data.cost;
 
-        ui.notifications.info(`${data.initiatedBy ?? data.actorName} wants to copy a Level ${data.spellLevel} spell (${data.cost}gp, DC ${data.dc}).`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.wantsToCopy", { initiator: data.initiatedBy ?? data.actorName, level: data.spellLevel, cost: data.cost, dc: data.dc }));
 
         if (gmApp) {
             gmApp._gmCopySpellProposal = {
@@ -139,7 +139,7 @@ export class CopySpellHandler {
             remainingGold: proposal.remainingGold
         });
 
-        ui.notifications.info(`Re-sent roll prompt for ${proposal.actorName}.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.resentRollPrompt", { actor: proposal.actorName }));
     }
 
     /**
@@ -167,11 +167,11 @@ export class CopySpellHandler {
         const total = roll.total;
         const success = total >= dc;
 
-        const tierLabel = success ? "Success" : "Failed";
+        const tierLabel = success ? game.i18n.localize("ionrift-respite.copySpell.tierSuccess") : game.i18n.localize("ionrift-respite.copySpell.tierFailed");
         const tierColor = success ? "#7eb8da" : "#e88";
         const narrative = success
-            ? "You study the unfamiliar notation, deciphering its meaning. The spell takes shape in your book, written in your own hand."
-            : "The notation resists your understanding. The inks and materials are consumed, but the spell eludes you.";
+            ? game.i18n.localize("ionrift-respite.copySpell.narrativeSuccess")
+            : game.i18n.localize("ionrift-respite.copySpell.narrativeFailed");
 
         const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
         await CopySpellHandler.#settleArcanaRoll(actor, roll, dc, ownerIds, true);
@@ -179,18 +179,18 @@ export class CopySpellHandler {
         const receiptHtml = `
             <div style="border: 1px solid rgba(120,180,220,0.3); border-radius: 6px; padding: 0.5rem; background: rgba(30,35,50,0.85);">
                 <div style="font-weight: 600; color: ${tierColor};">
-                    <i class="fas fa-receipt"></i> Spell Transcription Receipt: ${tierLabel}
+                    <i class="fas fa-receipt"></i> ${game.i18n.format("ionrift-respite.copySpell.receiptTitle", { tier: tierLabel })}
                 </div>
                 <div style="font-size: 0.85rem; color: #ccc; margin-top: 0.3rem;">
-                    <strong>${actor.name}</strong> spent <strong>${cost}gp</strong> on inks to copy a level ${proposal.spellLevel} spell.<br>
-                    <span style="color: #888;">Remaining gold: ${proposal.remainingGold}gp</span>
+                    ${game.i18n.format("ionrift-respite.copySpell.receiptSpent", { actor: actor.name, cost, level: proposal.spellLevel })}<br>
+                    <span style="color: #888;">${game.i18n.format("ionrift-respite.copySpell.remainingGold", { gold: proposal.remainingGold })}</span>
                 </div>
                 ${success
                     ? `<div style="font-size: 0.85rem; color: #7eb8da; margin-top: 0.3rem;">
-                        <i class="fas fa-check-circle"></i> The spell is now in your spellbook.
+                        <i class="fas fa-check-circle"></i> ${game.i18n.localize("ionrift-respite.copySpell.spellInBook")}
                        </div>`
                     : `<div style="font-size: 0.85rem; color: #e88; margin-top: 0.3rem;">
-                        <i class="fas fa-times-circle"></i> The attempt failed. Materials consumed. If copying from a scroll, remove it.
+                        <i class="fas fa-times-circle"></i> ${game.i18n.localize("ionrift-respite.copySpell.attemptFailedMaterialsConsumed")}
                        </div>`
                 }
             </div>`;
@@ -214,7 +214,7 @@ export class CopySpellHandler {
             cost
         });
 
-        ui.notifications.info(`${actor.name}: Copy Spell: ${tierLabel}. (GM rolled on behalf of player)`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.gmRolledResult", { actor: actor.name, tier: tierLabel }));
         gmApp.render();
     }
 
@@ -241,7 +241,7 @@ export class CopySpellHandler {
             dc: proposal.dc
         });
 
-        ui.notifications.info(`Approved: ${proposal.cost}gp for Level ${proposal.spellLevel} spell.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.approvedCost", { cost: proposal.cost, level: proposal.spellLevel }));
     }
 
     /**
@@ -260,7 +260,7 @@ export class CopySpellHandler {
             playerApp.render();
         }
 
-        ui.notifications.info("Copy Spell declined.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.copySpell.declined"));
     }
 
     /**
@@ -272,7 +272,7 @@ export class CopySpellHandler {
 
         const actor = game.actors.get(data.actorId);
         if (!actor) {
-            ui.notifications.error("Actor not found.");
+            ui.notifications.error(game.i18n.localize("ionrift-respite.copySpell.actorNotFound"));
             return;
         }
 
@@ -282,12 +282,12 @@ export class CopySpellHandler {
         const currentGold = currAdapter ? currAdapter.getCurrency(actor) : (actor.system?.currency?.gp ?? 0);
 
         if (currentGold < cost) {
-            ui.notifications.warn(`${actor.name} only has ${currentGold}gp. Cannot charge ${cost}gp.`);
+            ui.notifications.warn(game.i18n.format("ionrift-respite.copySpell.cannotChargeGold", { actor: actor.name, currentGold, cost }));
             game.socket.emit(`module.${MODULE_ID}`, {
                 type: "copySpellResult",
                 actorId: data.actorId,
                 success: false,
-                narrative: `Insufficient gold. ${actor.name} needs ${cost}gp but only has ${currentGold}gp.`,
+                narrative: game.i18n.format("ionrift-respite.copySpell.insufficientGoldNarrative", { actor: actor.name, cost, currentGold }),
                 cost: 0
             });
             return;
@@ -299,7 +299,7 @@ export class CopySpellHandler {
             await actor.update({ "system.currency.gp": currentGold - cost });
         }
 
-        ui.notifications.info(`${actor.name}: Charged ${cost}gp. Waiting for Arcana roll...`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.chargedWaitingRoll", { actor: actor.name, cost }));
 
         // Send roll prompt to player
         game.socket.emit(`module.${MODULE_ID}`, {
@@ -325,7 +325,7 @@ export class CopySpellHandler {
         const actor = game.actors.get(data.actorId);
         if (!actor?.testUserPermission(game.user, "OWNER")) return;
 
-        ui.notifications.info(`Gold charged. Roll Arcana DC ${data.dc} for your Copy Spell.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.promptRollArcana", { dc: data.dc }));
 
         if (playerApp) {
             playerApp._copySpellRollPrompt = data;
@@ -362,11 +362,11 @@ export class CopySpellHandler {
         const total = roll.total;
         const success = total >= dc;
 
-        const tierLabel = success ? "Success" : "Failed";
+        const tierLabel = success ? game.i18n.localize("ionrift-respite.copySpell.tierSuccess") : game.i18n.localize("ionrift-respite.copySpell.tierFailed");
         const tierColor = success ? "#7eb8da" : "#e88";
         const narrative = success
-            ? "You study the unfamiliar notation, deciphering its meaning. The spell takes shape in your book, written in your own hand."
-            : "The notation resists your understanding. The inks and materials are consumed, but the spell eludes you.";
+            ? game.i18n.localize("ionrift-respite.copySpell.narrativeSuccess")
+            : game.i18n.localize("ionrift-respite.copySpell.narrativeFailed");
 
         // Post the roll as a chat message (whispered to owner + GM)
         const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
@@ -376,18 +376,18 @@ export class CopySpellHandler {
         const receiptHtml = `
             <div style="border: 1px solid rgba(120,180,220,0.3); border-radius: 6px; padding: 0.5rem; background: rgba(30,35,50,0.85);">
                 <div style="font-weight: 600; color: ${tierColor};">
-                    <i class="fas fa-receipt"></i> Spell Transcription Receipt: ${tierLabel}
+                    <i class="fas fa-receipt"></i> ${game.i18n.format("ionrift-respite.copySpell.receiptTitle", { tier: tierLabel })}
                 </div>
                 <div style="font-size: 0.85rem; color: #ccc; margin-top: 0.3rem;">
-                    <strong>${actor.name}</strong> spent <strong>${cost}gp</strong> on inks to copy a level ${data.spellLevel} spell.<br>
-                    <span style="color: #888;">Remaining gold: ${data.remainingGold}gp</span>
+                    ${game.i18n.format("ionrift-respite.copySpell.receiptSpent", { actor: actor.name, cost, level: data.spellLevel })}<br>
+                    <span style="color: #888;">${game.i18n.format("ionrift-respite.copySpell.remainingGold", { gold: data.remainingGold })}</span>
                 </div>
                 ${success
                     ? `<div style="font-size: 0.85rem; color: #7eb8da; margin-top: 0.3rem;">
-                        <i class="fas fa-check-circle"></i> The spell is now in your spellbook.
+                        <i class="fas fa-check-circle"></i> ${game.i18n.localize("ionrift-respite.copySpell.spellInBook")}
                        </div>`
                     : `<div style="font-size: 0.85rem; color: #e88; margin-top: 0.3rem;">
-                        <i class="fas fa-times-circle"></i> The attempt failed. Materials consumed. If copying from a scroll, remove it.
+                        <i class="fas fa-times-circle"></i> ${game.i18n.localize("ionrift-respite.copySpell.attemptFailedMaterialsConsumed")}
                        </div>`
                 }
             </div>`;
@@ -413,7 +413,7 @@ export class CopySpellHandler {
             cost
         });
 
-        ui.notifications.info(`Copy Spell: ${tierLabel}. ${cost}gp spent.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.playerRollResult", { tier: tierLabel, cost }));
     }
 
     /**
@@ -423,7 +423,7 @@ export class CopySpellHandler {
     static handleDecline(data) {
         if (!game.user.isGM) return;
         const actor = game.actors.get(data.actorId);
-        ui.notifications.info(`${actor?.name ?? "Player"} declined the Copy Spell transaction.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.playerDeclined", { actor: actor?.name ?? game.i18n.localize("ionrift-respite.common.player") }));
     }
 
     /**
@@ -437,9 +437,9 @@ export class CopySpellHandler {
         if (game.user.isGM) {
             // GM: clear the transaction card and show result notification
             app._gmCopySpellProposal = null;
-            const tierLabel = data.success ? "Success" : "Failed";
+            const tierLabel = data.success ? game.i18n.localize("ionrift-respite.copySpell.tierSuccess") : game.i18n.localize("ionrift-respite.copySpell.tierFailed");
             const actor = game.actors.get(data.actorId);
-            ui.notifications.info(`${actor?.name ?? "Player"}: Copy Spell: ${tierLabel}. ${data.cost}gp charged.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.gmResultCharged", { actor: actor?.name ?? game.i18n.localize("ionrift-respite.common.player"), tier: tierLabel, cost: data.cost }));
             app.render();
             app._saveRestState?.();
         } else {
@@ -461,11 +461,11 @@ export class CopySpellHandler {
      */
     static async #settleArcanaRoll(actor, roll, dc, whisper, gmRolled) {
         const rolledFor = gmRolled
-            ? `<br><span style="font-size:0.75em;color:#888;">Rolled for the player.</span>`
+            ? `<br><span style="font-size:0.75em;color:#888;">${game.i18n.localize("ionrift-respite.copySpell.rolledForPlayer")}</span>`
             : "";
         await postRollAndSettle(roll, {
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>Copy Spell</strong> (Arcana, DC ${dc})${rolledFor}`,
+            flavor: game.i18n.format("ionrift-respite.copySpell.rollFlavor", { dc, rolledFor }),
             whisper
         });
     }

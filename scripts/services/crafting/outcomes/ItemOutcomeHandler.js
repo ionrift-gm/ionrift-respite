@@ -235,7 +235,7 @@ export class ItemOutcomeHandler {
                 rolledQty = roll.total;
                 roll.toMessage({
                     speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
-                    flavor: `Rolling ${quantity} for ${itemRef.replace(/_/g, " ")}`
+                    flavor: game.i18n.format("ionrift-respite.itemOutcome.rollingFlavor", { quantity, item: itemRef.replace(/_/g, " ") })
                 });
             } else if (typeof quantity === "string") {
                 rolledQty = parseInt(quantity) || 1;

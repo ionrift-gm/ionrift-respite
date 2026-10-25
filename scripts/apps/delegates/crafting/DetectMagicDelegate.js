@@ -110,8 +110,8 @@ export function getNamedSpellAccess(actor, spellNameLower) {
         return {
             state: "unavailable",
             badge: "Spell",
-            caption: `Requires the ${pretty} spell.`,
-            tooltip: `Requires the ${pretty} spell.`
+            caption: game.i18n.format("ionrift-respite.detectMagicDelegate.requiresSpell", { spell: pretty }),
+            tooltip: game.i18n.format("ionrift-respite.detectMagicDelegate.requiresSpell", { spell: pretty })
         };
     }
     const isWizard = actorIsWizard(actor);
@@ -119,11 +119,11 @@ export function getNamedSpellAccess(actor, spellNameLower) {
         state: "unavailable",
         badge: "Spell",
         caption: isWizard
-            ? `${pretty} is not in the spellbook.`
-            : `Requires the ${pretty} spell.`,
+            ? game.i18n.format("ionrift-respite.detectMagicDelegate.notInSpellbook", { spell: pretty })
+            : game.i18n.format("ionrift-respite.detectMagicDelegate.requiresSpell", { spell: pretty }),
         tooltip: isWizard
-            ? `${pretty} is not in the spellbook.`
-            : `Requires the ${pretty} spell.`
+            ? game.i18n.format("ionrift-respite.detectMagicDelegate.notInSpellbook", { spell: pretty })
+            : game.i18n.format("ionrift-respite.detectMagicDelegate.requiresSpell", { spell: pretty })
     };
 
     let sawSpell = false;
@@ -135,8 +135,8 @@ export function getNamedSpellAccess(actor, spellNameLower) {
             return {
                 state: "available",
                 badge: "",
-                caption: `${actor.name} has ${pretty} as a cantrip.`,
-                tooltip: `${actor.name} has ${pretty} as a cantrip.`
+                caption: game.i18n.format("ionrift-respite.detectMagicDelegate.hasAsCantrip", { actor: actor.name, spell: pretty }),
+                tooltip: game.i18n.format("ionrift-respite.detectMagicDelegate.hasAsCantrip", { actor: actor.name, spell: pretty })
             };
         }
         const { isRitual, mode, isPrepared } = readSpellPrep(i);
@@ -145,24 +145,24 @@ export function getNamedSpellAccess(actor, spellNameLower) {
             return {
                 state: "available",
                 badge: "",
-                caption: `${actor.name} can cast ${pretty} as a ritual.`,
-                tooltip: `${actor.name} can cast ${pretty} as a ritual.`
+                caption: game.i18n.format("ionrift-respite.detectMagicDelegate.canCastRitual", { actor: actor.name, spell: pretty }),
+                tooltip: game.i18n.format("ionrift-respite.detectMagicDelegate.canCastRitual", { actor: actor.name, spell: pretty })
             };
         }
         if ((isRitual || mode === "ritual") && isWizard) {
             return {
                 state: "available",
                 badge: "",
-                caption: `${actor.name} can cast ${pretty} as a ritual from the spellbook without preparing it (Wizard - Ritual Adept, PHB p.115).`,
-                tooltip: `${actor.name} can cast ${pretty} as a ritual from the spellbook without preparing it (Wizard - Ritual Adept, PHB p.115).`
+                caption: game.i18n.format("ionrift-respite.detectMagicDelegate.wizardRitualAdept", { actor: actor.name, spell: pretty }),
+                tooltip: game.i18n.format("ionrift-respite.detectMagicDelegate.wizardRitualAdept", { actor: actor.name, spell: pretty })
             };
         }
         if (mode === "innate") {
             return {
                 state: "available",
                 badge: "",
-                caption: `${actor.name} can cast ${pretty} innately.`,
-                tooltip: `${actor.name} can cast ${pretty} innately.`
+                caption: game.i18n.format("ionrift-respite.detectMagicDelegate.canCastInnately", { actor: actor.name, spell: pretty }),
+                tooltip: game.i18n.format("ionrift-respite.detectMagicDelegate.canCastInnately", { actor: actor.name, spell: pretty })
             };
         }
         if (mode === "always" || mode === "atwill") {
@@ -170,11 +170,11 @@ export function getNamedSpellAccess(actor, spellNameLower) {
                 state: "available",
                 badge: "",
                 caption: mode === "atwill"
-                    ? `${actor.name} can cast ${pretty} at will.`
-                    : `${actor.name} always has ${pretty} available (Ritual Caster or similar, PHB p.204).`,
+                    ? game.i18n.format("ionrift-respite.detectMagicDelegate.canCastAtWill", { actor: actor.name, spell: pretty })
+                    : game.i18n.format("ionrift-respite.detectMagicDelegate.alwaysAvailable", { actor: actor.name, spell: pretty }),
                 tooltip: mode === "atwill"
-                    ? `${actor.name} can cast ${pretty} at will.`
-                    : `${actor.name} always has ${pretty} available (Ritual Caster or similar, PHB p.204).`
+                    ? game.i18n.format("ionrift-respite.detectMagicDelegate.canCastAtWill", { actor: actor.name, spell: pretty })
+                    : game.i18n.format("ionrift-respite.detectMagicDelegate.alwaysAvailable", { actor: actor.name, spell: pretty })
             };
         }
         if (isPrepared) {
@@ -182,11 +182,11 @@ export function getNamedSpellAccess(actor, spellNameLower) {
                 state: "available",
                 badge: "",
                 caption: isRitual
-                    ? `${actor.name} has ${pretty} prepared with the Ritual tag; can cast as a ritual.`
-                    : `${actor.name} has ${pretty} prepared.`,
+                    ? game.i18n.format("ionrift-respite.detectMagicDelegate.preparedRitualTag", { actor: actor.name, spell: pretty })
+                    : game.i18n.format("ionrift-respite.detectMagicDelegate.hasPrepared", { actor: actor.name, spell: pretty }),
                 tooltip: isRitual
-                    ? `${actor.name} has ${pretty} prepared with the Ritual tag; can cast as a ritual.`
-                    : `${actor.name} has ${pretty} prepared.`
+                    ? game.i18n.format("ionrift-respite.detectMagicDelegate.preparedRitualTag", { actor: actor.name, spell: pretty })
+                    : game.i18n.format("ionrift-respite.detectMagicDelegate.hasPrepared", { actor: actor.name, spell: pretty })
             };
         }
     }
@@ -194,9 +194,9 @@ export function getNamedSpellAccess(actor, spellNameLower) {
     if (sawSpell) {
         return {
             state: "unprepared",
-            badge: "Not prepared",
-            caption: `${pretty} is not prepared.`,
-            tooltip: `${pretty} is not prepared.`
+            badge: game.i18n.localize("ionrift-respite.detectMagicDelegate.badgeNotPrepared"),
+            caption: game.i18n.format("ionrift-respite.detectMagicDelegate.isNotPrepared", { spell: pretty }),
+            tooltip: game.i18n.format("ionrift-respite.detectMagicDelegate.isNotPrepared", { spell: pretty })
         };
     }
     return unavailable;
@@ -643,8 +643,8 @@ export class DetectMagicDelegate {
             const { detectMagicCasters } = collectPartyIdentifyEmbedData(party);
             ui.notifications.warn(
                 detectMagicCasters.length
-                    ? "You need a party member with Detect Magic who you control to run the scan."
-                    : "Nobody in the party has Detect Magic available to cast."
+                    ? game.i18n.localize("ionrift-respite.detectMagicDelegate.needControlledCaster")
+                    : game.i18n.localize("ionrift-respite.detectMagicDelegate.nobodyHasDetectMagic")
             );
             return;
         }
@@ -672,7 +672,7 @@ export class DetectMagicDelegate {
         this._app._magicScanResults = results;
         this._app._magicScanComplete = true;
         if (results.length === 0) {
-            ui.notifications.info("No unidentified magical items detected among the party's gear.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.detectMagicDelegate.noMagicalItemsDetected"));
         }
         this._app.render();
         this.broadcastPartyScan(getPartyActors);
@@ -695,12 +695,12 @@ export class DetectMagicDelegate {
                     }
                 }
             }
-            ui.notifications.info(`Identified: ${result.trueName} (${DetectMagicScanner.schoolLabel(result.school)})`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.detectMagicDelegate.identifiedNotification", { name: result.trueName, school: DetectMagicScanner.schoolLabel(result.school) }));
             this._app.render();
             this.broadcastPartyScan(getPartyActors);
         } catch (e) {
             console.error(`[Respite] Failed to identify item:`, e);
-            ui.notifications.error(`Failed to identify item: ${e.message}`);
+            ui.notifications.error(game.i18n.format("ionrift-respite.detectMagicDelegate.failedToIdentify", { message: e.message }));
         }
     }
 }

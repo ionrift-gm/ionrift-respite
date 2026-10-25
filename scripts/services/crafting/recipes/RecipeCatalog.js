@@ -17,14 +17,14 @@ export const HOMEBREW_PROFESSION_IDS = ["cooking"];
 
 /** Labels and icons for the homebrew recipe editor profession picker. */
 export const HOMEBREW_PROFESSION_DISPLAY = {
-    cooking: { label: "Cooking", icon: "fas fa-utensils" },
-    brewing: { label: "Brewing", icon: "fas fa-wine-bottle" },
-    tailoring: { label: "Tailoring", icon: "fas fa-scissors" },
-    leatherworking: { label: "Leatherworking", icon: "fas fa-shield-alt" },
-    alchemy: { label: "Alchemy", icon: "fas fa-flask" },
-    fletching: { label: "Fletching", icon: "fas fa-bow-arrow" },
-    tinkering: { label: "Tinkering", icon: "fas fa-cog" },
-    smithing: { label: "Smithing", icon: "fas fa-hammer" }
+    cooking: { get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.profession.cooking") : "Cooking"; }, icon: "fas fa-utensils" },
+    brewing: { get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.profession.brewing") : "Brewing"; }, icon: "fas fa-wine-bottle" },
+    tailoring: { get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.profession.tailoring") : "Tailoring"; }, icon: "fas fa-scissors" },
+    leatherworking: { get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.profession.leatherworking") : "Leatherworking"; }, icon: "fas fa-shield-alt" },
+    alchemy: { get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.profession.alchemy") : "Alchemy"; }, icon: "fas fa-flask" },
+    fletching: { get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.profession.fletching") : "Fletching"; }, icon: "fas fa-bow-arrow" },
+    tinkering: { get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.profession.tinkering") : "Tinkering"; }, icon: "fas fa-cog" },
+    smithing: { get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.profession.smithing") : "Smithing"; }, icon: "fas fa-hammer" }
 };
 
 /** Canonical tool proficiency key per crafting profession (matches activity prerequisites). */
@@ -41,15 +41,15 @@ export const PROFESSION_TOOL_REQUIRED = {
 
 /** Display labels for locked tool proficiency in the recipe editor. */
 export const TOOL_PROFICIENCY_LABELS = {
-    cook: "Cook's utensils",
-    brewer: "Brewer's supplies",
-    alchemist: "Alchemist's supplies",
-    weaver: "Weaver's tools",
-    tailor: "Tailor's tools",
-    leatherworker: "Leatherworker's tools",
-    woodcarver: "Woodcarver's tools",
-    tinker: "Tinker's tools",
-    smith: "Smith's tools"
+    get cook() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.tools.cook") : "Cook's utensils"; },
+    get brewer() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.tools.brewer") : "Brewer's supplies"; },
+    get alchemist() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.tools.alchemist") : "Alchemist's supplies"; },
+    get weaver() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.tools.weaver") : "Weaver's tools"; },
+    get tailor() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.tools.tailor") : "Tailor's tools"; },
+    get leatherworker() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.tools.leatherworker") : "Leatherworker's tools"; },
+    get woodcarver() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.tools.woodcarver") : "Woodcarver's tools"; },
+    get tinker() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.tools.tinker") : "Tinker's tools"; },
+    get smith() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.tools.smith") : "Smith's tools"; }
 };
 
 /**
@@ -202,14 +202,18 @@ export function describeRecipeSaveOverwrite(professionId, draft, list, { isUpdat
     );
     if (duplicateIndex >= 0) {
         const name = list[duplicateIndex]?.name ?? draft.id;
-        messages.push(`Recipe id "${draft.id}" replaces custom recipe "${name}".`);
+        messages.push(game.i18n?.format
+            ? game.i18n.format("ionrift-respite.recipes.replacesCustom", { id: draft.id, name })
+            : `Recipe id "${draft.id}" replaces custom recipe "${name}".`);
     }
 
     const packMap = getPackRecipeIdMap(professionId, list);
     if (packMap.has(draft.id)) {
         const sameSavedOverride = isUpdate && list[selectedIndex]?.id === draft.id;
         if (!sameSavedOverride) {
-            messages.push(`Recipe id "${draft.id}" replaces pack recipe "${packMap.get(draft.id)}".`);
+            messages.push(game.i18n?.format
+                ? game.i18n.format("ionrift-respite.recipes.replacesPack", { id: draft.id, name: packMap.get(draft.id) })
+                : `Recipe id "${draft.id}" replaces pack recipe "${packMap.get(draft.id)}".`);
         }
     }
 
@@ -225,30 +229,30 @@ export function describeRecipeSaveOverwrite(professionId, draft, list, { isUpdat
 export function validateCustomRecipe(recipe, professionId) {
     const errors = [];
     if (!recipe || typeof recipe !== "object") {
-        return { valid: false, errors: ["Recipe must be an object."] };
+        return { valid: false, errors: [game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.mustBeObject") : "Recipe must be an object."] };
     }
     if (!recipe.id || typeof recipe.id !== "string" || !recipe.id.trim()) {
-        errors.push("Missing recipe id.");
+        errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.missingId") : "Missing recipe id.");
     }
     if (!recipe.name || typeof recipe.name !== "string" || !recipe.name.trim()) {
-        errors.push("Missing recipe name.");
+        errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.missingName") : "Missing recipe name.");
     }
     if (recipe.profession && recipe.profession !== professionId) {
-        errors.push(`Profession mismatch (expected ${professionId}).`);
+        errors.push(game.i18n?.format ? game.i18n.format("ionrift-respite.recipes.validate.professionMismatch", { professionId }) : `Profession mismatch (expected ${professionId}).`);
     }
     if (typeof recipe.dc !== "number" || recipe.dc <= 0) {
-        errors.push("DC must be a positive number.");
+        errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.dcPositive") : "DC must be a positive number.");
     }
     if (!Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) {
-        errors.push("At least one ingredient is required.");
+        errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.atLeastOneIngredient") : "At least one ingredient is required.");
     } else {
         for (const ing of recipe.ingredients) {
             if (!ing?.name || typeof ing.name !== "string") {
-                errors.push("Each ingredient needs a name.");
+                errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.ingredientNeedsName") : "Each ingredient needs a name.");
                 break;
             }
             if (typeof ing.quantity !== "number" || ing.quantity <= 0) {
-                errors.push("Ingredient quantities must be positive numbers.");
+                errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.ingredientQtyPositive") : "Ingredient quantities must be positive numbers.");
                 break;
             }
         }
@@ -257,15 +261,15 @@ export function validateCustomRecipe(recipe, professionId) {
         ? recipe.outputs
         : (recipe.output ? [recipe.output] : []);
     if (!stdOutputs.length) {
-        errors.push("Output must include a name (or a non-empty outputs OR-list).");
+        errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.outputMustIncludeName") : "Output must include a name (or a non-empty outputs OR-list).");
     } else {
         for (const out of stdOutputs) {
             if (!out?.name || typeof out.name !== "string") {
-                errors.push("Each output must include a name.");
+                errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.eachOutputNeedsName") : "Each output must include a name.");
                 break;
             }
             if (out && (typeof out.quantity !== "number" || out.quantity <= 0)) {
-                errors.push("Output quantity must be a positive number.");
+                errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.outputQtyPositive") : "Output quantity must be a positive number.");
                 break;
             }
         }
@@ -276,11 +280,11 @@ export function validateCustomRecipe(recipe, professionId) {
         : (recipe.ambitiousOutput ? [recipe.ambitiousOutput] : []);
     for (const amb of ambOutputs) {
         if (!amb.name || typeof amb.name !== "string") {
-            errors.push("Ambitious output must include a name.");
+            errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.ambOutputNeedsName") : "Ambitious output must include a name.");
             break;
         }
         if (typeof amb.quantity !== "number" || amb.quantity <= 0) {
-            errors.push("Ambitious output quantity must be a positive number.");
+            errors.push(game.i18n?.localize ? game.i18n.localize("ionrift-respite.recipes.validate.ambOutputQtyPositive") : "Ambitious output quantity must be a positive number.");
             break;
         }
     }

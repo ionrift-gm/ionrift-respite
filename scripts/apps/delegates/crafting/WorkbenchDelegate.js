@@ -208,7 +208,7 @@ export class WorkbenchDelegate {
                 itemId,
                 gearActorId: owner?.id ?? actorId,
                 img: item.img || "icons/svg/mystery-man.svg",
-                label: (isUnidentified ? (item.system?.unidentified?.name || item.name) : item.name) || "Item",
+                label: (isUnidentified ? (item.system?.unidentified?.name || item.name) : item.name) || game.i18n.localize("ionrift-respite.common.itemFallback"),
                 ownerName: owner?.name ?? "",
                 alreadyIdentified: !isUnidentified
             };
@@ -219,7 +219,7 @@ export class WorkbenchDelegate {
             return {
                 itemId,
                 img: item.img || "icons/svg/mystery-man.svg",
-                label: item.name || "Potion"
+                label: item.name || game.i18n.localize("ionrift-respite.common.potionFallback")
             };
         };
         const resolveSpellChip = (itemId, spellActorId) => {
@@ -231,7 +231,7 @@ export class WorkbenchDelegate {
                 itemId,
                 spellActorId: owner?.id ?? actorId,
                 img: item.img || "icons/svg/mystery-man.svg",
-                label: (isUnidentified ? (item.system?.unidentified?.name || item.name) : item.name) || "Item",
+                label: (isUnidentified ? (item.system?.unidentified?.name || item.name) : item.name) || game.i18n.localize("ionrift-respite.common.itemFallback"),
                 ownerName: owner?.name ?? "",
                 alreadyIdentified: !isUnidentified
             };
@@ -294,20 +294,20 @@ export class WorkbenchDelegate {
         const actor = game.actors.get(actorId);
         if (!actor) return;
         if (!actor.isOwner && !game.user.isGM) {
-            ui.notifications.warn("You can only submit identify choices for characters you control.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.workbenchDelegate.onlyControlledActors"));
             return;
         }
         if (this.submitPending.has(actorId)) return;
         const st = this.getStaging(actorId);
         if (!st.gearItemId && !st.potionItemId && !st.spellItemId) {
-            ui.notifications.warn("Drag at least one item onto the circles, then submit.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.workbenchDelegate.dragAtLeastOne"));
             return;
         }
         const arcane = buildArcaneWorkbenchAccess(actor, {
             isGmUser: !!(game.user?.isGM || this._app?._isGM)
         });
         if (st.spellItemId && !arcane.identifyAvailable && !game.user?.isGM) {
-            ui.notifications.warn("Requires the Identify spell.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.workbenchDelegate.requiresIdentifySpell"));
             return;
         }
         this.submitPending.add(actorId);
@@ -376,7 +376,7 @@ export class WorkbenchDelegate {
                             ? names.join(", ")
                             : resolveTrueName(ownerActor, itemId, itemBefore.name);
                         ChatMessage.create({
-                            content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> <strong>${actor.name}</strong> identified your <strong>${label}</strong>.</div>`,
+                            content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> ${game.i18n.format("ionrift-respite.stationActivity.identifiedYourItemChat", { caster: actor.name, item: label })}</div>`,
                             speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
                             whisper: ownerUsers.map(u => u.id)
                         });
@@ -385,7 +385,7 @@ export class WorkbenchDelegate {
             }
             if (!revealed.length) {
                 if (!game.user.isGM) {
-                    ui.notifications.error("Identify failed. Try again or ask the GM.");
+                    ui.notifications.error(game.i18n.localize("ionrift-respite.workbenchDelegate.identifyFailed"));
                 }
                 return;
             }
@@ -466,7 +466,7 @@ export class WorkbenchDelegate {
                     identified = true;
                 } catch (err) {
                     console.error(`[Respite] Failed to identify item:`, err);
-                    if (!deferNotify) ui.notifications.error("Failed to identify item.");
+                    if (!deferNotify) ui.notifications.error(game.i18n.localize("ionrift-respite.workbenchDelegate.failedToIdentifyItem"));
                     return null;
                 }
             }
@@ -541,14 +541,14 @@ export class WorkbenchDelegate {
                     identified = true;
                 } catch (err) {
                     console.error(`[Respite] Failed to identify item:`, err);
-                    if (!deferNotify) ui.notifications.error("Failed to identify item.");
+                    if (!deferNotify) ui.notifications.error(game.i18n.localize("ionrift-respite.workbenchDelegate.failedToIdentifyItem"));
                     return null;
                 }
             }
         }
 
         if (!identified) {
-            if (!deferNotify) ui.notifications.error("Failed to identify item.");
+            if (!deferNotify) ui.notifications.error(game.i18n.localize("ionrift-respite.workbenchDelegate.failedToIdentifyItem"));
             return null;
         }
 
@@ -561,10 +561,10 @@ export class WorkbenchDelegate {
                 name: trueName,
                 img: fresh?.img ?? item.img ?? "icons/svg/mystery-man.svg"
             }];
-            if (!deferNotify) ui.notifications.info(`${trueName} identified by ${actor.name}.`);
+            if (!deferNotify) ui.notifications.info(game.i18n.format("ionrift-respite.workbenchDelegate.itemIdentifiedBy", { item: trueName, actor: actor.name }));
         } else if (!deferNotify) {
             const label = resultItems.map(r => r.name).filter(Boolean).join(", ");
-            ui.notifications.info(`${label} identified by ${actor.name}.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.workbenchDelegate.itemIdentifiedBy", { item: label, actor: actor.name }));
         }
         if (!deferRender) this._app.render();
         return { identified: true, items: resultItems };
@@ -717,21 +717,21 @@ export class WorkbenchDelegate {
                     else if (dragSlot === "gear" && zoneType === "gear") assignGear(itemId);
                     else if (dragSlot === "spell" && zoneType === "spell") assignSpell(itemId);
                     else if (dragSlot === "potion" && zoneType === "gear") {
-                        ui.notifications.warn("Drop potions onto the Taste circle.");
+                        ui.notifications.warn(game.i18n.localize("ionrift-respite.workbenchDelegate.dropPotionsOnTaste"));
                     } else if (dragSlot === "gear" && zoneType === "potion") {
-                        ui.notifications.warn("Drop that item onto the Focus circle.");
+                        ui.notifications.warn(game.i18n.localize("ionrift-respite.workbenchDelegate.dropItemOnFocus"));
                     }
                     return;
                 }
                 const item = await resolveItemFromDropEvent(e);
                 Logger.log(`[Respite:Workbench] resolveItemFromDropEvent =>`, { found: !!item, itemName: item?.name, parentId: item?.parent?.id, expectedActorId: actorId });
                 if (!item) {
-                    ui.notifications.warn("Could not read that drop. Drag from this character's inventory on the sheet.");
+                    ui.notifications.warn(game.i18n.localize("ionrift-respite.workbenchDelegate.couldNotReadDrop"));
                     return;
                 }
                 if (item.parent?.id !== actorId) {
                     console.warn(`[Respite:Workbench] item parent mismatch: item.parent.id=${item.parent?.id}, expected=${actorId}`);
-                    ui.notifications.warn("Drop an item that belongs to this character's sheet.");
+                    ui.notifications.warn(game.i18n.localize("ionrift-respite.workbenchDelegate.dropBelongsToCharacter"));
                     return;
                 }
                 if (zoneType === "gear") assignGear(item.id);

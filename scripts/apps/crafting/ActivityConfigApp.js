@@ -46,86 +46,86 @@ const TIER_SLIDER_META = {
 
 const ACTIVITIES_GROUP = {
     id: "activities",
-    label: "Activities",
+    get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.groupActivities.label") : "Activities"; },
     icon: "fas fa-campground",
-    hint: "Evening camp: professions, training, pray, fletching, encounters, copy spell."
+    get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.groupActivities.hint") : "Evening camp: professions, training, pray, fletching, encounters, copy spell."; }
 };
 
 /** Boolean activity toggles and tier sliders. Order = display order in the dialog. */
 const ACTIVITY_TOGGLES = [
     {
         key: "chefTreatCookingOnly",
-        label: "Chef Treats Only",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.chefTreatCookingOnly.label") : "Chef Treats Only"; },
         icon: "fas fa-cookie-bite",
-        hint: "No camp meals; Chef Bolstering Treats only.",
+        get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.chefTreatCookingOnly.hint") : "No camp meals; Chef Bolstering Treats only."; },
         type: "boolean"
     },
     {
         key: "enableProfessions",
-        label: "Crafting Professions",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableProfessions.label") : "Crafting Professions"; },
         icon: "fas fa-hammer",
-        hint: "Cook, brew, tailor, and craft activities during rest.",
+        get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableProfessions.hint") : "Cook, brew, tailor, and craft activities during rest."; },
         type: "boolean"
     },
     {
         key: "enableBrewingAlcohol",
-        label: "Alcoholic drinks",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableBrewingAlcohol.label") : "Alcoholic drinks"; },
         icon: "fas fa-wine-bottle",
-        hint: "Wine, mead, and draught recipes.",
+        get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableBrewingAlcohol.hint") : "Wine, mead, and draught recipes."; },
         type: "boolean",
         requiresAlcoholBrewContent: true
     },
     {
         key: "enableEncounters",
-        label: "Night Encounters & Watch",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableEncounters.label") : "Night Encounters & Watch"; },
         icon: "fas fa-shield-alt",
-        hint: "Watch, defenses, and the night encounter roll.",
+        get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableEncounters.hint") : "Watch, defenses, and the night encounter roll."; },
         type: "boolean"
     },
     {
         key: "fletchingYieldTier",
-        label: "Fletching",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.fletchingYieldTier.label") : "Fletching"; },
         icon: "fas fa-bullseye",
-        hint: "Fletch arrows on long rests. Off, or yield tiers from 2d4+prof to 2d20+prof.",
+        get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.fletchingYieldTier.hint") : "Fletch arrows on long rests. Off, or yield tiers from 2d4+prof to 2d20+prof."; },
         type: "tierSlider"
     },
     {
         key: "trainingXpTier",
-        label: "Training",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.trainingXpTier.label") : "Training"; },
         icon: "fas fa-dumbbell",
-        hint: "Level 5 and below train on long rests. Off, or XP tiers from 3/10 to 10/50 per set.",
+        get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.trainingXpTier.hint") : "Level 5 and below train on long rests. Off, or XP tiers from 3/10 to 10/50 per set."; },
         type: "tierSlider"
     },
     {
         key: "enablePrayMeditate",
-        label: "Pray / Meditate",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enablePrayMeditate.label") : "Pray / Meditate"; },
         icon: "fas fa-pray",
-        hint: "Religion or Insight for temp HP",
+        get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enablePrayMeditate.hint") : "Religion or Insight for temp HP"; },
         type: "boolean"
     },
     {
         key: "enableCopySpell",
-        label: "Copy Spell",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableCopySpell.label") : "Copy Spell"; },
         icon: "fas fa-scroll",
-        hint: "Wizards with a spellbook copy spells on long rests.",
+        get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableCopySpell.hint") : "Wizards with a spellbook copy spells on long rests."; },
         type: "boolean"
     },
     {
         type: "group",
         id: "travel",
-        label: "Gathering & Provisions",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.groupTravel.label") : "Gathering & Provisions"; },
         icon: "fas fa-seedling",
-        hint: "Foraging, hunting, and provision rules during rest.",
+        get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.groupTravel.hint") : "Foraging, hunting, and provision rules during rest."; },
         children: [
             {
                 key: "enableForaging",
-                label: "Foraging",
-                hint: "Gather wild provisions during rest. Off removes the activity."
+                get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableForaging.label") : "Foraging"; },
+                get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableForaging.hint") : "Gather wild provisions during rest. Off removes the activity."; }
             },
             {
                 key: "campFuelFindChance",
-                label: "Camp Fuel Find Chance",
-                hint: "Chance each forage also grants kindling. 0 turns off the roll.",
+                get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.campFuelFindChance.label") : "Camp Fuel Find Chance"; },
+                get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.campFuelFindChance.hint") : "Chance each forage also grants kindling. 0 turns off the roll."; },
                 type: "percentSlider",
                 min: CAMP_FUEL_FIND_MIN_PERCENT,
                 max: CAMP_FUEL_FIND_MAX_PERCENT,
@@ -134,13 +134,13 @@ const ACTIVITY_TOGGLES = [
             },
             {
                 key: "enableHunting",
-                label: "Hunting",
-                hint: "Hunt game during rest. Off removes the activity."
+                get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableHunting.label") : "Hunting"; },
+                get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.enableHunting.hint") : "Hunt game during rest. Off removes the activity."; }
             },
             {
                 key: "homebrewProvisionOnly",
-                label: "Homebrew Provisions Only",
-                hint: "Custom recipes and Respite Custom compendium only. Ignores shipped items, stubs, and imported packs."
+                get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.homebrewProvisionOnly.label") : "Homebrew Provisions Only"; },
+                get hint() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.activityConfig.homebrewProvisionOnly.hint") : "Custom recipes and Respite Custom compendium only. Ignores shipped items, stubs, and imported packs."; }
             }
         ]
     }
@@ -151,7 +151,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
     static DEFAULT_OPTIONS = {
         id: "respite-activity-config",
         window: {
-            title: "Activities & Provisions",
+            title: "ionrift-respite.activityConfig.windowTitle",
             icon: "fas fa-campground",
             resizable: false
         },
@@ -222,7 +222,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         const travelGroup = context.rows.find(row => row.type === "group" && row.id === "travel");
 
         let html = `
-        <p class="activity-config-lead">Camp activities, gathering, and provision rules. Training and fletching use tier sliders.</p>
+        <p class="activity-config-lead">${game.i18n.localize("ionrift-respite.activityConfig.lead")}</p>
         <div class="activity-config-layout">
             <div class="activity-config-column activity-config-column--travel">`;
 
@@ -241,7 +241,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         </div>
         <div class="activity-config-actions">
             <button type="button" class="activity-config-save-btn">
-                <i class="fas fa-save"></i> Save
+                <i class="fas fa-save"></i> ${game.i18n.localize("ionrift-respite.activityConfig.save")}
             </button>
         </div>`;
 
@@ -420,7 +420,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                 if (range) await game.settings.set(MODULE_ID, row.key, Number(range.value));
             }
         }
-        ui.notifications.info("Activity and provision settings saved.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.activityConfig.savedNotification"));
         this.close();
     }
 }

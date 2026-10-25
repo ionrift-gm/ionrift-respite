@@ -13,7 +13,7 @@ function patchRecipeHeroDcRow(row, dcBreakdown, dcDisplay) {
     if (!row) return;
     let html = `<span class="recipe-hero-dc"><i class="fas fa-dice-d20"></i> DC ${dcDisplay}</span>`;
     if (dcBreakdown?.hasModifiers) {
-        html += `<span class="dc-base-hint">${dcBreakdown.base} base</span>`;
+        html += `<span class="dc-base-hint">${game.i18n.format("ionrift-respite.craftingPicker.baseDc", { base: dcBreakdown.base })}</span>`;
         for (const factor of dcBreakdown.factors ?? []) {
             html += `<span class="dc-factor-pill dc-factor-${factor.sign}">${factor.label}</span>`;
         }
