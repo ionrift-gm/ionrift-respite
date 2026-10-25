@@ -5238,10 +5238,16 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const party = getPartyActors();
         const sentryActor = mods.sentryActor ?? party[0] ?? null;
 
+        const terrainLabel = TerrainRegistry.get(this._terrainTag)?.label ?? this._terrainTag;
+
         if (triggered) {
             await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Improvised night check</strong> (${this._terrainTag}) threshold ${targetDC}<br>${rollTotal} below threshold. Run your own scenario at the table.`,
+                flavor: game.i18n.format("ionrift-respite.nightWatch.improvise.triggered", {
+                    terrain: terrainLabel,
+                    dc: targetDC,
+                    roll: rollTotal
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             entry.state = "amber";
@@ -5262,7 +5268,11 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         } else {
             await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Improvised night check</strong> (${this._terrainTag}) threshold ${targetDC}<br>${rollTotal} meets or beats the threshold. The night passes without incident.`,
+                flavor: game.i18n.format("ionrift-respite.nightWatch.improvise.quiet", {
+                    terrain: terrainLabel,
+                    dc: targetDC,
+                    roll: rollTotal
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             entry.state = "green";
