@@ -23,30 +23,31 @@ const DEFAULT_KINDLING_IMG = "icons/commodities/wood/kindling-sticks-brown.webp"
 /** After this many strike attempts, the next try always lights the fire. */
 const FLINT_STRIKE_GUARANTEE_AFTER = 10;
 
+// Labels are getters: these arrays are built at module load, before translations are ready.
 const TRINKETS = [
-    { id: "pinecone", icon: "fas fa-tree", label: "Pinecone", color: "#4ade80" },
-    { id: "letter", icon: "fas fa-envelope", label: "Old Letter", color: "#fbbf24" },
-    { id: "flower", icon: "fas fa-seedling", label: "Dried Flower", color: "#c084fc" },
-    { id: "vial", icon: "fas fa-flask", label: "Empty Vial", color: "#60a5fa" },
-    { id: "arrow", icon: "fas fa-long-arrow-alt-right", label: "Broken Arrow", color: "#f87171" }
+    { id: "pinecone", icon: "fas fa-tree", get label() { return game.i18n.localize("ionrift-respite.campfire.trinket.pinecone"); }, color: "#4ade80" },
+    { id: "letter", icon: "fas fa-envelope", get label() { return game.i18n.localize("ionrift-respite.campfire.trinket.letter"); }, color: "#fbbf24" },
+    { id: "flower", icon: "fas fa-seedling", get label() { return game.i18n.localize("ionrift-respite.campfire.trinket.flower"); }, color: "#c084fc" },
+    { id: "vial", icon: "fas fa-flask", get label() { return game.i18n.localize("ionrift-respite.campfire.trinket.vial"); }, color: "#60a5fa" },
+    { id: "arrow", icon: "fas fa-long-arrow-alt-right", get label() { return game.i18n.localize("ionrift-respite.campfire.trinket.arrow"); }, color: "#f87171" }
 ];
 
 const EMOTES = [
-    { id: "mug", icon: "fas fa-mug-hot", label: "sips from a mug" },
-    { id: "laugh", icon: "fas fa-laugh", label: "chuckles" },
-    { id: "think", icon: "fas fa-brain", label: "ponders" },
-    { id: "nod", icon: "fas fa-thumbs-up", label: "nods" }
+    { id: "mug", icon: "fas fa-mug-hot", get label() { return game.i18n.localize("ionrift-respite.campfire.emote.mug"); } },
+    { id: "laugh", icon: "fas fa-laugh", get label() { return game.i18n.localize("ionrift-respite.campfire.emote.laugh"); } },
+    { id: "think", icon: "fas fa-brain", get label() { return game.i18n.localize("ionrift-respite.campfire.emote.think"); } },
+    { id: "nod", icon: "fas fa-thumbs-up", get label() { return game.i18n.localize("ionrift-respite.campfire.emote.nod"); } }
 ];
 
 const WHITTLE_FIGURES = [
-    { id: "wolf", icon: "fas fa-dog", label: "Wolf" },
-    { id: "bird", icon: "fas fa-dove", label: "Bird" },
-    { id: "star", icon: "fas fa-star", label: "Star" },
-    { id: "shield", icon: "fas fa-shield-alt", label: "Shield" },
-    { id: "bear", icon: "fas fa-paw", label: "Bear" },
-    { id: "dragon", icon: "fas fa-dragon", label: "Dragon" },
-    { id: "tree", icon: "fas fa-tree", label: "Tree" },
-    { id: "fish", icon: "fas fa-fish", label: "Fish" }
+    { id: "wolf", icon: "fas fa-dog", get label() { return game.i18n.localize("ionrift-respite.campfire.whittle.wolf"); } },
+    { id: "bird", icon: "fas fa-dove", get label() { return game.i18n.localize("ionrift-respite.campfire.whittle.bird"); } },
+    { id: "star", icon: "fas fa-star", get label() { return game.i18n.localize("ionrift-respite.campfire.whittle.star"); } },
+    { id: "shield", icon: "fas fa-shield-alt", get label() { return game.i18n.localize("ionrift-respite.campfire.whittle.shield"); } },
+    { id: "bear", icon: "fas fa-paw", get label() { return game.i18n.localize("ionrift-respite.campfire.whittle.bear"); } },
+    { id: "dragon", icon: "fas fa-dragon", get label() { return game.i18n.localize("ionrift-respite.campfire.whittle.dragon"); } },
+    { id: "tree", icon: "fas fa-tree", get label() { return game.i18n.localize("ionrift-respite.campfire.whittle.tree"); } },
+    { id: "fish", icon: "fas fa-fish", get label() { return game.i18n.localize("ionrift-respite.campfire.whittle.fish"); } }
 ];
 
 const PILE_IGNITE_THRESHOLD = 6;
@@ -147,7 +148,7 @@ export class CampfireEmbed {
             this._autoLitApplied = true;
             this._kindlingPlaced = true;
             this._lit = true;
-            this._litBy = "The Hearth";
+            this._litBy = game.i18n.localize("ionrift-respite.campfire.hearth");
             this._heat = 45;
             this._peakHeat = 45;
             // Sync the on-scene campfire token so it matches the hearth state
@@ -257,10 +258,10 @@ export class CampfireEmbed {
                 return filled < req.length && this._getFirewoodCount() > 0;
             })(),
             showGiftKindlingBtn: this._makeCampCeremony && !!game.user?.isGM,
-            giftKindlingTargetName: this._getPlayerActor()?.name ?? "player",
+            giftKindlingTargetName: this._getPlayerActor()?.name ?? game.i18n.localize("ionrift-respite.campfire.giftTargetFallback"),
             ceremonyIgniteBlocked,
             ceremonyIgniteBlockReason: this._ceremonyIgniteBlockReasonFn?.()
-                || "Place the campfire on the map before lighting.",
+                || game.i18n.localize("ionrift-respite.campCeremony.placeCampfireBeforeLighting"),
             activityFirePanel,
             coldCampActive: this._coldCampActive,
             showFireMeter: this._lit && (this._makeCampCeremony || activityFirePanel),
@@ -587,7 +588,7 @@ export class CampfireEmbed {
         else if (level === "campfire") targetLevel = "embers";
         else if (level === "embers") {
             if (!game.user.isGM) {
-                ui.notifications.warn("Only the GM can douse the fire to cold camp.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.campfire.douseGmOnly"));
                 return;
             }
             targetLevel = "unlit";
@@ -756,7 +757,7 @@ export class CampfireEmbed {
         banner.classList.add("campfire-lit-banner");
         const existingBanners = fireArea.querySelectorAll(".campfire-lit-banner").length;
         banner.style.top = `${15 + existingBanners * 10}%`;
-        banner.innerHTML = `<i class="${figure.icon}" style="color:${color}"></i> <span style="color:${color}">${userName}</span> whittled a ${figure.label}`;
+        banner.innerHTML = `<i class="${figure.icon}" style="color:${color}"></i> ${game.i18n.format("ionrift-respite.campfire.whittledBanner", { name: `<span style="color:${color}">${userName}</span>`, figure: figure.label })}`;
         fireArea.appendChild(banner);
         setTimeout(() => banner.remove(), 4000);
         this._addWhittledItem(figure, userName);
@@ -772,7 +773,7 @@ export class CampfireEmbed {
         item.dataset.owner = owner;
         const color = this._getPlayerColor(owner);
         item.innerHTML = `<i class="${figure.icon}" style="color:${color}"></i>`;
-        item.title = `${owner}'s ${figure.label}`;
+        item.title = game.i18n.format("ionrift-respite.campfire.whittledItemTitle", { owner, figure: figure.label });
         item.addEventListener("dragstart", (e) => {
             e.dataTransfer.setData("text/plain", `whittle:${figure.id}:${owner}:${figure.icon}`);
             item.classList.add("dragging");
@@ -855,7 +856,7 @@ export class CampfireEmbed {
             const banner = document.createElement("div");
             banner.classList.add("whittle-complete-banner");
             banner.style.color = "#ff8844";
-            banner.innerHTML = `<i class="fas fa-fire-alt"></i> The pile catches fire!`;
+            banner.innerHTML = `<i class="fas fa-fire-alt"></i> ${game.i18n.localize("ionrift-respite.campfire.pileCatchesFire")}`;
             fireArea.appendChild(banner);
             setTimeout(() => banner.remove(), 3000);
         }
@@ -874,16 +875,16 @@ export class CampfireEmbed {
 
     _onStrikeFlint() {
         if (this._makeCampCeremony && !this._canCommitCeremonyIgnite()) {
-            ui.notifications.warn("Place the campfire on the map before lighting.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.campCeremony.placeCampfireBeforeLighting"));
             return;
         }
         const lighter = this._getStrikeFireLighter();
         if (!lighter) {
-            ui.notifications.warn("This character needs a tinderbox or flint and steel.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.campfire.needsTinderbox"));
             return;
         }
         if (!this._kindlingPlaced && !this._ceremonyReadyToLight) {
-            ui.notifications.warn("Place enough kindling for this tier first.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.campfire.placeKindlingFirst"));
             return;
         }
         const strikeCount = this._bumpStrikeCount(lighter.actorId);
@@ -932,7 +933,7 @@ export class CampfireEmbed {
     _ignite(playerName, igniteMeta = {}) {
         if (this._lit) return;
         if (this._makeCampCeremony && !this._canCommitCeremonyIgnite()) {
-            ui.notifications.warn("Place the campfire on the map before lighting.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.campCeremony.placeCampfireBeforeLighting"));
             return;
         }
         this._lit = true;
@@ -1011,7 +1012,7 @@ export class CampfireEmbed {
     }
 
     _strikeHint(count) {
-        return `Attempt ${count}`;
+        return game.i18n.format("ionrift-respite.campfire.strikeAttempt", { count });
     }
 
     _hasTinderbox() {
@@ -1041,16 +1042,16 @@ export class CampfireEmbed {
 
     _onCantripIgnite() {
         if (this._makeCampCeremony && !this._canCommitCeremonyIgnite()) {
-            ui.notifications.warn("Place the campfire on the map before lighting.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.campCeremony.placeCampfireBeforeLighting"));
             return;
         }
         const cantrip = this._findFireCantrip();
         if (!cantrip) {
-            ui.notifications.warn("This character has no fire cantrip.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.campfire.noFireCantrip"));
             return;
         }
         if (!this._kindlingPlaced && !this._ceremonyReadyToLight) {
-            ui.notifications.warn("Place enough kindling for this tier first.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.campfire.placeKindlingFirst"));
             return;
         }
         const actorName = this._getPlayerActor()?.name ?? game.user.name;
@@ -1201,7 +1202,7 @@ export class CampfireEmbed {
         const color = this._getPlayerColor(actorName);
         const banner = document.createElement("div");
         banner.classList.add("campfire-lit-banner");
-        banner.innerHTML = `<i class="fas fa-fire" style="color:${color}"></i> <span style="color:${color}">${actorName}</span> has placed kindling`;
+        banner.innerHTML = `<i class="fas fa-fire" style="color:${color}"></i> ${game.i18n.format("ionrift-respite.campfire.kindlingPlacedBanner", { name: `<span style="color:${color}">${actorName}</span>` })}`;
         fireArea.appendChild(banner);
         setTimeout(() => banner.remove(), 4000);
     }
@@ -1223,9 +1224,9 @@ export class CampfireEmbed {
     _getFireLevelAdvisory() {
         if (!this._lit) return "";
         const level = this.fireLevel;
-        if (level === "bonfire") return "Warm and bright. Comfort is high, but the light may attract unwanted attention.";
-        if (level === "campfire") return "Steady warmth. A fair balance between comfort and caution.";
-        return "Dim embers. Harder to spot, but offers little warmth.";
+        if (level === "bonfire") return game.i18n.localize("ionrift-respite.campfire.advisory.bonfire");
+        if (level === "campfire") return game.i18n.localize("ionrift-respite.campfire.advisory.campfire");
+        return game.i18n.localize("ionrift-respite.campfire.advisory.embers");
     }
 
     _startDecay() {

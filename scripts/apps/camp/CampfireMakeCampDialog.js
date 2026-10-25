@@ -20,7 +20,7 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
         tag: "div",
         classes: ["ionrift-window", "glass-ui", "ionrift", "ionrift-campfire-map-dialog"],
         window: {
-            title: "Campfire",
+            title: "ionrift-respite.campfire.windowTitle",
             resizable: false,
             minimizable: false
         },
@@ -192,7 +192,7 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
 
         const ctx = restApp.buildCampfireDrawerContextForMapDialog();
         if (!ctx) {
-            ui.notifications?.warn("Campfire is not available right now.");
+            ui.notifications?.warn(game.i18n.localize("ionrift-respite.campfire.notAvailable"));
             return null;
         }
 

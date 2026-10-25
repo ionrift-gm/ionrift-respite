@@ -25,7 +25,7 @@
                     {{/if}}
                 </div>
                 {{#if previewRequirementSlots.length}}
-                <div class="campfire-preview-requirements-row" aria-label="Firewood required for this tier">
+                <div class="campfire-preview-requirements-row" aria-label="{{localize "ionrift-respite.campfire.firewoodRequiredAria"}}">
                     {{#each previewRequirementSlots}}
                     {{#if filled}}
                     <button type="button"
@@ -53,13 +53,13 @@
             <div class="campfire-kindling {{#if kindlingPlaced}}has-kindling{{/if}}{{#if coldCampActive}} cold-camp-pit{{/if}}">
                 {{#if kindlingPlaced}}
                     <i class="fas fa-fire-alt"></i>
-                    <span>Ready to light</span>
+                    <span>{{localize "ionrift-respite.campfire.readyToLight"}}</span>
                 {{else if coldCampActive}}
                     <i class="fas fa-moon" aria-hidden="true"></i>
-                    <span>Cold camp</span>
+                    <span>{{localize "ionrift-respite.fireLevel.coldCamp"}}</span>
                 {{else}}
                     <i class="fas fa-campground"></i>
-                    <span>Kindling pile</span>
+                    <span>{{localize "ionrift-respite.campfire.kindlingPile"}}</span>
                 {{/if}}
             </div>
             {{/if}}
@@ -68,7 +68,7 @@
         {{!-- Lit banner (fades) --}}
         {{#if showLitBanner}}
             <div class="campfire-lit-banner">
-                <i class="fas fa-fire"></i> <span style="color:{{litByColor}}">{{litBy}}</span> lit the fire!
+                <i class="fas fa-fire"></i> {{{localize "ionrift-respite.campfire.litBanner" color=litByColor name=litBy}}}
             </div>
         {{/if}}
     </div>
@@ -80,7 +80,7 @@
             {{#if makeCampCeremony}}
             {{#if previewColdCamp}}
             <div class="campfire-ceremony-action-area">
-                <p class="ceremony-cold-hint guided-label">Pick a fire tier above to light, or confirm cold camp below.</p>
+                <p class="ceremony-cold-hint guided-label">{{localize "ionrift-respite.campfire.coldPreviewHint"}}</p>
             </div>
             {{else}}
             {{#unless kindlingPlaced}}
@@ -90,23 +90,23 @@
                 {{#if firewoodCount}}
                 <div class="campfire-ceremony-kindling-step">
                     <div class="ceremony-kindling-row">
-                        <div class="firewood-log" draggable="true" data-tooltip="Drag kindling to a slot under the pit">
+                        <div class="firewood-log" draggable="true" data-tooltip="{{localize "ionrift-respite.campfire.dragKindlingToSlot"}}">
                             <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
                         </div>
                         <span class="ceremony-kindling-count">&times;{{firewoodCount}}</span>
-                        <span class="guided-label">Drag kindling ({{ceremonyWoodStaged}}/{{ceremonyWoodRequired}} placed)</span>
+                        <span class="guided-label">{{localize "ionrift-respite.campfire.dragKindlingProgress" staged=ceremonyWoodStaged required=ceremonyWoodRequired}}</span>
                     </div>
                 </div>
                 {{else}}
                 <div class="campfire-ceremony-kindling-step dimmed ceremony-no-wood-step">
-                    <span class="ceremony-no-wood-label"><i class="fas fa-fire" aria-hidden="true"></i> No firewood in inventory</span>
+                    <span class="ceremony-no-wood-label"><i class="fas fa-fire" aria-hidden="true"></i> {{localize "ionrift-respite.campfire.noFirewoodInInventory"}}</span>
                 </div>
                 {{/if}}
                 </div>
                 {{#if showGiftKindlingBtn}}
                 <button type="button" class="campfire-btn ceremony-gift-wood-btn" data-action="giftCeremonyWood"
-                        data-tooltip="Add kindling to {{giftKindlingTargetName}}'s sheet">
-                    <i class="fas fa-gift" aria-hidden="true"></i> Gift wood
+                        data-tooltip="{{{localize "ionrift-respite.campfire.giftWoodTooltip" name=giftKindlingTargetName}}}">
+                    <i class="fas fa-gift" aria-hidden="true"></i> {{localize "ionrift-respite.campfire.giftWood"}}
                 </button>
                 {{/if}}
             </div>
@@ -120,20 +120,20 @@
                 <div class="campfire-ceremony-strike-row">
                     <div class="ceremony-row-left">
                         {{#if firewoodCount}}
-                        <div class="firewood-log" draggable="true" data-tooltip="Drag more kindling to fire">
+                        <div class="firewood-log" draggable="true" data-tooltip="{{localize "ionrift-respite.campfire.dragMoreKindling"}}">
                             <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
                         </div>
                         <span class="ceremony-kindling-count">&times;{{firewoodCount}}</span>
                         {{else}}
-                        <span class="ceremony-no-kindling guided-label">No wood left</span>
+                        <span class="ceremony-no-kindling guided-label">{{localize "ionrift-respite.campfire.noWoodLeft"}}</span>
                         {{/if}}
                     </div>
                     <div class="ceremony-row-center">
                         {{#if hasTinderbox}}
-                        <span class="strike-hint">Attempt {{strikeCount}}</span>
+                        <span class="strike-hint">{{localize "ionrift-respite.campfire.strikeAttempt" count=strikeCount}}</span>
                         {{else}}
                         {{#unless hasFireCantrip}}
-                        <span class="guided-label ceremony-no-lighter" data-tooltip="Needs a tinderbox or a fire cantrip.">No tinderbox</span>
+                        <span class="guided-label ceremony-no-lighter" data-tooltip="{{localize "ionrift-respite.campfire.noLighterTooltip"}}">{{localize "ionrift-respite.campfire.noTinderbox"}}</span>
                         {{/unless}}
                         {{/if}}
                     </div>
@@ -155,12 +155,12 @@
                         {{#if ceremonyIgniteBlocked}}
                         <span class="campfire-btn-tooltip-wrap" data-tooltip="{{ceremonyIgniteBlockReason}}">
                             <button type="button" data-action="strikeFlint" class="campfire-btn strike-btn" disabled aria-disabled="true" tabindex="-1">
-                                <i class="fas fa-hand-sparkles"></i> Strike Flint
+                                <i class="fas fa-hand-sparkles"></i> {{localize "ionrift-respite.campfire.strikeFlint"}}
                             </button>
                         </span>
                         {{else}}
                         <button type="button" data-action="strikeFlint" class="campfire-btn strike-btn">
-                            <i class="fas fa-hand-sparkles"></i> Strike Flint
+                            <i class="fas fa-hand-sparkles"></i> {{localize "ionrift-respite.campfire.strikeFlint"}}
                         </button>
                         {{/if}}
                         {{/if}}
@@ -169,14 +169,14 @@
                 </div>
                 {{#if showGiftKindlingBtn}}
                 <button type="button" class="campfire-btn ceremony-gift-wood-btn" data-action="giftCeremonyWood"
-                        data-tooltip="Add kindling to {{giftKindlingTargetName}}'s sheet">
-                    <i class="fas fa-gift" aria-hidden="true"></i> Gift wood
+                        data-tooltip="{{{localize "ionrift-respite.campfire.giftWoodTooltip" name=giftKindlingTargetName}}}">
+                    <i class="fas fa-gift" aria-hidden="true"></i> {{localize "ionrift-respite.campfire.giftWood"}}
                 </button>
                 {{/if}}
             </div>
             {{/unless}}
             {{#if previewFirewoodShortfall}}
-            <p class="campfire-preview-shortfall-hint">Party is short on firewood for this tier.</p>
+            <p class="campfire-preview-shortfall-hint">{{localize "ionrift-respite.campfire.firewoodShortfall"}}</p>
             {{/if}}
             {{/if}}
             {{/if}}
@@ -186,12 +186,12 @@
             {{!-- Firewood + Emotes: combined row --}}
             <div class="campfire-tool-row combined-row">
                 {{#if firewoodCount}}
-                    <div class="firewood-log" draggable="true" data-tooltip="Drag kindling to fire">
+                    <div class="firewood-log" draggable="true" data-tooltip="{{localize "ionrift-respite.campfire.dragKindlingToFire"}}">
                         <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
                     </div>
                     <span class="firewood-count">&times;{{firewoodCount}}</span>
                 {{else}}
-                    <span class="firewood-empty"><i class="fas fa-fire"></i> No wood</span>
+                    <span class="firewood-empty"><i class="fas fa-fire"></i> {{localize "ionrift-respite.campfire.noWood"}}</span>
                 {{/if}}
                 <span class="tool-row-sep"></span>
                 {{#each emotes}}
@@ -205,7 +205,7 @@
             <div class="whittle-area"></div>
             <div class="campfire-tool-row">
                 <button type="button" data-action="whittle" class="campfire-btn whittle-btn compact">
-                    <i class="fas fa-knife"></i> Whittle
+                    <i class="fas fa-knife"></i> {{localize "ionrift-respite.campfire.whittle"}}
                 </button>
                 <div class="whittle-progress-bar">
                     <div class="whittle-progress-fill" style="width: {{whittlePct}}%"></div>
@@ -222,19 +222,19 @@
             <div class="fire-meter-fill"></div>
             <div class="fire-meter-needle"></div>
             {{#unless makeCampCeremony}}
-            <div class="fire-meter-zone zone-cold-camp{{#if (eq meterLevel "cold_camp")}} is-active{{/if}}" data-zone="cold_camp" data-tooltip="No fire. Comfort −1. Harder for enemies to spot.">Cold</div>
+            <div class="fire-meter-zone zone-cold-camp{{#if (eq meterLevel "cold_camp")}} is-active{{/if}}" data-zone="cold_camp" data-tooltip="{{localize "ionrift-respite.campfire.meter.coldTooltip"}}">{{localize "ionrift-respite.campfire.meter.cold"}}</div>
             {{/unless}}
-            <div class="fire-meter-zone zone-embers{{#if (eq meterLevel "embers")}} is-active{{/if}}" data-zone="embers" data-tooltip="Dim and cold, but harder for enemies to spot.">Embers</div>
-            <div class="fire-meter-zone zone-campfire{{#if (eq meterLevel "campfire")}} is-active{{/if}}" data-zone="campfire" data-tooltip="Steady warmth. A fair balance of comfort and caution.">Campfire</div>
-            <div class="fire-meter-zone zone-bonfire{{#if (eq meterLevel "bonfire")}} is-active{{/if}}" data-zone="bonfire" data-tooltip="Raises comfort, but visible from far off; enemies spot the camp easily.">Bonfire</div>
+            <div class="fire-meter-zone zone-embers{{#if (eq meterLevel "embers")}} is-active{{/if}}" data-zone="embers" data-tooltip="{{localize "ionrift-respite.campfire.meter.embersTooltip"}}">{{localize "ionrift-respite.fireLevel.embers"}}</div>
+            <div class="fire-meter-zone zone-campfire{{#if (eq meterLevel "campfire")}} is-active{{/if}}" data-zone="campfire" data-tooltip="{{localize "ionrift-respite.campfire.meter.campfireTooltip"}}">{{localize "ionrift-respite.fireLevel.campfire"}}</div>
+            <div class="fire-meter-zone zone-bonfire{{#if (eq meterLevel "bonfire")}} is-active{{/if}}" data-zone="bonfire" data-tooltip="{{localize "ionrift-respite.campfire.meter.bonfireTooltip"}}">{{localize "ionrift-respite.fireLevel.bonfire"}}</div>
         </div>
     </div>
     {{#if showDouseBtn}}
     <div class="campfire-tool-row campfire-douse-row">
         <button type="button" data-action="douseFire" class="campfire-btn douse-btn"
-                data-tooltip="Stomp the fire down one tier. From embers, goes cold camp.">
+                data-tooltip="{{localize "ionrift-respite.campfire.douseTooltip"}}">
             <i class="fas fa-shoe-prints" aria-hidden="true"></i>
-            <span class="douse-btn-label">Douse</span>
+            <span class="douse-btn-label">{{localize "ionrift-respite.campfire.douse"}}</span>
         </button>
     </div>
     {{/if}}

@@ -7,7 +7,7 @@
         {{#if campScanData}}
         <div class="campfire-map-comfort">
             <div class="campfire-map-comfort-header">
-                <span class="camp-comfort-header-inline">Camp comfort</span>
+                <span class="camp-comfort-header-inline">{{localize "ionrift-respite.makeCampDialog.campComfort"}}</span>
                 <span class="comfort-tier {{mapComfortTierClass}}" data-tooltip="{{comfortHint campScanData.campComfort}}">{{mapComfortLabel}}</span>
             </div>
             <p class="camp-comfort-reason campfire-map-comfort-line">{{mapComfortLine}}</p>
@@ -16,7 +16,7 @@
         {{#if mapRestCard}}
         <div class="campfire-map-rest tier-{{mapRestCard.personalComfort}}">
             <div class="campfire-map-rest-head">
-                <span class="campfire-map-rest-label">{{#if mapRestActorName}}{{mapRestActorName}}'s rest{{else}}Your rest{{/if}}</span>
+                <span class="campfire-map-rest-label">{{#if mapRestActorName}}{{{localize "ionrift-respite.makeCampDialog.actorRest" actor=mapRestActorName}}}{{else}}{{localize "ionrift-respite.makeCampDialog.yourRest"}}{{/if}}</span>
                 <span class="comfort-tier comfort-{{mapRestCard.personalComfort}}" data-tooltip="{{comfortHint mapRestCard.personalComfort}}">{{mapRestCard.personalComfortLabel}}</span>
             </div>
             <div class="recovery-line recovery-hp {{#if mapRestCard.recovery.hpSeverity}}{{mapRestCard.recovery.hpSeverity}}{{else}}success{{/if}}">
@@ -31,24 +31,24 @@
             </div>
             {{else}}
             <div class="recovery-line recovery-exhaustion success">
-                <i class="fas fa-shield-alt" aria-hidden="true"></i> No exhaustion risk
+                <i class="fas fa-shield-alt" aria-hidden="true"></i> {{localize "ionrift-respite.campGear.noExhaustionRisk"}}
             </div>
             {{/if}}
         </div>
         {{/if}}
         {{#if campFireTierCards.length}}
         <div class="campfire-map-fire-levels">
-            <h4 class="campfire-map-section-title">Fire levels</h4>
-            <div class="camp-fire-tier-strip" role="list" aria-label="Fire intensity tiers">
+            <h4 class="campfire-map-section-title">{{localize "ionrift-respite.makeCampDialog.fireLevels"}}</h4>
+            <div class="camp-fire-tier-strip" role="list" aria-label="{{localize "ionrift-respite.makeCampDialog.fireTiersAria"}}">
                 <button type="button"
                         class="camp-fire-tier-card cold-camp{{#if campColdCampDecided}} active selected{{else if campPreviewIsColdCamp}} active selected{{/if}}"
                         data-action="selectCampColdCampMap"
                         role="listitem"
                         {{#if campColdCampDecided}}aria-current="true"{{else if campPreviewIsColdCamp}}aria-current="true"{{/if}}>
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-moon"></i></span>
-                    <span class="camp-fire-tier-label">Cold Camp</span>
-                    <span class="camp-fire-tier-cost">(No fire)</span>
-                    <span class="camp-fire-tier-body">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot (lower encounter chance).</span> No cooking.</span>
+                    <span class="camp-fire-tier-label">{{localize "ionrift-respite.fireTier.coldCamp"}}</span>
+                    <span class="camp-fire-tier-cost">({{localize "ionrift-respite.fireTier.noFireCost"}})</span>
+                    <span class="camp-fire-tier-body">{{{localize "ionrift-respite.fireTier.coldCampBody"}}}</span>
                 </button>
                 {{#each campFireTierCards}}
                 <button type="button"
@@ -64,37 +64,37 @@
                 </button>
                 {{/each}}
             </div>
-            <p class="campfire-map-tier-footnote">Anyone at the table can pick a tier until the GM proceeds.</p>
+            <p class="campfire-map-tier-footnote">{{localize "ionrift-respite.makeCampDialog.tierFootnote"}}</p>
         </div>
         {{/if}}
         {{#if campColdCampDecided}}
-        <p class="camp-fire-cold-banner glass-ui"><i class="fas fa-moon"></i> Cold camp selected</p>
+        <p class="camp-fire-cold-banner glass-ui"><i class="fas fa-moon"></i> {{localize "ionrift-respite.makeCampDialog.coldCampSelected"}}</p>
         {{else if campFireIsLit}}
-        <div class="camp-fire-lit-banner"><i class="fas fa-fire"></i> {{#if campFireLitBy}}<span>{{campFireLitBy.actorName}} lit the fire ({{campFireLitBy.method}}).</span>{{else}}<span>{{campCurrentFireLevel}} fire selected.</span>{{/if}}</div>
+        <div class="camp-fire-lit-banner"><i class="fas fa-fire"></i> {{#if campFireLitBy}}<span>{{localize "ionrift-respite.makeCampDialog.litByMethod" actor=campFireLitBy.actorName method=campFireLitBy.method}}</span>{{else}}<span>{{localize "ionrift-respite.makeCampDialog.levelSelected" level=campCurrentFireLevel}}</span>{{/if}}</div>
         {{#if campFirewoodPledgeList.length}}
         <div class="camp-firewood-pledge-list campfire-map-pledges">
-        {{#each campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
+        {{#each campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{localize "ionrift-respite.makeCampDialog.pledgeRow" actor=actorName count=count}}</span></div>{{/each}}
         </div>
         {{/if}}
         <div class="camp-fuel-controls">
-            <button type="button" class="camp-pledge-btn" data-action="campPledgeFirewoodMap" data-actor-id="{{campMyFirewoodActorId}}" {{#unless campCanAddFirewood}}disabled{{/unless}}><i class="fas fa-plus"></i> Add Firewood</button>
-            <button type="button" class="camp-reclaim-btn" data-action="campReclaimFirewoodMap" {{#unless campMyPledge}}disabled{{/unless}}><i class="fas fa-undo"></i> Take Back</button>
+            <button type="button" class="camp-pledge-btn" data-action="campPledgeFirewoodMap" data-actor-id="{{campMyFirewoodActorId}}" {{#unless campCanAddFirewood}}disabled{{/unless}}><i class="fas fa-plus"></i> {{localize "ionrift-respite.makeCampDialog.addFirewood"}}</button>
+            <button type="button" class="camp-reclaim-btn" data-action="campReclaimFirewoodMap" {{#unless campMyPledge}}disabled{{/unless}}><i class="fas fa-undo"></i> {{localize "ionrift-respite.makeCampDialog.takeBack"}}</button>
         </div>
         {{else if campPreviewIsColdCamp}}
         <div class="camp-cold-confirm-row">
-            <p class="camp-fire-cold-note"><i class="fas fa-moon"></i> No fire. Lock in cold camp to settle.</p>
-            <button type="button" class="camp-cold-confirm-btn" data-action="campConfirmColdCampMap"><i class="fas fa-check"></i> Confirm cold camp</button>
+            <p class="camp-fire-cold-note"><i class="fas fa-moon"></i> {{localize "ionrift-respite.makeCampDialog.coldCampNote"}}</p>
+            <button type="button" class="camp-cold-confirm-btn" data-action="campConfirmColdCampMap"><i class="fas fa-check"></i> {{localize "ionrift-respite.makeCampDialog.confirmColdCamp"}}</button>
         </div>
         {{else}}
         {{#if campPitBlocksFireLighting}}
-        <p class="camp-fire-no-lighter-hint"><i class="fas fa-info-circle"></i> Place the campfire on the map before lighting.</p>
+        <p class="camp-fire-no-lighter-hint"><i class="fas fa-info-circle"></i> {{localize "ionrift-respite.campCeremony.placeCampfireBeforeLighting"}}</p>
         {{/if}}
         {{#if isGM}}
         <div class="camp-gm-override-row">
             {{#if campFireLighters.length}}
-            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="{{campFireLighters.[0].actorId}}" data-method="{{campFireLighters.[0].method}}" {{#if campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire-alt"></i> Light it for them</button>
+            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="{{campFireLighters.[0].actorId}}" data-method="{{campFireLighters.[0].method}}" {{#if campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire-alt"></i> {{localize "ionrift-respite.makeCampDialog.lightForThem"}}</button>
             {{else}}
-            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="__gm__" data-method="GM Override" {{#if campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire-alt"></i> Light Fire (GM)</button>
+            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="__gm__" data-method="GM Override" {{#if campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire-alt"></i> {{localize "ionrift-respite.makeCampDialog.lightFireGm"}}</button>
             {{/if}}
         </div>
         {{else}}
@@ -102,10 +102,10 @@
         {{#if campFireLighters.length}}
             {{#each campFireLighters}}{{#if isViewerActor}}<button type="button" class="camp-light-fire-btn" data-action="campLightFireMap" data-actor-id="{{actorId}}" data-method="{{method}}" {{#if ../campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire"></i> {{method}}</button>{{/if}}{{/each}}
             {{#unless campViewerCanLight}}
-            <p class="camp-fire-no-lighter-hint"><i class="fas fa-info-circle"></i> You don't have a tinderbox or fire cantrip. {{campFireLighterNames}} can light the fire.</p>
+            <p class="camp-fire-no-lighter-hint"><i class="fas fa-info-circle"></i> {{{localize "ionrift-respite.makeCampDialog.noLighterHint" names=campFireLighterNames}}}</p>
             {{/unless}}
         {{else}}
-        <p class="camp-fire-no-lighter-hint camp-fire-no-lighter-prominent"><i class="fas fa-exclamation-triangle"></i> <strong>No fire starter.</strong> Someone in the party needs a tinderbox, flint &amp; steel, or a fire cantrip to light the campfire.</p>
+        <p class="camp-fire-no-lighter-hint camp-fire-no-lighter-prominent"><i class="fas fa-exclamation-triangle"></i> {{{localize "ionrift-respite.makeCampDialog.noFireStarter"}}}</p>
         {{/if}}
         </div>
         {{/if}}

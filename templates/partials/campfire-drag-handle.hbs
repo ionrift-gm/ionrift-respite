@@ -16,7 +16,7 @@
     </button>
     {{else}}
     <div class="camp-drag-handle camp-drag-handle-compact camp-drag-handle-placed"
-         aria-label="Campfire placed"
+         aria-label="{{localize "ionrift-respite.campfireHandle.placedAria"}}"
          data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
         <div class="camp-drag-icon"><i class="fas fa-check" aria-hidden="true"></i></div>
         <div class="camp-drag-label">
@@ -28,11 +28,11 @@
     <div class="camp-drag-handle camp-drag-handle-compact {{#if campfireDragCard.required}}camp-drag-handle-required{{/if}}"
          draggable="true"
          {{#if campfireDragCard.placementClick}}data-camp-placement-click="1"{{/if}}
-         aria-label="{{#if campfireDragCard.placementClick}}Place campfire on the map (click or drag){{else}}Drag campfire to the map{{/if}}"
+         aria-label="{{#if campfireDragCard.placementClick}}{{localize "ionrift-respite.campfireHandle.placeClickOrDragAria"}}{{else}}{{localize "ionrift-respite.campfireHandle.dragAria"}}{{/if}}"
          data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
         <div class="camp-drag-icon"><i class="fas fa-fire" aria-hidden="true"></i></div>
         <div class="camp-drag-label">
-            <span class="camp-drag-title">{{campfireDragCard.shortLabel}}{{#if campfireDragCard.required}}<span class="camp-drag-required-badge">Req</span>{{/if}}</span>
+            <span class="camp-drag-title">{{campfireDragCard.shortLabel}}{{#if campfireDragCard.required}}<span class="camp-drag-required-badge">{{localize "ionrift-respite.campfireHandle.requiredBadge"}}</span>{{/if}}</span>
         </div>
         <i class="fas fa-grip-vertical camp-drag-grip" aria-hidden="true"></i>
     </div>
