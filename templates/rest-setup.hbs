@@ -8,7 +8,7 @@
         <div class="respite-loading-spinner">
             <i class="fas fa-campground fa-2x fa-beat-fade" aria-hidden="true"></i>
         </div>
-        <p class="respite-loading-label">Preparing camp&hellip;</p>
+        <p class="respite-loading-label">{{{localize "ionrift-respite.restSetup.loading.preparing"}}}</p>
     </div>
 {{else}}
 
@@ -46,12 +46,12 @@
         {{/each}}
         {{#unless campStatus.hasTent}}
         {{#unless safeRestSpot}}
-        <span class="camp-status-chip shelter-chip absent" data-tooltip="No tent pitched. The camp is exposed to weather and easier for enemies to find.">
-            <i class="fas fa-campground"></i> No Tent
+        <span class="camp-status-chip shelter-chip absent" data-tooltip="{{localize "ionrift-respite.restSetup.status.noTentTooltip"}}">
+            <i class="fas fa-campground"></i> {{localize "ionrift-respite.restSetup.status.noTent"}}
         </span>
         {{else}}
-        <span class="camp-status-chip shelter-chip absent" data-tooltip="No tent pitched. Weather flavor only in a safe rest spot.">
-            <i class="fas fa-campground"></i> No Tent
+        <span class="camp-status-chip shelter-chip absent" data-tooltip="{{localize "ionrift-respite.restSetup.status.noTentSafeTooltip"}}">
+            <i class="fas fa-campground"></i> {{localize "ionrift-respite.restSetup.status.noTent"}}
         </span>
         {{/unless}}
         {{/unless}}
@@ -70,26 +70,26 @@
         <div class="respite-empty-party-hint">
             <i class="fas fa-users-slash"></i>
             {{#if (eq emptyPartyReason 'no_primary_party')}}
-            <p>No primary party detected.</p>
-            <p>A party group exists in this world but is not the primary party. In the Actors sidebar, right-click the Group actor and choose <strong>Make Primary Party</strong>, then add your characters to it.</p>
+            <p>{{localize "ionrift-respite.restSetup.emptyParty.noPrimaryTitle"}}</p>
+            <p>{{{localize "ionrift-respite.restSetup.emptyParty.noPrimaryBody"}}}</p>
             {{else if (eq emptyPartyReason 'primary_party_empty')}}
-            <p>Primary party has no characters.</p>
-            <p>Open the primary party group and drag player characters onto it.</p>
-            <button type="button" class="btn-primary respite-empty-party-action" onclick="game.ionrift?.library?.party?.openNativeManagement?.() ?? ui.notifications.warn('Party management requires ionrift-library.');">
-                <i class="fas fa-users"></i> Open Primary Party
+            <p>{{localize "ionrift-respite.restSetup.emptyParty.primaryEmptyTitle"}}</p>
+            <p>{{localize "ionrift-respite.restSetup.emptyParty.primaryEmptyBody"}}</p>
+            <button type="button" class="btn-primary respite-empty-party-action" onclick="game.ionrift?.library?.party?.openNativeManagement?.() ?? ui.notifications.warn(game.i18n.localize('ionrift-respite.restSetup.emptyParty.partyManagementRequiresLibrary'));">
+                <i class="fas fa-users"></i> {{localize "ionrift-respite.restSetup.emptyParty.openPrimaryParty"}}
             </button>
             {{else if (eq emptyPartyReason 'no_party_group')}}
-            <p>No party group found.</p>
-            <p>Create a Group actor in the Actors sidebar, add your player characters, then right-click it and choose <strong>Make Primary Party</strong>.</p>
+            <p>{{localize "ionrift-respite.restSetup.emptyParty.noGroupTitle"}}</p>
+            <p>{{{localize "ionrift-respite.restSetup.emptyParty.noGroupBody"}}}</p>
             {{else if showPartyRosterEditor}}
-            <p>No characters in the party roster.</p>
-            <p>Create or import player-owned characters, then open Party Roster to choose who participates in Rest.</p>
-            <button type="button" class="btn-primary respite-empty-party-action" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn('Party Roster requires ionrift-library.');">
-                <i class="fas fa-users-cog"></i> Open Party Roster
+            <p>{{localize "ionrift-respite.restSetup.emptyParty.noRosterTitle"}}</p>
+            <p>{{localize "ionrift-respite.restSetup.emptyParty.noRosterBody"}}</p>
+            <button type="button" class="btn-primary respite-empty-party-action" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn(game.i18n.localize('ionrift-respite.restSetup.partyRosterRequiresLibrary'));">
+                <i class="fas fa-users-cog"></i> {{localize "ionrift-respite.restSetup.emptyParty.openPartyRoster"}}
             </button>
             {{else}}
-            <p>No player-owned characters found.</p>
-            <p>Create or import characters, assign them to players, then reopen Respite.</p>
+            <p>{{localize "ionrift-respite.restSetup.emptyParty.noCharactersTitle"}}</p>
+            <p>{{localize "ionrift-respite.restSetup.emptyParty.noCharactersBody"}}</p>
             {{/if}}
         </div>
     </div>
@@ -100,7 +100,7 @@
         <div class="respite-party-setup-warning">
             <i class="fas fa-star-half-stroke" aria-hidden="true"></i>
             {{#if (eq partySetupWarning 'no_primary_party')}}
-            <p><strong>No primary party detected.</strong> Rest is using characters from a non-primary group. Right-click the correct Group in the Actors sidebar and choose <strong>Make Primary Party</strong>.</p>
+            <p>{{{localize "ionrift-respite.restSetup.partyWarning.noPrimary"}}}</p>
             {{/if}}
         </div>
         {{/if}}
@@ -110,17 +110,17 @@
         {{!-- Scene: Rest Type + Environment + Weather --}}
         <div class="scene-grid">
             <div class="form-group scene-rest-type">
-                <label>Rest Type</label>
+                <label>{{localize "ionrift-respite.restSetup.scene.restType"}}</label>
                 <div class="rest-type-row">
                     <div class="rest-type-toggle">
                         <button type="button" class="rest-type-btn {{#unless (eq selectedRestType 'short')}}active{{/unless}}"
                             data-rest-type="long">
-                            <i class="fas fa-moon"></i> {{#if isGrittyRealism}}Long Rest (7 Days){{else}}Long Rest{{/if}}
+                            <i class="fas fa-moon"></i> {{#if isGrittyRealism}}{{localize "ionrift-respite.restSetup.scene.longRestGritty"}}{{else}}{{localize "ionrift-respite.restSetup.scene.longRest"}}{{/if}}
                         </button>
                         {{#if supportsShortRest}}
                         <button type="button" class="rest-type-btn {{#if (eq selectedRestType 'short')}}active{{/if}}"
                             data-rest-type="short">
-                            <i class="{{#if isGrittyRealism}}fas fa-campground{{else}}fas fa-mug-hot{{/if}}"></i> {{#if isGrittyRealism}}Short Rest (8 Hours){{else}}Short Rest{{/if}}
+                            <i class="{{#if isGrittyRealism}}fas fa-campground{{else}}fas fa-mug-hot{{/if}}"></i> {{#if isGrittyRealism}}{{localize "ionrift-respite.restSetup.scene.shortRestGritty"}}{{else}}{{localize "ionrift-respite.restSetup.scene.shortRest"}}{{/if}}
                         </button>
                         {{/if}}
                         <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
@@ -129,7 +129,7 @@
                         {{#unless isShortRest}}
                         <label class="safe-rest-spot-toggle {{#if safeRestSpotDisplay}}is-active{{/if}}{{#if safeRestLocked}} is-locked{{/if}}{{#if safeRestPulse}} is-pulse{{/if}}" data-tooltip="{{safeRestTooltip}}">
                             <i class="fas fa-shield-halved" aria-hidden="true"></i>
-                            <span class="safe-rest-spot-label">Safe Rest</span>
+                            <span class="safe-rest-spot-label">{{localize "ionrift-respite.restSetup.scene.safeRest"}}</span>
                             <span class="safe-rest-switch"><input type="checkbox" name="safeRestSpot" value="1" {{#if safeRestSpotDisplay}}checked{{/if}}{{#if safeRestLocked}} disabled{{/if}}><span class="safe-rest-slider"></span></span>
                         </label>
                         {{/unless}}
@@ -141,7 +141,7 @@
             <hr class="setup-divider scene-grid-full">
 
             <div class="form-group scene-environment">
-                <label data-tooltip="{{terrainPreview}}">Environment:</label>
+                <label data-tooltip="{{terrainPreview}}">{{localize "ionrift-respite.restSetup.scene.environment"}}</label>
                 <select name="terrain">
                     {{#each terrainOptionGroups}}
                     <optgroup label="{{group}}">
@@ -155,7 +155,7 @@
             {{/if}}
             {{#if showWeather}}
             <div class="form-group scene-weather {{#if setupSafeHaven}}scene-weather-flavor{{/if}}">
-                <label>Weather:</label>
+                <label>{{localize "ionrift-respite.restSetup.scene.weather"}}</label>
                 <select name="weather">
                     {{#each weatherOptions}}
                     <option value="{{value}}" title="{{hint}}" {{#if (eq value ../selectedWeather)}}selected{{/if}}>{{label}}</option>
@@ -167,7 +167,7 @@
 
         {{#if showStatusLine}}
         <div class="setup-status-line-container">
-            <span class="setup-status-pill" data-tooltip="Summary of terrain and weather effects">
+            <span class="setup-status-pill" data-tooltip="{{localize "ionrift-respite.restSetup.scene.statusLineTooltip"}}">
                 <i class="fas fa-campground"></i> {{setupStatusLine}}
             </span>
         </div>
@@ -176,7 +176,7 @@
 
         {{#if restConfigBadges.length}}
         {{#if showConfigSummary}}
-        <div class="rest-config-summary" data-tooltip="What this rest includes, based on module settings.">
+        <div class="rest-config-summary" data-tooltip="{{localize "ionrift-respite.restSetup.scene.configSummaryTooltip"}}">
             {{#each restConfigBadges}}
             <span class="rest-config-badge {{#if on}}is-on{{else}}is-off{{/if}}" data-tooltip="{{tooltip}}">
                 <i class="{{icon}}"></i> {{label}}
@@ -189,7 +189,7 @@
         {{!-- Advanced Drawer (collapsed by default; open state survives day-stepper re-renders) --}}
         <details class="scene-advanced-drawer" {{#if setupAdvancedOpen}}open{{/if}}>
             <summary class="scene-advanced-toggle">
-                <i class="fas fa-cog"></i> Advanced
+                <i class="fas fa-cog"></i> {{localize "ionrift-respite.restSetup.advanced.title"}}
             </summary>
             <div class="scene-advanced-body">
                 {{!-- Party Roster --}}
@@ -203,20 +203,20 @@
                         <span class="roster-indicator-overflow">+{{rosterInfo.overflow}}</span>
                         {{/if}}
                     </div>
-                    <span class="roster-indicator-label">{{rosterInfo.count}} characters</span>
-                    <button type="button" class="roster-indicator-edit" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn('Party Roster requires ionrift-library.');" data-tooltip="Edit Party Roster">
+                    <span class="roster-indicator-label">{{localize "ionrift-respite.restSetup.advanced.characterCount" count=rosterInfo.count}}</span>
+                    <button type="button" class="roster-indicator-edit" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn(game.i18n.localize('ionrift-respite.restSetup.partyRosterRequiresLibrary'));" data-tooltip="{{localize "ionrift-respite.restSetup.advanced.editRoster"}}">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
                 </div>
                 {{/if}}
                 <div class="form-group scene-rest-mode-override">
-                    <label>Rest Interface</label>
+                    <label>{{localize "ionrift-respite.restSetup.advanced.restInterface"}}</label>
                     <select name="restInterfaceMode" {{#if isGrittyLongRest}}disabled{{/if}}>
                         {{#each restModeOptions}}
                         <option value="{{value}}" {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <span class="comfort-hint">{{#if isGrittyLongRest}}Camp stations are not available for 7-day downtime. Rest uses the one-window ledger.{{else}}One window: this panel. Camp stations: pieces on the scene, move tokens to act.{{/if}}</span>
+                    <span class="comfort-hint">{{#if isGrittyLongRest}}{{localize "ionrift-respite.restSetup.advanced.interfaceHintGritty"}}{{else}}{{localize "ionrift-respite.restSetup.advanced.interfaceHint"}}{{/if}}</span>
                 </div>
             </div>
         </details>
@@ -225,11 +225,11 @@
     <div class="respite-action-bar">
         {{#if isShortRest}}
         <button type="button" class="btn-primary" data-action="beginShortRest">
-            <i class="{{#if isGrittyRealism}}fas fa-campground{{else}}fas fa-mug-hot{{/if}}"></i> {{#if isGrittyRealism}}Begin Overnight Rest{{else}}Begin Short Rest{{/if}}
+            <i class="{{#if isGrittyRealism}}fas fa-campground{{else}}fas fa-mug-hot{{/if}}"></i> {{#if isGrittyRealism}}{{localize "ionrift-respite.restSetup.actions.beginOvernightRest"}}{{else}}{{localize "ionrift-respite.restSetup.actions.beginShortRest"}}{{/if}}
         </button>
         {{else}}
         <button type="button" class="btn-primary" data-action="beginRest">
-            <i class="{{#if isGrittyRealism}}fas fa-calendar-week{{else}}fas fa-campground{{/if}}"></i> {{#if isGrittyRealism}}Begin Rest (7-Day Downtime){{else}}Begin Rest{{/if}}
+            <i class="{{#if isGrittyRealism}}fas fa-calendar-week{{else}}fas fa-campground{{/if}}"></i> {{#if isGrittyRealism}}{{localize "ionrift-respite.restSetup.actions.beginRestGritty"}}{{else}}{{localize "ionrift-respite.restSetup.actions.beginRest"}}{{/if}}
         </button>
         {{/if}}
     </div>
@@ -239,7 +239,7 @@
     <div class="respite-setup">
         <div class="respite-waiting-message">
             <i class="fas fa-campground"></i>
-            <p>The GM is preparing the campsite...</p>
+            <p>{{localize "ionrift-respite.restSetup.waiting.gmPreparing"}}</p>
         </div>
     </div>
     {{/if}}
@@ -261,12 +261,12 @@
 
             {{#if campPersonalSelected}}
             {{!-- ── Compact gear grid (2x2 icon tiles) ─────────────────── --}}
-            <div class="totm-camp-factors-heading">Your Gear</div>
+            <div class="totm-camp-factors-heading">{{localize "ionrift-respite.restSetup.camp.yourGear"}}</div>
             <div class="totm-camp-factors-grid">
                 <div class="totm-factor-tile {{#if campPersonalSelected.hasBedroll}}present{{else}}missing{{/if}}"
-                     data-tooltip="{{#if campPersonalSelected.hasBedroll}}+1 personal comfort{{else}}Comfort stays at camp level{{/if}}">
+                     data-tooltip="{{#if campPersonalSelected.hasBedroll}}{{localize "ionrift-respite.restSetup.camp.bedrollPresent"}}{{else}}{{localize "ionrift-respite.restSetup.camp.bedrollMissing"}}{{/if}}">
                     <i class="fas fa-bed totm-factor-tile-icon" aria-hidden="true"></i>
-                    <span class="totm-factor-tile-label">Bedroll</span>
+                    <span class="totm-factor-tile-label">{{localize "ionrift-respite.restSetup.camp.bedroll"}}</span>
                     {{#if campPersonalSelected.hasBedroll}}
                     <span class="totm-factor-tile-status present"><i class="fas fa-check" aria-hidden="true"></i></span>
                     {{else}}
@@ -274,9 +274,9 @@
                     {{/if}}
                 </div>
                 <div class="totm-factor-tile {{#if campPersonalSelected.hasTent}}present{{else}}missing{{/if}}"
-                     data-tooltip="{{#if campPersonalSelected.hasTent}}Weather shield active{{else}}No weather shield{{/if}}">
+                     data-tooltip="{{#if campPersonalSelected.hasTent}}{{localize "ionrift-respite.restSetup.camp.tentPresent"}}{{else}}{{localize "ionrift-respite.restSetup.camp.tentMissing"}}{{/if}}">
                     <i class="fas fa-campground totm-factor-tile-icon" aria-hidden="true"></i>
-                    <span class="totm-factor-tile-label">Tent</span>
+                    <span class="totm-factor-tile-label">{{localize "ionrift-respite.restSetup.camp.tent"}}</span>
                     {{#if campPersonalSelected.hasTent}}
                     <span class="totm-factor-tile-status present"><i class="fas fa-check" aria-hidden="true"></i></span>
                     {{else}}
@@ -284,9 +284,9 @@
                     {{/if}}
                 </div>
                 <div class="totm-factor-tile {{#if campPersonalSelected.hasMessKit}}present{{else}}missing{{/if}}"
-                     data-tooltip="{{#if campPersonalSelected.hasMessKit}}Advantage on the exhaustion save (fire must be lit){{else}}No exhaustion-save advantage{{/if}}">
+                     data-tooltip="{{#if campPersonalSelected.hasMessKit}}{{localize "ionrift-respite.restSetup.camp.messKitPresent"}}{{else}}{{localize "ionrift-respite.restSetup.camp.messKitMissing"}}{{/if}}">
                     <i class="fas fa-utensils totm-factor-tile-icon" aria-hidden="true"></i>
-                    <span class="totm-factor-tile-label">Mess Kit</span>
+                    <span class="totm-factor-tile-label">{{localize "ionrift-respite.restSetup.camp.messKit"}}</span>
                     {{#if campPersonalSelected.hasMessKit}}
                     <span class="totm-factor-tile-status present"><i class="fas fa-check" aria-hidden="true"></i></span>
                     {{else}}
@@ -294,9 +294,9 @@
                     {{/if}}
                 </div>
                 <div class="totm-factor-tile fire {{#if campColdCampDecided}}cold{{else if campFireIsLit}}present{{else}}missing{{/if}}"
-                     data-tooltip="{{#if campColdCampDecided}}Cold camp: no fire, &minus;1 comfort, harder for enemies to spot.{{else if campFireIsLit}}{{#each campFirePickerLevels}}{{#if selected}}{{label}}: {{fireTierPlain id}}{{/if}}{{/each}}{{else}}No fire lit yet{{/if}}">
+                     data-tooltip="{{#if campColdCampDecided}}{{{localize "ionrift-respite.restSetup.camp.coldCampTooltip"}}}{{else if campFireIsLit}}{{#each campFirePickerLevels}}{{#if selected}}{{label}}: {{fireTierPlain id}}{{/if}}{{/each}}{{else}}{{localize "ionrift-respite.restSetup.camp.noFireYet"}}{{/if}}">
                     <i class="fas fa-fire totm-factor-tile-icon" aria-hidden="true"></i>
-                    <span class="totm-factor-tile-label">Fire</span>
+                    <span class="totm-factor-tile-label">{{localize "ionrift-respite.restSetup.camp.fire"}}</span>
                     {{#if campFireIsLit}}
                     <span class="totm-factor-tile-status fire-active"><i class="fas fa-fire"></i></span>
                     {{else if campColdCampDecided}}
@@ -311,7 +311,7 @@
             <div class="totm-rest-card comfort-{{campPersonalSelected.personalComfort}}">
                 <div class="totm-rest-card-header comfort-{{campPersonalSelected.personalComfort}}" data-tooltip="{{comfortHint campPersonalSelected.personalComfort}}" data-tooltip-direction="UP">
                     <span class="totm-rest-card-title">{{campPersonalSelected.personalComfortLabel}}</span>
-                    <span class="totm-rest-card-subtitle">Your Rest</span>
+                    <span class="totm-rest-card-subtitle">{{localize "ionrift-respite.restSetup.camp.yourRest"}}</span>
                 </div>
                 <div class="totm-rest-card-body">
                     {{!-- HP chip --}}
@@ -333,7 +333,7 @@
                     {{else}}
                     <span class="totm-rest-chip success">
                         <i class="fas fa-shield-alt" aria-hidden="true"></i>
-                        No exhaustion risk
+                        {{localize "ionrift-respite.restSetup.camp.noExhaustionRisk"}}
                     </span>
                     {{/if}}
                 </div>
@@ -342,7 +342,7 @@
             {{else}}
             {{!-- ── No character selected: show party camp comfort ──────── --}}
             <div class="totm-camp-comfort-hero">
-                <span class="totm-camp-comfort-label">Camp Comfort</span>
+                <span class="totm-camp-comfort-label">{{localize "ionrift-respite.restSetup.camp.campComfort"}}</span>
                 <span class="totm-camp-comfort-tier-big comfort-{{campScanData.campComfort}}" data-tooltip="{{comfortHint campScanData.campComfort}}" data-tooltip-direction="UP">
                     {{campScanData.campComfortLabel}}
                 </span>
@@ -350,33 +350,33 @@
             {{#if mapComfortLine}}
             <p class="totm-camp-comfort-reason">{{mapComfortLine}}</p>
             {{/if}}
-            <p class="totm-camp-no-selection">Select a character portrait above to see their personal comfort.</p>
+            <p class="totm-camp-no-selection">{{localize "ionrift-respite.restSetup.camp.selectPortrait"}}</p>
             {{/if}}
 
         </div>
         {{else}}
         <div class="totm-camp-comfort-panel totm-safe-rest-note">
-            <p class="totm-safe-rest-hint"><i class="fas fa-shield-alt" aria-hidden="true"></i> Safe rest spot: no comfort tiers or encounter pressure. Fire counts as lit for cooking.</p>
+            <p class="totm-safe-rest-hint"><i class="fas fa-shield-alt" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.camp.safeRestHint"}}</p>
         </div>
         {{/unless}}
 
         {{!-- RIGHT: Campfire ceremony --}}
         <div class="totm-camp-fire-panel {{#if campFireIsLit}}fire-lit{{/if}} {{#if campColdCampDecided}}cold-camp{{/if}}">
             <div class="totm-camp-fire-header">
-                <span class="totm-camp-fire-title"><i class="fas fa-fire" aria-hidden="true"></i> Campfire</span>
+                <span class="totm-camp-fire-title"><i class="fas fa-fire" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.camp.campfireTitle"}}</span>
                 {{#if campFireIsLit}}
                 <span class="totm-camp-fire-status lit"><i class="fas fa-circle" aria-hidden="true"></i> {{campFireLabel}}</span>
                 {{else if campColdCampDecided}}
-                <span class="totm-camp-fire-status cold"><i class="fas fa-moon" aria-hidden="true"></i> Cold camp</span>
+                <span class="totm-camp-fire-status cold"><i class="fas fa-moon" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.camp.coldCampStatus"}}</span>
                 {{else}}
-                <span class="totm-camp-fire-status unlit"><i class="fas fa-circle" aria-hidden="true"></i> Unlit</span>
+                <span class="totm-camp-fire-status unlit"><i class="fas fa-circle" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.camp.unlit"}}</span>
                 {{/if}}
             </div>
 
             {{#unless safeRestSpot}}
             {{!-- Fire tier segmented control: synced tier picks; cold camp always available --}}
             <div class="totm-fire-segment-wrap">
-                <div class="totm-fire-segments" role="radiogroup" aria-label="Fire intensity tiers">
+                <div class="totm-fire-segments" role="radiogroup" aria-label="{{localize "ionrift-respite.restSetup.camp.fireTiersAria"}}">
                     <button type="button"
                             class="totm-fire-segment cold-camp {{#if campColdCampDecided}}selected{{else if campPreviewIsColdCamp}}selected{{/if}}"
                             data-tier="cold_camp"
@@ -386,8 +386,8 @@
                             data-action="selectCampColdCamp"
                             {{/unless}}>
                         <i class="fas fa-moon" aria-hidden="true"></i>
-                        <span class="totm-fire-segment-label">Cold Camp</span>
-                        <span class="totm-fire-segment-cost">No fire</span>
+                        <span class="totm-fire-segment-label">{{localize "ionrift-respite.restSetup.camp.coldCampSegment"}}</span>
+                        <span class="totm-fire-segment-cost">{{localize "ionrift-respite.restSetup.camp.noFire"}}</span>
                     </button>
                     {{#each campFirePickerLevels}}
                     <button type="button"
@@ -405,9 +405,9 @@
                     {{/each}}
                 </div>
                 {{#if campColdCampDecided}}
-                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">&minus;1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot (lower encounter chance).</span> No cooking.</p>
+                <p class="totm-fire-segment-desc">{{{localize "ionrift-respite.restSetup.camp.coldCampDesc"}}}</p>
                 {{else if campPreviewIsColdCamp}}
-                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">&minus;1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot (lower encounter chance).</span> No cooking.</p>
+                <p class="totm-fire-segment-desc">{{{localize "ionrift-respite.restSetup.camp.coldCampDesc"}}}</p>
                 {{else}}
                 {{#each campFirePickerLevels}}
                 {{#if selected}}
@@ -418,7 +418,7 @@
 
                 {{#if showCampCeremonyMinigame}}
                 {{#if campPitBlocksFireLighting}}
-                <p class="totm-fire-bill-hint">{{#if isGM}}Place the campfire on the map (Place fire) before anyone can light it.{{else}}The GM must place the campfire on the map before you can light the fire.{{/if}} Wood staging is still allowed.</p>
+                <p class="totm-fire-bill-hint">{{#if isGM}}{{localize "ionrift-respite.restSetup.camp.pitBlocksGm"}}{{else}}{{localize "ionrift-respite.restSetup.camp.pitBlocksPlayer"}}{{/if}} {{localize "ionrift-respite.restSetup.camp.woodStagingAllowed"}}</p>
                 {{/if}}
                 <div class="totm-camp-minigame-host"></div>
                 {{else}}
@@ -432,24 +432,24 @@
                         {{else}}
                         <i class="fas fa-times" aria-hidden="true"></i>
                         {{/if}}
-                        <span>{{campSelectedFirewoodCost}} firewood needed</span>
-                        <span class="totm-fire-bill-detail">(party has {{campPartyFirewood}})</span>
+                        <span>{{localize "ionrift-respite.restSetup.camp.firewoodNeeded" count=campSelectedFirewoodCost}}</span>
+                        <span class="totm-fire-bill-detail">{{localize "ionrift-respite.restSetup.camp.partyHas" count=campPartyFirewood}}</span>
                     </div>
                     <div class="totm-fire-bill-line {{#if campCanLight}}met{{else}}unmet{{/if}}">
                         {{#if campCanLight}}
                         <i class="fas fa-check" aria-hidden="true"></i>
                         <span class="totm-fire-bill-lighter" data-tooltip="{{campFireLighterNames}}">
-                            {{campFireLighters.length}} can light it
+                            {{localize "ionrift-respite.restSetup.camp.canLightCount" count=campFireLighters.length}}
                         </span>
                         {{else}}
                         <i class="fas fa-times" aria-hidden="true"></i>
-                        <span>No tinderbox or fire cantrip</span>
+                        <span>{{localize "ionrift-respite.restSetup.camp.noLighter"}}</span>
                         {{/if}}
                     </div>
                     {{#if campPitBlocksFireLighting}}
                     <div class="totm-fire-bill-line unmet">
                         <i class="fas fa-times" aria-hidden="true"></i>
-                        <span>Campfire not on map yet</span>
+                        <span>{{localize "ionrift-respite.restSetup.camp.notOnMap"}}</span>
                     </div>
                     {{/if}}
 
@@ -458,8 +458,8 @@
                             data-action="campLightFire"
                             data-actor-id="__gm__"
                             data-method="Tinderbox"
-                            {{#if campPitBlocksFireLighting}}disabled data-tooltip="Place the campfire on the map first."{{else}}data-tooltip="Optional. Players with gear see their own Light button. Use this as a GM override."{{/if}}>
-                        <i class="fas fa-fire" aria-hidden="true"></i> Light it for them
+                            {{#if campPitBlocksFireLighting}}disabled data-tooltip="{{localize "ionrift-respite.restSetup.camp.placeFirstTooltip"}}"{{else}}data-tooltip="{{localize "ionrift-respite.restSetup.camp.gmLightTooltip"}}"{{/if}}>
+                        <i class="fas fa-fire" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.camp.lightForThem"}}
                     </button>
                     {{else if campViewerCanLight}}
                     {{#each campFireLighters}}{{#if this.isViewerActor}}
@@ -467,15 +467,15 @@
                             data-action="campLightFire"
                             data-actor-id="{{this.actorId}}"
                             data-method="{{this.method}}">
-                        <i class="fas fa-fire" aria-hidden="true"></i> Light
+                        <i class="fas fa-fire" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.camp.light"}}
                     </button>
                     {{/if}}{{/each}}
                     {{else}}
                     <p class="totm-fire-bill-hint">
                         {{#if campFireLighters.length}}
-                        Pick a fire tier above, or wait for {{campFireLighterNames}} or the GM.
+                        {{localize "ionrift-respite.restSetup.camp.waitForLighters" names=campFireLighterNames}}
                         {{else}}
-                        Pick a fire tier above, choose cold camp, or ask the GM.
+                        {{localize "ionrift-respite.restSetup.camp.noLightersHint"}}
                         {{/if}}
                     </p>
                     {{/if}}
@@ -490,7 +490,7 @@
             {{#if campFireIsLit}}
             {{#if campFirewoodPledgeList.length}}
             <div class="totm-fire-pledges">
-                <span class="totm-fire-pledges-label">Firewood pledged:</span>
+                <span class="totm-fire-pledges-label">{{localize "ionrift-respite.restSetup.camp.firewoodPledged"}}</span>
                 {{#each campFirewoodPledgeList}}
                 <span class="totm-fire-pledge-entry">{{actorName}} ({{count}})</span>
                 {{/each}}
@@ -498,7 +498,7 @@
             {{/if}}
             {{/if}}
             {{else}}
-            <p class="totm-fire-safe-note"><i class="fas fa-fire" aria-hidden="true"></i> Campfire counts as lit for cooking. No firewood spend and no encounter modifier.</p>
+            <p class="totm-fire-safe-note"><i class="fas fa-fire" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.camp.safeFireNote"}}</p>
             {{/unless}}
 
             {{#if campFireIsLit}}
@@ -506,7 +506,7 @@
             {{#if (or (eq campCurrentFireLevel "campfire") (eq campCurrentFireLevel "bonfire"))}}
             <p class="totm-fire-cooking-note">
                 <i class="fas fa-utensils" aria-hidden="true"></i>
-                Cooking available in the activity phase.
+                {{localize "ionrift-respite.restSetup.camp.cookingAvailable"}}
             </p>
             {{/if}}
             {{/if}}
@@ -522,27 +522,27 @@
     <div class="camp-minimal-shell camp-phase-shell">
     {{#if campfirePlaced}}
     {{#if simpleStationsMode}}
-    <p class="camp-minimal-lead glass-ui">Setting up camp...</p>
+    <p class="camp-minimal-lead glass-ui">{{localize "ionrift-respite.restSetup.campMap.settingUp"}}</p>
     {{else if comfortEnabled}}
-    <p class="camp-minimal-lead glass-ui">Use the <strong>campfire</strong> on the map: light the fire, cold camp, or add fuel. Supply tokens show where stations appear after the fire is going.</p>
+    <p class="camp-minimal-lead glass-ui">{{{localize "ionrift-respite.restSetup.campMap.useCampfire"}}}</p>
     {{else}}
-    <p class="camp-minimal-lead glass-ui">Campfire and station markers are on the map.</p>
+    <p class="camp-minimal-lead glass-ui">{{localize "ionrift-respite.restSetup.campMap.markersOnMap"}}</p>
     {{/if}}
     {{else}}
     <p class="camp-minimal-lead glass-ui">
-        {{#if isGM}}{{#if simpleStationsMode}}Click the map to drop the pit. The fire lights itself and the workbench and bedrolls appear beside it.{{else if comfortEnabled}}A preview follows the pointer. Click the map to drop the pit, or right-click / <kbd>Esc</kbd> to cancel.{{else}}Click the map to place the campfire and station markers.{{/if}}{{else}}The GM is placing the campfire.{{/if}}
+        {{#if isGM}}{{#if simpleStationsMode}}{{localize "ionrift-respite.restSetup.campMap.dropPitSimple"}}{{else if comfortEnabled}}{{{localize "ionrift-respite.restSetup.campMap.dropPitPreview"}}}{{else}}{{localize "ionrift-respite.restSetup.campMap.placeMarkers"}}{{/if}}{{else}}{{localize "ionrift-respite.restSetup.campMap.gmPlacing"}}{{/if}}
     </p>
     {{/if}}
     {{#if isGM}}
     {{#if campPitPlacementCancelled}}
     <div class="camp-pit-retry glass-ui">
-        <p>Placement was cancelled. Place the pit when ready.</p>
-        <button type="button" class="btn-primary" data-action="retryCampPitPlacement"><i class="fas fa-map-pin"></i> Place campfire pit</button>
+        <p>{{localize "ionrift-respite.restSetup.campMap.placementCancelled"}}</p>
+        <button type="button" class="btn-primary" data-action="retryCampPitPlacement"><i class="fas fa-map-pin"></i> {{localize "ionrift-respite.restSetup.campMap.placePit"}}</button>
     </div>
     {{/if}}
     {{#if campfireCanMove}}
     <button type="button" class="btn-secondary camp-minimal-move-fire" data-action="reclaimCampfire">
-        <i class="fas fa-arrows-alt" aria-hidden="true"></i> Move campfire
+        <i class="fas fa-arrows-alt" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.campMap.moveCampfire"}}
     </button>
     {{/if}}
     {{/if}}
@@ -550,14 +550,14 @@
     {{#if isGM}}
     <div class="respite-action-bar camp-minimal-action">
         {{#if campfirePlaced}}
-        <span class="phase-waiting-label"><i class="fas fa-campground" aria-hidden="true"></i> Camp on map</span>
+        <span class="phase-waiting-label"><i class="fas fa-campground" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.campMap.campOnMap"}}</span>
         {{else}}
-        <span class="phase-waiting-label"><i class="fas fa-compass" aria-hidden="true"></i> Map first</span>
+        <span class="phase-waiting-label"><i class="fas fa-compass" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.campMap.mapFirst"}}</span>
         {{/if}}
     </div>
     {{else}}
     <div class="respite-action-bar camp-minimal-action">
-        <span class="phase-waiting-label"><i class="fas fa-campground" aria-hidden="true"></i> Check the map</span>
+        <span class="phase-waiting-label"><i class="fas fa-campground" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.campMap.checkMap"}}</span>
     </div>
     {{/if}}
     {{/if}}{{!-- /showFullMakeCampPanel --}}
@@ -576,10 +576,10 @@
     <div class="station-choice-review-bar">
         <span class="station-choice-review-text">
             <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
-            Activity saved from the map. Review here or return to the canvas.
+            {{localize "ionrift-respite.restSetup.activity.savedFromMap"}}
         </span>
         <button type="button" class="btn-secondary" data-action="exitStationChoiceReview">
-            <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to map
+            <i class="fas fa-arrow-left" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.activity.backToMap"}}
         </button>
     </div>
     {{/if}}
@@ -604,7 +604,7 @@
             {{#if totmDetailPanel.isCrafting}}
             <button type="button" class="totm-detail-back"
                     data-action="craftClose"
-                    aria-label="Back to activities">
+                    aria-label="{{localize "ionrift-respite.restSetup.activity.backToActivities"}}">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i>
             </button>
             {{/if}}
@@ -621,9 +621,9 @@
         <div class="totm-crafting-deck">
             <p class="totm-detail-description">
                 {{#if (eq totmDetailPanel.professionId "cooking")}}
-                Prepare meals, preserve provisions, brew tonics, or cook a hearty feast for the camp.
+                {{localize "ionrift-respite.restSetup.craft.cookingDesc"}}
                 {{else}}
-                Craft equipment, refine supplies, or prepare gear during the rest.
+                {{localize "ionrift-respite.restSetup.craft.craftingDesc"}}
                 {{/if}}
             </p>
 
@@ -641,10 +641,10 @@
                     <div class="craft-result-titles">
                         {{#if totmDetailPanel.craftingResult.success}}
                         <span class="craft-result-item-name">{{totmDetailPanel.craftingResult.output.name}}{{#if totmDetailPanel.craftingResult.output.quantity}} (&times;{{totmDetailPanel.craftingResult.output.quantity}}){{/if}}</span>
-                        <span class="craft-result-badge badge-success"><i class="fas fa-check"></i> Prepared Tonight</span>
+                        <span class="craft-result-badge badge-success"><i class="fas fa-check"></i> {{localize "ionrift-respite.restSetup.craft.preparedTonight"}}</span>
                         {{else}}
                         <span class="craft-result-item-name">{{totmDetailPanel.craftingResult.recipeName}}</span>
-                        <span class="craft-result-badge badge-failure"><i class="fas fa-times"></i> Attempt Failed</span>
+                        <span class="craft-result-badge badge-failure"><i class="fas fa-times"></i> {{localize "ionrift-respite.restSetup.craft.attemptFailed"}}</span>
                         {{/if}}
                     </div>
                 </div>
@@ -661,7 +661,7 @@
                     <div class="feast-roster-portraits">
                         {{#each totmDetailPanel.craftingResult.partyRoster}}
                         <div class="feast-portrait {{#if alreadyWellFed}}already-fed{{else}}will-eat{{/if}}"
-                             data-tooltip="{{name}}{{#if alreadyWellFed}}: already Well Fed{{else}}: served feast{{/if}}">
+                             data-tooltip="{{#if alreadyWellFed}}{{localize "ionrift-respite.restSetup.craft.feastAlreadyFed" name=name}}{{else}}{{localize "ionrift-respite.restSetup.craft.feastServed" name=name}}{{/if}}">
                             <img src="{{img}}" alt="{{name}}" class="feast-portrait-img">
                             <span class="feast-portrait-badge">
                                 {{#if alreadyWellFed}}<i class="fas fa-box-open"></i>{{else}}<i class="fas fa-check"></i>{{/if}}
@@ -669,18 +669,18 @@
                         </div>
                         {{/each}}
                     </div>
-                    <span class="feast-roster-label">Feeds {{totmDetailPanel.craftingResult.partyRoster.length}} party members</span>
+                    <span class="feast-roster-label">{{localize "ionrift-respite.restSetup.craft.feedsCount" count=totmDetailPanel.craftingResult.partyRoster.length}}</span>
                 </div>
 
                 {{#unless totmDetailPanel.craftingResult.partyMealDispositionDone}}
                 <div class="feast-footer-actions">
                     <button type="button" class="btn-feast-serve" data-action="feastServeNow">
-                        <i class="fas fa-utensils"></i> Serve to Party Now
+                        <i class="fas fa-utensils"></i> {{localize "ionrift-respite.restSetup.craft.serveNow"}}
                     </button>
                 </div>
                 {{else}}
                 <div class="crafting-done-message">
-                    <i class="fas fa-utensils"></i> Serving complete.
+                    <i class="fas fa-utensils"></i> {{localize "ionrift-respite.restSetup.craft.servingComplete"}}
                 </div>
                 {{/unless}}
                 {{/if}}
@@ -689,7 +689,7 @@
                 <div class="totm-craft-deck-actions">
                     <button type="button" class="btn-secondary" data-action="openCraftingPopout"
                             data-character-id="{{totmDetailPanel.characterId}}" data-profession="{{totmDetailPanel.professionId}}">
-                        <i class="fas fa-search"></i> View Kitchen Workbench
+                        <i class="fas fa-search"></i> {{localize "ionrift-respite.restSetup.craft.viewKitchen"}}
                     </button>
                 </div>
             </div>
@@ -701,25 +701,25 @@
                     <i class="{{totmDetailPanel.icon}} totm-craft-status-icon"></i>
                     <div class="totm-craft-status-meta">
                         <span class="totm-craft-status-actor">{{totmDetailPanel.actorName}}</span>
-                        <span class="totm-craft-status-tag">Ready to prepare provisions</span>
+                        <span class="totm-craft-status-tag">{{localize "ionrift-respite.restSetup.craft.readyToPrepare"}}</span>
                     </div>
                 </div>
 
                 <div class="totm-craft-status-body">
                     <p class="totm-craft-status-hint">
-                        Choose recipes, allocate ingredients, select risk stances, and cook dishes in the dedicated kitchen workbench.
+                        {{localize "ionrift-respite.restSetup.craft.statusHint"}}
                     </p>
                 </div>
 
                 <div class="totm-craft-deck-actions">
                     <button type="button" class="btn-primary totm-open-kitchen-btn" data-action="openCraftingPopout"
                             data-character-id="{{totmDetailPanel.characterId}}" data-profession="{{totmDetailPanel.professionId}}">
-                        <i class="fas fa-hammer"></i> Open Kitchen &amp; Recipes
+                        <i class="fas fa-hammer"></i> {{{localize "ionrift-respite.restSetup.craft.openKitchen"}}}
                     </button>
                     {{#if totmDetailPanel.mfCookbookAvailable}}
                     <button type="button" class="btn-secondary totm-mf-cookbook-btn" data-action="openMonsterCookbook"
                             data-character-id="{{totmDetailPanel.characterId}}">
-                        <i class="fas fa-book-open"></i> Monster Cookbook
+                        <i class="fas fa-book-open"></i> {{localize "ionrift-respite.restSetup.craft.monsterCookbook"}}
                     </button>
                     {{/if}}
                 </div>
@@ -730,20 +730,20 @@
                 <i class="fas fa-shield-alt"></i>
                 <span class="armor-advisory-text">
                     {{#if totmDetailPanel.armorWarning.isDoffed}}
-                    {{totmDetailPanel.armorWarning.name}} removed for rest
+                    {{localize "ionrift-respite.restSetup.armor.removedForRest" name=totmDetailPanel.armorWarning.name}}
                     {{else}}
-                    {{totmDetailPanel.armorWarning.name}} ({{totmDetailPanel.armorWarning.type}}), don time: {{totmDetailPanel.armorWarning.donTime}}
+                    {{localize "ionrift-respite.restSetup.armor.equipped" name=totmDetailPanel.armorWarning.name type=totmDetailPanel.armorWarning.type donTime=totmDetailPanel.armorWarning.donTime}}
                     {{/if}}
                 </span>
                 <button type="button" class="btn-armor-toggle"
                     data-actor-id="{{totmDetailPanel.armorWarning.actorId}}"
                     data-item-id="{{totmDetailPanel.armorWarning.itemId}}"
                     data-is-doffed="{{totmDetailPanel.armorWarning.isDoffed}}"
-                    data-tooltip="{{#if totmDetailPanel.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                    data-tooltip="{{#if totmDetailPanel.armorWarning.isDoffed}}{{localize "ionrift-respite.restSetup.armor.reequip"}}{{else}}{{localize "ionrift-respite.restSetup.armor.removeForRest"}}{{/if}}">
                     {{#if totmDetailPanel.armorWarning.isDoffed}}
-                    <i class="fas fa-shield-alt"></i> Don
+                    <i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.armor.don"}}
                     {{else}}
-                    <i class="fas fa-bed"></i> Doff
+                    <i class="fas fa-bed"></i> {{localize "ionrift-respite.restSetup.armor.doff"}}
                     {{/if}}
                 </button>
             </div>
@@ -768,7 +768,7 @@
                     {{else}}
                     <span class="totm-mechanics-check-label">
                         <i class="fas fa-check-circle" aria-hidden="true"></i>
-                        No check required
+                        {{localize "ionrift-respite.restSetup.detail.noCheck"}}
                     </span>
                     {{/if}}
                 </div>
@@ -783,13 +783,13 @@
             {{#if (eq totmDetailPanel.id 'act_forage')}}
             <div class="totm-mechanics-outcome">
                 <i class="fas fa-seedling" aria-hidden="true"></i>
-                <span>Regional <strong>{{campConditionsBar.terrainLabel}}</strong> forage: yields edible plants, herbs, or firewood.</span>
+                <span>{{#if campConditionsBar}}{{{localize "ionrift-respite.restSetup.detail.forageRegional" terrain=campConditionsBar.terrainLabel}}}{{else}}{{{localize "ionrift-respite.restSetup.detail.forageRegional" terrain=""}}}{{/if}}</span>
             </div>
             {{/if}}
             {{#if (eq totmDetailPanel.id 'act_hunt')}}
             <div class="totm-mechanics-outcome">
                 <i class="fas fa-crosshairs" aria-hidden="true"></i>
-                <span>Regional <strong>{{campConditionsBar.terrainLabel}}</strong> game: yields fresh meat and rations.</span>
+                <span>{{#if campConditionsBar}}{{{localize "ionrift-respite.restSetup.detail.huntRegional" terrain=campConditionsBar.terrainLabel}}}{{else}}{{{localize "ionrift-respite.restSetup.detail.huntRegional" terrain=""}}}{{/if}}</span>
             </div>
             {{/if}}
 
@@ -844,7 +844,7 @@
             {{else if (eq totmDetailPanel.followUpData.type "actorItem")}}
             {{#if totmDetailPanel.followUpData.slotInfo}}
             <div class="attunement-slots">
-                <i class="fas fa-gem" aria-hidden="true"></i> Attunement slots: {{totmDetailPanel.followUpData.slotInfo}}
+                <i class="fas fa-gem" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.detail.attunementSlots" slots=totmDetailPanel.followUpData.slotInfo}}
             </div>
             {{/if}}
             <select class="followup-select totm-followup-select">
@@ -860,20 +860,20 @@
             <i class="fas fa-shield-alt"></i>
             <span class="armor-advisory-text">
                 {{#if totmDetailPanel.armorWarning.isDoffed}}
-                {{totmDetailPanel.armorWarning.name}} removed for rest
+                {{localize "ionrift-respite.restSetup.armor.removedForRest" name=totmDetailPanel.armorWarning.name}}
                 {{else}}
-                {{totmDetailPanel.armorWarning.name}} ({{totmDetailPanel.armorWarning.type}}), don time: {{totmDetailPanel.armorWarning.donTime}}
+                {{localize "ionrift-respite.restSetup.armor.equipped" name=totmDetailPanel.armorWarning.name type=totmDetailPanel.armorWarning.type donTime=totmDetailPanel.armorWarning.donTime}}
                 {{/if}}
             </span>
             <button type="button" class="btn-armor-toggle"
                 data-actor-id="{{totmDetailPanel.armorWarning.actorId}}"
                 data-item-id="{{totmDetailPanel.armorWarning.itemId}}"
                 data-is-doffed="{{totmDetailPanel.armorWarning.isDoffed}}"
-                data-tooltip="{{#if totmDetailPanel.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                data-tooltip="{{#if totmDetailPanel.armorWarning.isDoffed}}{{localize "ionrift-respite.restSetup.armor.reequip"}}{{else}}{{localize "ionrift-respite.restSetup.armor.removeForRest"}}{{/if}}">
                 {{#if totmDetailPanel.armorWarning.isDoffed}}
-                <i class="fas fa-shield-alt"></i> Don
+                <i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.armor.don"}}
                 {{else}}
-                <i class="fas fa-bed"></i> Doff
+                <i class="fas fa-bed"></i> {{localize "ionrift-respite.restSetup.armor.doff"}}
                 {{/if}}
             </button>
         </div>
@@ -883,10 +883,10 @@
         {{else}}
         <div class="totm-detail-actions">
             <button type="button" class="totm-detail-cancel-btn" data-action="cancelTotmFollowUp">
-                <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.detail.back"}}
             </button>
             <button type="button" class="totm-detail-confirm-btn" data-action="confirmTotmFollowUp">
-                <i class="fas fa-check" aria-hidden="true"></i> Confirm Activity
+                <i class="fas fa-check" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.detail.confirmActivity"}}
             </button>
         </div>
         {{/if}}
@@ -924,7 +924,7 @@
                 {{else if campColdCampDecided}}
                 <span class="totm-camp-fire-status cold"><i class="fas fa-moon" aria-hidden="true"></i> Cold</span>
                 {{else}}
-                <span class="totm-camp-fire-status unlit"><i class="fas fa-circle" aria-hidden="true"></i> Unlit</span>
+                <span class="totm-camp-fire-status unlit"><i class="fas fa-circle" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.camp.unlit"}}</span>
                 {{/if}}
             </div>
         </div>
