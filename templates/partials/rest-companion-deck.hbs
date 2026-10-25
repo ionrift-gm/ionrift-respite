@@ -2,7 +2,7 @@
 {{#if companionCharacters.length}}
 <div class="rest-companions-section sr-companions-section bivouac-companions-section">
     <div class="rest-companions-header sr-companions-header bivouac-companions-header">
-        <span class="companions-title"><i class="fas fa-users"></i> {{#if @root.isGM}}Party Members{{else}}Other Party Members{{/if}}</span>
+        <span class="companions-title"><i class="fas fa-users"></i> {{#if @root.isGM}}{{localize "ionrift-respite.restCompanionDeck.partyMembers"}}{{else}}{{localize "ionrift-respite.restCompanionDeck.otherPartyMembers"}}{{/if}}</span>
     </div>
     <div class="rest-companions-deck bivouac-companions-deck sr-collapsed-cards">
         {{#each companionCharacters}}
@@ -11,7 +11,7 @@
              data-action="selectRosterCharacter"
              data-actor-id="{{id}}"
              data-roster-id="{{id}}"
-             role="button" tabindex="0" data-tooltip="Click to inspect and manage {{name}}"
+             role="button" tabindex="0" data-tooltip="{{localize "ionrift-respite.restCompanionDeck.inspectTooltip" name=name}}"
              {{else}}
              data-tooltip="{{name}}"
              {{/if}}>
@@ -20,21 +20,21 @@
                     <img class="monogram-portrait" src="{{#if img}}{{img}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="">
                 </div>
                 {{#if isReady}}
-                <span class="companion-avatar-pip pip-ready" data-tooltip="Finished resting"><i class="fas fa-check"></i></span>
+                <span class="companion-avatar-pip pip-ready" data-tooltip="{{localize "ionrift-respite.restCompanionDeck.finishedRestingTooltip"}}"><i class="fas fa-check"></i></span>
                 {{/if}}
                 {{#if isStarving}}
-                <span class="companion-avatar-pip pip-starving" data-tooltip="Starving"><i class="fas fa-triangle-exclamation"></i></span>
+                <span class="companion-avatar-pip pip-starving" data-tooltip="{{localize "ionrift-respite.restCompanionDeck.starvingTooltip"}}"><i class="fas fa-triangle-exclamation"></i></span>
                 {{/if}}
                 {{#if waterPlate.isDehydrated}}
-                <span class="companion-avatar-pip pip-dehydrated" data-tooltip="Dehydrated"><i class="fas fa-droplet-slash"></i></span>
+                <span class="companion-avatar-pip pip-dehydrated" data-tooltip="{{localize "ionrift-respite.restCompanionDeck.dehydratedTooltip"}}"><i class="fas fa-droplet-slash"></i></span>
                 {{/if}}
             </div>
             <div class="companion-body">
                 <div class="companion-row top-row">
                     <div class="companion-name-wrap">
                         <span class="companion-name">{{name}}</span>
-                        {{#if isSelfCard}}<span class="badge-you mini">You</span>{{/if}}
-                        {{#if isReady}}<span class="companion-ready-pill"><i class="fas fa-check"></i> Ready</span>{{/if}}
+                        {{#if isSelfCard}}<span class="badge-you mini">{{localize "ionrift-respite.restCompanionDeck.you"}}</span>{{/if}}
+                        {{#if isReady}}<span class="companion-ready-pill"><i class="fas fa-check"></i> {{localize "ionrift-respite.restCompanionDeck.ready"}}</span>{{/if}}
                     </div>
                     <span class="companion-hp {{#if isFullHp}}full{{/if}}">
                         <i class="fas fa-heart"></i> {{hpValue}}/{{hpMax}}

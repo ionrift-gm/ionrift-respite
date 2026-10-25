@@ -1,10 +1,10 @@
 {{!-- Shared Short Rest GM Party Overview Partial --}}
 <div class="sr-gm-party-section">
     <div class="sr-party-overview-header rest-companions-header">
-        <span class="companions-title"><i class="fas fa-users"></i> Party Status</span>
+        <span class="companions-title"><i class="fas fa-users"></i> {{localize "ionrift-respite.restGmPartyDeck.partyStatus"}}</span>
         <span class="sr-party-ready-tally {{#if allCharactersReady}}all-ready{{/if}}">
             <i class="fas {{#if allCharactersReady}}fa-check-circle{{else}}fa-hourglass-half{{/if}}"></i>
-            {{readyCount}} / {{characters.length}} Ready
+            {{localize "ionrift-respite.restGmPartyDeck.readyTally" ready=(concat readyCount "") total=(concat characters.length "")}}
         </span>
     </div>
 
@@ -14,19 +14,19 @@
              data-actor-id="{{id}}">
             {{!-- Card Header: Monogram + Name/Subtext + Status Pill + Inspect Button --}}
             <div class="gm-card-header">
-                <div class="gm-card-identity" data-action="selectRosterCharacter" data-actor-id="{{id}}" role="button" data-tooltip="Inspect and manage {{name}}">
+                <div class="gm-card-identity" data-action="selectRosterCharacter" data-actor-id="{{id}}" role="button" data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.inspectTooltip" name=name}}">
                     <div class="companion-avatar-wrap gm-avatar-wrap">
                         <div class="monogram-badge gm-badge" style="border-color: {{themeBorder}};">
                             <img class="monogram-portrait" src="{{#if img}}{{img}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="">
                         </div>
                         {{#if isReady}}
-                        <span class="companion-avatar-pip pip-ready" data-tooltip="Finished resting"><i class="fas fa-check"></i></span>
+                        <span class="companion-avatar-pip pip-ready" data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.finishedRestingTooltip"}}"><i class="fas fa-check"></i></span>
                         {{/if}}
                         {{#if isStarving}}
-                        <span class="companion-avatar-pip pip-starving" data-tooltip="Starving"><i class="fas fa-triangle-exclamation"></i></span>
+                        <span class="companion-avatar-pip pip-starving" data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.starvingTooltip"}}"><i class="fas fa-triangle-exclamation"></i></span>
                         {{/if}}
                         {{#if waterPlate.isDehydrated}}
-                        <span class="companion-avatar-pip pip-dehydrated" data-tooltip="Dehydrated"><i class="fas fa-droplet-slash"></i></span>
+                        <span class="companion-avatar-pip pip-dehydrated" data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.dehydratedTooltip"}}"><i class="fas fa-droplet-slash"></i></span>
                         {{/if}}
                     </div>
                     <div class="gm-card-info">
@@ -38,10 +38,10 @@
                 </div>
 
                 <div class="gm-card-header-actions">
-                    <button type="button" class="btn-toggle-ready {{#if isReady}}is-ready{{/if}}" data-action="toggleActorReady" data-actor-id="{{id}}" data-tooltip="{{#if isReady}}Character is ready (click to mark resting){{else}}Mark ready{{/if}}">
+                    <button type="button" class="btn-toggle-ready {{#if isReady}}is-ready{{/if}}" data-action="toggleActorReady" data-actor-id="{{id}}" data-tooltip="{{#if isReady}}{{localize "ionrift-respite.restGmPartyDeck.readyClickToRest"}}{{else}}{{localize "ionrift-respite.restGmPartyDeck.markReady"}}{{/if}}">
                         <i class="fas {{#if isReady}}fa-check-circle{{else}}fa-circle-check{{/if}}"></i>
                     </button>
-                    <button type="button" class="btn-inspect-char" data-action="selectRosterCharacter" data-actor-id="{{id}}" data-tooltip="Inspect and manage {{name}}">
+                    <button type="button" class="btn-inspect-char" data-action="selectRosterCharacter" data-actor-id="{{id}}" data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.inspectTooltip" name=name}}">
                         <i class="fas fa-magnifying-glass"></i>
                     </button>
                 </div>
@@ -50,8 +50,8 @@
             {{!-- HP Section: Labels & Visual Health Bar --}}
             <div class="gm-card-hp-section">
                 <div class="gm-card-hp-labels">
-                    <span class="label-green"><i class="fas fa-heart"></i> Hit Points</span>
-                    <span class="hp-val {{#if isFullHp}}full-hp{{/if}}">{{hpValue}} / {{hpMax}} HP{{#if isFullHp}} (Full){{/if}}</span>
+                    <span class="label-green"><i class="fas fa-heart"></i> {{localize "ionrift-respite.restGmPartyDeck.hitPoints"}}</span>
+                    <span class="hp-val {{#if isFullHp}}full-hp{{/if}}">{{hpValue}} / {{hpMax}} HP{{#if isFullHp}} ({{localize "ionrift-respite.restGmPartyDeck.full"}}){{/if}}</span>
                 </div>
                 <div class="hp-bar-track">
                     <div class="hp-bar-fill" style="width: {{hpPercent}}%;"></div>
@@ -61,23 +61,23 @@
             {{!-- Hit Dice & Action Row --}}
             <div class="gm-card-hd-section">
                 <div class="gm-card-hd-info">
-                    <span class="hd-well-label"><i class="fas fa-dice-d20"></i> Hit Dice:</span>
+                    <span class="hd-well-label"><i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.restGmPartyDeck.hitDice"}}</span>
                     <span class="hd-well-avail {{#if noHdLeft}}zero-hd{{/if}}">
                         <strong>{{hdRemaining}}</strong> / {{hdMax}} (d{{hdDie}})
                     </span>
                 </div>
                 <div class="gm-card-hd-actions">
                     {{#if isFullHp}}
-                    <button type="button" class="btn-spend-purple mini disabled" disabled data-tooltip="Already at full HP.">
-                        Full HP
+                    <button type="button" class="btn-spend-purple mini disabled" disabled data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.alreadyFullHpTooltip"}}">
+                        {{localize "ionrift-respite.restGmPartyDeck.fullHp"}}
                     </button>
                     {{else if noHdLeft}}
-                    <button type="button" class="btn-spend-purple mini disabled" disabled data-tooltip="No Hit Dice remaining.">
-                        No HD
+                    <button type="button" class="btn-spend-purple mini disabled" disabled data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.noHdRemainingTooltip"}}">
+                        {{localize "ionrift-respite.restGmPartyDeck.noHd"}}
                     </button>
                     {{else}}
-                    <button type="button" class="btn-spend-purple mini" data-action="spendHitDie" data-actor-id="{{id}}" data-tooltip="Roll 1d{{hdDie}} Hit Die for {{name}}">
-                        <i class="fas fa-dice-d20"></i> Spend (+1d{{hdDie}})
+                    <button type="button" class="btn-spend-purple mini" data-action="spendHitDie" data-actor-id="{{id}}" data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.spendHdTooltip" die=(concat hdDie "") name=name}}">
+                        <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.restGmPartyDeck.spendHdAction" die=(concat hdDie "")}}
                     </button>
                     {{/if}}
                 </div>
@@ -90,19 +90,19 @@
                 <span class="badge-feature-passive mini" data-tooltip="{{spellRecovery.featureName}}"><i class="fas fa-hat-wizard"></i> {{spellRecovery.featureName}}</span>
                 {{/if}}
                 {{#each srRechargeBadges}}
-                <span class="badge-feature-passive mini" data-tooltip="Recharges on rest">{{this}}</span>
+                <span class="badge-feature-passive mini" data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.rechargesOnRestTooltip"}}">{{this}}</span>
                 {{/each}}
                 {{#if hasClaimedChefTreat}}
-                <span class="badge-feature-passive mini" data-tooltip="Chef's Treat claimed (+1d8 HD)"><i class="fas fa-cookie-bite"></i> Treat</span>
+                <span class="badge-feature-passive mini" data-tooltip="{{{localize "ionrift-respite.restGmPartyDeck.chefTreatTooltip"}}}"><i class="fas fa-cookie-bite"></i> {{localize "ionrift-respite.restGmPartyDeck.treat"}}</span>
                 {{/if}}
                 {{#if isChefFed}}
-                <span class="badge-feature-passive mini" data-tooltip="Chef's Meal"><i class="fas fa-utensils"></i> Fed</span>
+                <span class="badge-feature-passive mini" data-tooltip="{{{localize "ionrift-respite.restGmPartyDeck.chefMealTooltip"}}}"><i class="fas fa-utensils"></i> {{localize "ionrift-respite.restGmPartyDeck.fed"}}</span>
                 {{/if}}
                 {{#if isStarving}}
-                <span class="badge-warning mini" data-tooltip="Starving"><i class="fas fa-triangle-exclamation"></i> Starving</span>
+                <span class="badge-warning mini" data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.starvingTooltip"}}"><i class="fas fa-triangle-exclamation"></i> {{localize "ionrift-respite.restGmPartyDeck.starving"}}</span>
                 {{/if}}
                 {{#if waterPlate.isDehydrated}}
-                <span class="badge-warning mini" data-tooltip="Dehydrated"><i class="fas fa-droplet-slash"></i> Dehydrated</span>
+                <span class="badge-warning mini" data-tooltip="{{localize "ionrift-respite.restGmPartyDeck.dehydratedTooltip"}}"><i class="fas fa-droplet-slash"></i> {{localize "ionrift-respite.restGmPartyDeck.dehydrated"}}</span>
                 {{/if}}
             </div>
             {{/if}}

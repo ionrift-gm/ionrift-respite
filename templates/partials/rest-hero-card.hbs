@@ -10,14 +10,14 @@
                     <img class="monogram-portrait" src="{{#if img}}{{img}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="">
                 </div>
                 {{#if isReady}}
-                <span class="hero-avatar-pip pip-ready" data-tooltip="Finished resting"><i class="fas fa-check"></i></span>
+                <span class="hero-avatar-pip pip-ready" data-tooltip="{{localize "ionrift-respite.restHeroCard.finishedRestingTooltip"}}"><i class="fas fa-check"></i></span>
                 {{/if}}
             </div>
             <div class="rest-identity-info sr-identity-info bivouac-identity-info">
                 <div class="rest-name-row sr-name-row bivouac-name-row">
                     <span class="rest-char-name sr-name bivouac-char-name">{{name}}</span>
-                    {{#if isSelfCard}}<span class="badge-you">You</span>{{/if}}
-                    {{#if isReady}}<span class="badge-ready"><i class="fas fa-check"></i> Ready</span>{{/if}}
+                    {{#if isSelfCard}}<span class="badge-you">{{localize "ionrift-respite.restHeroCard.you"}}</span>{{/if}}
+                    {{#if isReady}}<span class="badge-ready"><i class="fas fa-check"></i> {{localize "ionrift-respite.restHeroCard.ready"}}</span>{{/if}}
                 </div>
                 <span class="rest-subtext sr-subtext bivouac-subtext">{{subtext}}</span>
             </div>
@@ -29,33 +29,33 @@
             <div class="bivouac-sustenance-slot rest-header-slot">
                 {{#if isChefFed}}
                 <button type="button" class="sustenance-chip chef" data-action="swapPlateFood" data-actor-id="{{id}}"
-                    {{#unless canInteract}}disabled{{/unless}} data-tooltip="Fed by Chef Replenishing Meal (+1d8 HD). Click to cycle food options.">
-                    <i class="fas fa-utensils"></i> Chef's Meal
+                    {{#unless canInteract}}disabled{{/unless}} data-tooltip="{{localize "ionrift-respite.restHeroCard.chefMealTooltip"}}">
+                    <i class="fas fa-utensils"></i> {{{localize "ionrift-respite.restHeroCard.chefsMeal"}}}
                 </button>
                 {{else if isOutlanderShielded}}
-                <span class="sustenance-chip shielded" data-tooltip="{{#if foragerName}}{{foragerName}}'s Outlander feature (Wanderer) provides wild forage.{{else}}Outlander feature provides wild forage.{{/if}}">
-                    <i class="fas fa-leaf"></i> Wild Forage
+                <span class="sustenance-chip shielded" data-tooltip="{{#if foragerName}}{{{localize "ionrift-respite.restHeroCard.outlanderForagerTooltip" name=foragerName}}}{{else}}{{localize "ionrift-respite.restHeroCard.outlanderDefaultTooltip"}}{{/if}}">
+                    <i class="fas fa-leaf"></i> {{localize "ionrift-respite.restHeroCard.wildForage"}}
                 </span>
                 {{else if platedItem}}
                 <button type="button" class="sustenance-chip food" data-action="swapPlateFood" data-actor-id="{{id}}"
-                    {{#unless canInteract}}disabled{{/unless}} data-tooltip="Personal provisions: {{platedItem.name}}. Click to cycle food options.">
+                    {{#unless canInteract}}disabled{{/unless}} data-tooltip="{{localize "ionrift-respite.restHeroCard.personalProvisionsTooltip" name=platedItem.name}}">
                     <i class="fas fa-drumstick-bite"></i> {{platedItem.name}}
                 </button>
                 {{else}}
                 <button type="button" class="sustenance-chip starving" data-action="swapPlateFood" data-actor-id="{{id}}"
-                    {{#unless canInteract}}disabled{{/unless}} data-tooltip="No food selected! Resting hungry will advance starvation. Click to select food.">
-                    <i class="fas fa-triangle-exclamation"></i> Starving
+                    {{#unless canInteract}}disabled{{/unless}} data-tooltip="{{localize "ionrift-respite.restHeroCard.starvingTooltip"}}">
+                    <i class="fas fa-triangle-exclamation"></i> {{localize "ionrift-respite.restHeroCard.starving"}}
                 </button>
                 {{/if}}
 
                 {{#if waterPlate.isShielded}}
                 <span class="sustenance-chip water-shielded" data-tooltip="{{waterPlate.tooltip}}">
-                    <i class="fas fa-droplet"></i> Fresh Water
+                    <i class="fas fa-droplet"></i> {{localize "ionrift-respite.restHeroCard.freshWater"}}
                 </span>
                 {{else if waterPlate.isDehydrated}}
                 <button type="button" class="sustenance-chip dehydrated" data-action="swapPlateWater" data-actor-id="{{id}}"
                     {{#unless waterPlate.canInteract}}disabled{{/unless}} data-tooltip="{{waterPlate.tooltip}}">
-                    <i class="fas fa-droplet-slash"></i> Dehydrated
+                    <i class="fas fa-droplet-slash"></i> {{localize "ionrift-respite.restHeroCard.dehydrated"}}
                 </button>
                 {{else if waterPlate}}
                 <button type="button" class="sustenance-chip water" data-action="swapPlateWater" data-actor-id="{{id}}"
@@ -70,12 +70,12 @@
             {{#if (or hasClaimedChefTreat canClaimChefTreat)}}
             <div class="sr-treat-slot rest-header-slot">
                 {{#if hasClaimedChefTreat}}
-                <span class="sr-treat-claimed-pill" data-tooltip="Chef's Treat claimed! Regain an extra 1d8 HP when spending Hit Dice.">
-                    <i class="fas fa-cookie-bite"></i> Chef's Treat (+1d8 HD)
+                <span class="sr-treat-claimed-pill" data-tooltip="{{{localize "ionrift-respite.restHeroCard.chefTreatClaimedTooltip"}}}">
+                    <i class="fas fa-cookie-bite"></i> {{{localize "ionrift-respite.restHeroCard.chefTreatHd"}}}
                 </span>
                 {{else if canClaimChefTreat}}
-                <button type="button" class="sr-take-treat-btn" data-action="claimChefTreat" data-actor-id="{{id}}" data-tooltip="Take a chef's treat for +1d8 HP on Hit Dice">
-                    <i class="fas fa-cookie-bite"></i> Take Treat ({{chefMealsRemaining}} left)
+                <button type="button" class="sr-take-treat-btn" data-action="claimChefTreat" data-actor-id="{{id}}" data-tooltip="{{{localize "ionrift-respite.restHeroCard.takeChefTreatTooltip"}}}">
+                    <i class="fas fa-cookie-bite"></i> {{localize "ionrift-respite.restHeroCard.takeTreat" count=(concat chefMealsRemaining "")}}
                 </button>
                 {{/if}}
             </div>
@@ -86,8 +86,8 @@
     {{!-- HP Section: separated text labels above slim progress bar --}}
     <div class="hp-container">
         <div class="hp-labels">
-            <span class="label-green"><i class="fas fa-heart"></i> Hit Points</span>
-            <span class="hp-val {{#if isFullHp}}full-hp{{/if}}">{{hpValue}} / {{hpMax}} HP{{#if isFullHp}} (Full){{/if}}</span>
+            <span class="label-green"><i class="fas fa-heart"></i> {{localize "ionrift-respite.restHeroCard.hitPoints"}}</span>
+            <span class="hp-val {{#if isFullHp}}full-hp{{/if}}">{{hpValue}} / {{hpMax}} HP{{#if isFullHp}} ({{localize "ionrift-respite.restHeroCard.full"}}){{/if}}</span>
         </div>
         <div class="hp-bar-track">
             <div class="hp-bar-fill" style="width: {{hpPercent}}%;"></div>
@@ -97,9 +97,9 @@
     {{!-- Hit Dice Well: recessed panel with purple square pips and spend button --}}
     <div class="hd-well">
         <div class="hd-well-top">
-            <span class="hd-well-label">Hit Dice (d{{hdDie}}):</span>
+            <span class="hd-well-label">{{localize "ionrift-respite.restHeroCard.hitDice" die=(concat hdDie "")}}</span>
             <span class="hd-well-avail {{#if noHdLeft}}zero-hd{{/if}}">
-                <strong>{{hdRemaining}}</strong> / {{hdMax}} Available
+                <strong>{{hdRemaining}}</strong> / {{hdMax}} {{localize "ionrift-respite.restHeroCard.available"}}
             </span>
         </div>
         <div class="hd-well-action-row">
@@ -111,16 +111,16 @@
             <div class="hd-actions-right">
                 {{#if isOwner}}
                 {{#if isFullHp}}
-                <button type="button" class="btn-spend-purple disabled" disabled data-tooltip="Already at full HP.">
-                    Full HP
+                <button type="button" class="btn-spend-purple disabled" disabled data-tooltip="{{localize "ionrift-respite.restHeroCard.alreadyFullHpTooltip"}}">
+                    {{localize "ionrift-respite.restHeroCard.fullHp"}}
                 </button>
                 {{else if noHdLeft}}
-                <button type="button" class="btn-spend-purple disabled" disabled data-tooltip="No Hit Dice remaining.">
-                    No HD
+                <button type="button" class="btn-spend-purple disabled" disabled data-tooltip="{{localize "ionrift-respite.restHeroCard.noHdRemainingTooltip"}}">
+                    {{localize "ionrift-respite.restHeroCard.noHd"}}
                 </button>
                 {{else}}
                 <button type="button" class="btn-spend-purple" data-action="spendHitDie" data-actor-id="{{id}}">
-                    <i class="fas fa-dice-d20"></i> Spend HD (+1d{{hdDie}})
+                    <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.restHeroCard.spendHd" die=(concat hdDie "")}}
                 </button>
                 {{/if}}
                 {{/if}}
@@ -132,20 +132,20 @@
     {{#if rolls.length}}
     <div class="sr-roll-log">
         {{#if rollsCompressed}}
-        <span class="sr-roll-hidden-badge" data-tooltip="{{rollsHidden}} earlier rolls">+{{rollsHidden}} more</span>
+        <span class="sr-roll-hidden-badge" data-tooltip="{{localize "ionrift-respite.restHeroCard.earlierRollsTooltip" count=(concat rollsHidden "")}}">{{localize "ionrift-respite.restHeroCard.moreRolls" count=(concat rollsHidden "")}}</span>
         {{/if}}
         {{#each rollsToShow}}
-        <span class="sr-roll-entry" data-tooltip="d{{die}} + {{conMod}} CON{{#if annotations.length}} | {{#each annotations}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}">+{{total}}{{#if annotations.length}}<span class="sr-roll-mod-badge">{{#each annotations}}{{this}}{{#unless @last}} · {{/unless}}{{/each}}</span>{{/if}}</span>
+        <span class="sr-roll-entry" data-tooltip="{{localize "ionrift-respite.restHeroCard.rollEntryTooltip" die=(concat die "") conMod=(concat conMod "")}}{{#if annotations.length}} | {{#each annotations}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}">+{{total}}{{#if annotations.length}}<span class="sr-roll-mod-badge">{{#each annotations}}{{this}}{{#unless @last}} · {{/unless}}{{/each}}</span>{{/if}}</span>
         {{/each}}
         <span class="sr-roll-total">
-            <i class="fas fa-plus-circle"></i> {{totalHealed}} HP{{#if songBonusTotal}} <span class="sr-roll-song-addon">+ {{songBonusTotal}} Song</span>{{/if}}{{#if chefMealTotal}} <span class="sr-roll-chef-addon">+ {{chefMealTotal}} Chef</span>{{/if}}
+            <i class="fas fa-plus-circle"></i> {{totalHealed}} HP{{#if songBonusTotal}} <span class="sr-roll-song-addon">{{localize "ionrift-respite.restHeroCard.songAddon" bonus=(concat songBonusTotal "")}}</span>{{/if}}{{#if chefMealTotal}} <span class="sr-roll-chef-addon">{{localize "ionrift-respite.restHeroCard.chefAddon" bonus=(concat chefMealTotal "")}}</span>{{/if}}
         </span>
     </div>
     {{else if hdHealedTotal}}
     <div class="bivouac-roll-log-placeholder">
         <div class="sr-roll-log">
             <span class="sr-roll-total">
-                <i class="fas fa-plus-circle"></i> +{{hdHealedTotal}} HP ({{hdSpentThisRest}} spent)
+                <i class="fas fa-plus-circle"></i> {{localize "ionrift-respite.restHeroCard.hdSpentSummary" healed=(concat hdHealedTotal "") spent=(concat hdSpentThisRest "")}}
             </span>
         </div>
     </div>
@@ -155,11 +155,11 @@
     <div class="sr-song-card-line {{songCard.kind}}">
         {{#if songCard.isPendingEnd}}
         <i class="fas fa-hourglass-half"></i>
-        <span class="sr-song-card-text">Song: <strong>{{songCard.die}}</strong> on complete (spent HD)</span>
+        <span class="sr-song-card-text">{{{localize "ionrift-respite.restHeroCard.songPendingEnd" die=(concat songCard.die "")}}}</span>
         {{/if}}
         {{#if songCard.isAppliedImmediate}}
         <i class="fas fa-music"></i>
-        <span class="sr-song-card-text">Song: <strong>+{{songCard.total}} HP</strong> <span class="sr-song-formula">({{songCard.formula}})</span></span>
+        <span class="sr-song-card-text">{{{localize "ionrift-respite.restHeroCard.songAppliedImmediate" total=(concat songCard.total "")}}} <span class="sr-song-formula">({{songCard.formula}})</span></span>
         {{/if}}
     </div>
     {{/if}}
@@ -168,23 +168,23 @@
     {{#if hasFeatures}}
     <div class="features-tray">
         <div class="features-tray-header">
-            <span class="features-label">Class Features:</span>
+            <span class="features-label">{{localize "ionrift-respite.restHeroCard.classFeatures"}}</span>
         </div>
         <div class="features-pills-row">
             {{!-- Bard Song of Rest Offer on Provider's Card --}}
             {{#if isEligibleBard}}
             {{#if hasVolunteeredSong}}
             <button type="button" class="btn-feature-trigger btn-feature-purple active" data-action="volunteerSong" data-actor-id="{{id}}"
-                {{#unless canInteractSong}}disabled{{/unless}} data-tooltip="Cancel Song of Rest performance">
-                <i class="fas fa-music"></i> Performing Song of Rest ({{bardSongDie}})
+                {{#unless canInteractSong}}disabled{{/unless}} data-tooltip="{{localize "ionrift-respite.restHeroCard.cancelSongTooltip"}}">
+                <i class="fas fa-music"></i> {{localize "ionrift-respite.restHeroCard.performingSong" die=(concat bardSongDie "")}}
             </button>
             {{else if canVolunteerSong}}
             <button type="button" class="btn-feature-trigger btn-feature-purple" data-action="volunteerSong" data-actor-id="{{id}}"
-                {{#unless canInteractSong}}disabled{{/unless}} data-tooltip="Perform Song of Rest during this rest (adds {{bardSongDie}} extra healing to companions who spend Hit Dice)">
-                <i class="fas fa-music"></i> Perform Song of Rest ({{bardSongDie}})
+                {{#unless canInteractSong}}disabled{{/unless}} data-tooltip="{{localize "ionrift-respite.restHeroCard.performSongTooltip" die=(concat bardSongDie "")}}">
+                <i class="fas fa-music"></i> {{localize "ionrift-respite.restHeroCard.performSong" die=(concat bardSongDie "")}}
             </button>
             {{else if songVolunteerLocked}}
-            <span class="badge-feature-passive"><i class="fas fa-music"></i> Another bard is performing</span>
+            <span class="badge-feature-passive"><i class="fas fa-music"></i> {{localize "ionrift-respite.restHeroCard.anotherBardPerforming"}}</span>
             {{/if}}
             {{/if}}
 
@@ -192,18 +192,18 @@
             {{#if isEligibleChef}}
             {{#if hasVolunteeredChef}}
             <button type="button" class="btn-feature-trigger btn-feature-amber active" data-action="optOutChef" data-actor-id="{{id}}"
-                {{#unless canInteractChef}}disabled{{/unless}} data-tooltip="Cancel cooking replenishing meal">
-                <i class="fas fa-utensils"></i> Cooking Replenishing Meal ({{@root.chefMealsRemaining}} left)
+                {{#unless canInteractChef}}disabled{{/unless}} data-tooltip="{{localize "ionrift-respite.restHeroCard.cancelChefTooltip"}}">
+                <i class="fas fa-utensils"></i> {{localize "ionrift-respite.restHeroCard.cookingReplenishingMeal" count=(concat @root.chefMealsRemaining "")}}
             </button>
             {{else if canVolunteerChef}}
             <button type="button" class="btn-feature-trigger btn-feature-amber" data-action="volunteerChefMeal" data-actor-id="{{id}}"
-                {{#unless canInteractChef}}disabled{{/unless}} data-tooltip="Cook replenishing meal for up to {{chefMealCapacity}} companions (+1d8 HD)">
-                <i class="fas fa-utensils"></i> {{#if @root.isGritty}}Cook Replenishing Meal{{else}}Offer Chef's Treats{{/if}} ({{chefMealCapacity}} servings)
+                {{#unless canInteractChef}}disabled{{/unless}} data-tooltip="{{localize "ionrift-respite.restHeroCard.cookChefTooltip" capacity=(concat chefMealCapacity "")}}">
+                <i class="fas fa-utensils"></i> {{#if @root.isGritty}}{{localize "ionrift-respite.restHeroCard.cookReplenishingMeal" capacity=(concat chefMealCapacity "")}}{{else}}{{{localize "ionrift-respite.restHeroCard.offerChefsTreats" capacity=(concat chefMealCapacity "")}}}{{/if}}
             </button>
             {{else if chefVolunteerLocked}}
-            <span class="badge-feature-passive"><i class="fas fa-utensils"></i> Another chef is cooking</span>
+            <span class="badge-feature-passive"><i class="fas fa-utensils"></i> {{localize "ionrift-respite.restHeroCard.anotherChefCooking"}}</span>
             {{else if cookingDisabled}}
-            <span class="badge-feature-passive"><i class="fas fa-fire-flame-curved"></i> Cold Camp (No Cooking)</span>
+            <span class="badge-feature-passive"><i class="fas fa-fire-flame-curved"></i> {{localize "ionrift-respite.restHeroCard.coldCampNoCooking"}}</span>
             {{/if}}
             {{/if}}
 
@@ -211,15 +211,15 @@
             {{#if spellRecovery}}
             {{#if spellRecovery.exhausted}}
             <span class="badge-feature-spent" data-tooltip="{{spellRecovery.exhaustedExplain}}">
-                <i class="fas fa-hat-wizard"></i> {{spellRecovery.featureName}} (Used)
+                <i class="fas fa-hat-wizard"></i> {{localize "ionrift-respite.restHeroCard.spellRecoveryUsed" feature=spellRecovery.featureName}}
             </span>
             {{else if spellRecovery.noRecoverableSlots}}
-            <span class="badge-feature-passive" data-tooltip="No spent slots to recover.">
-                <i class="fas fa-hat-wizard"></i> {{spellRecovery.featureName}} (0 / {{spellRecovery.maxBudget}} lvls)
+            <span class="badge-feature-passive" data-tooltip="{{localize "ionrift-respite.restHeroCard.noSpentSlotsTooltip"}}">
+                <i class="fas fa-hat-wizard"></i> {{localize "ionrift-respite.restHeroCard.spellRecoveryBudgetZero" feature=spellRecovery.featureName max=(concat spellRecovery.maxBudget "")}}
             </span>
             {{else}}
             <button type="button" class="btn-feature-trigger btn-feature-blue {{#if spellRecovery.confirmed}}confirmed{{/if}}" data-action="toggleSpellRecoveryDrawer" data-actor-id="{{id}}">
-                <i class="fas fa-hat-wizard"></i> {{spellRecovery.featureName}} ({{spellRecovery.currentSpend}} / {{spellRecovery.maxBudget}} lvls)
+                <i class="fas fa-hat-wizard"></i> {{localize "ionrift-respite.restHeroCard.spellRecoveryBudget" feature=spellRecovery.featureName current=(concat spellRecovery.currentSpend "") max=(concat spellRecovery.maxBudget "")}}
                 {{#if spellRecovery.confirmed}}<i class="fas fa-check-circle"></i>{{/if}}
             </button>
             {{/if}}
@@ -227,7 +227,7 @@
 
             {{!-- Quiet Passive Recharge Badges --}}
             {{#each srRechargeBadges}}
-            <span class="badge-feature-passive" data-tooltip="Recharges on rest">{{this}}</span>
+            <span class="badge-feature-passive" data-tooltip="{{localize "ionrift-respite.restHeroCard.rechargesOnRestTooltip"}}">{{this}}</span>
             {{/each}}
         </div>
 
@@ -237,8 +237,8 @@
             <div class="sr-spell-slots">
                 {{#each spellRecovery.slots}}
                 <div class="sr-spell-slot-row">
-                    <span class="sr-spell-level">Level {{level}}</span>
-                    <span class="sr-spell-count">{{selected}} / {{spent}} spent</span>
+                    <span class="sr-spell-level">{{localize "ionrift-respite.restHeroCard.spellLevel" level=level}}</span>
+                    <span class="sr-spell-count">{{localize "ionrift-respite.restHeroCard.spellSpent" selected=(concat selected "") spent=(concat spent "")}}</span>
                     <div class="sr-spell-controls">
                         {{#if canRemove}}
                         <button type="button" class="sr-spell-btn sr-spell-minus" data-action="removeSpellSlot" data-actor-id="{{../spellRecovery.actorId}}" data-level="{{level}}">
@@ -264,11 +264,11 @@
             </div>
             {{#if spellRecovery.confirmed}}
             <button type="button" class="sr-spell-edit-btn" data-action="editRecovery" data-actor-id="{{spellRecovery.actorId}}">
-                <i class="fas fa-pen"></i> Edit
+                <i class="fas fa-pen"></i> {{localize "ionrift-respite.restHeroCard.edit"}}
             </button>
             {{else if spellRecovery.hasSelections}}
             <button type="button" class="sr-spell-confirm-btn" data-action="confirmRecovery" data-actor-id="{{spellRecovery.actorId}}">
-                <i class="fas fa-check"></i> Confirm
+                <i class="fas fa-check"></i> {{localize "ionrift-respite.restHeroCard.confirm"}}
             </button>
             {{/if}}
         </div>

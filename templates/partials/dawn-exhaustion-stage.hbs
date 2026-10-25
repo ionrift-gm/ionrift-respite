@@ -4,44 +4,44 @@
         <div class="dawn-lead-group">
             <div class="dawn-sun-emblem"><i class="fas fa-sun"></i></div>
             <div class="dawn-copy-block">
-                <div class="dawn-lead-title">The vigil breaks</div>
-                <div class="dawn-lead-hint">Constitution saves for the night, then the rest ends.</div>
+                <div class="dawn-lead-title">{{localize "ionrift-respite.dawnExhaustionStage.leadTitle"}}</div>
+                <div class="dawn-lead-hint">{{localize "ionrift-respite.dawnExhaustionStage.leadHint"}}</div>
             </div>
         </div>
         {{#if isGM}}
         <div class="dawn-batch-cluster">
             {{#if exhaustionSummary.pending}}
             <div class="check-module-dc-row dawn-global-dc-row">
-                <button type="button" class="dc-nudge" data-action="adjustAllExhaustionDC" data-delta="-1" data-tooltip="Lower DC for all characters (−1)">
+                <button type="button" class="dc-nudge" data-action="adjustAllExhaustionDC" data-delta="-1" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.lowerDcAllTooltip"}}">
                     <i class="fas fa-minus"></i>
                 </button>
-                <div class="event-dc-badge circular" data-tooltip="Party Constitution save DC">
-                    <span class="dc-label">DC</span>
+                <div class="event-dc-badge circular" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.partyConDcTooltip"}}">
+                    <span class="dc-label">{{localize "ionrift-respite.dawnExhaustionStage.dcLabel"}}</span>
                     <span class="dc-value">{{commonDc}}</span>
                 </div>
-                <button type="button" class="dc-nudge" data-action="adjustAllExhaustionDC" data-delta="1" data-tooltip="Raise DC for all characters (+1)">
+                <button type="button" class="dc-nudge" data-action="adjustAllExhaustionDC" data-delta="1" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.raiseDcAllTooltip"}}">
                     <i class="fas fa-plus"></i>
                 </button>
             </div>
             <div class="override-mode-segment dawn-global-mode-segment" role="group">
                 <button type="button" class="btn-mode adv {{#if (eq commonAdvMode "adv")}}active{{/if}}"
-                        data-action="setAllExhaustionAdvMode" data-mode="adv" data-tooltip="Set all to Advantage">ADV</button>
+                        data-action="setAllExhaustionAdvMode" data-mode="adv" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.setAllAdvTooltip"}}">{{localize "ionrift-respite.dawnExhaustionStage.adv"}}</button>
                 <button type="button" class="btn-mode norm {{#if (eq commonAdvMode "norm")}}active{{/if}}"
-                        data-action="setAllExhaustionAdvMode" data-mode="norm" data-tooltip="Set all to Normal">NORM</button>
+                        data-action="setAllExhaustionAdvMode" data-mode="norm" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.setAllNormTooltip"}}">{{localize "ionrift-respite.dawnExhaustionStage.norm"}}</button>
                 <button type="button" class="btn-mode dis {{#if (eq commonAdvMode "dis")}}active{{/if}}"
-                        data-action="setAllExhaustionAdvMode" data-mode="dis" data-tooltip="Set all to Disadvantage">DIS</button>
+                        data-action="setAllExhaustionAdvMode" data-mode="dis" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.setAllDisTooltip"}}">{{localize "ionrift-respite.dawnExhaustionStage.dis"}}</button>
             </div>
             <button type="button" class="btn-dawn-batch roll-all" data-action="rollAllExhaustionSaves"
-                    data-tooltip="Roll Constitution saves for remaining unresponsive characters">
-                <i class="fas fa-dice-d20"></i> Roll pending ({{exhaustionSummary.pending}})
+                    data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.rollPendingTooltip"}}">
+                <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.dawnExhaustionStage.rollPending" count=(concat exhaustionSummary.pending "")}}
             </button>
             <button type="button" class="btn-dawn-batch waive-all" data-action="waiveAllExhaustionSaves"
-                    data-tooltip="Waive exhaustion checks for the party">
-                <i class="fas fa-shield-check"></i> Waive all
+                    data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.waiveAllTooltip"}}">
+                <i class="fas fa-shield-check"></i> {{localize "ionrift-respite.dawnExhaustionStage.waiveAll"}}
             </button>
             {{else}}
             <div class="dawn-settled-pill">
-                <i class="fas fa-check-double"></i> Saves settled
+                <i class="fas fa-check-double"></i> {{localize "ionrift-respite.dawnExhaustionStage.savesSettled"}}
             </div>
             {{/if}}
         </div>
@@ -61,8 +61,8 @@
                 <div class="actor-name-group">
                     <span class="actor-name">{{actorName}}</span>
                     <div class="actor-badges">
-                        <span class="pill-con" data-tooltip="Constitution save modifier">CON {{conModString}}</span>
-                        <span class="pill-exh {{#if currentExhaustion}}has-exh{{/if}}" data-tooltip="Current exhaustion">Exh {{currentExhaustion}}</span>
+                        <span class="pill-con" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.conModifierTooltip"}}">{{localize "ionrift-respite.dawnExhaustionStage.conMod" mod=(concat conModString "")}}</span>
+                        <span class="pill-exh {{#if currentExhaustion}}has-exh{{/if}}" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.currentExhaustionTooltip"}}">{{localize "ionrift-respite.dawnExhaustionStage.exhLevel" level=(concat currentExhaustion "")}}</span>
                     </div>
                 </div>
             </div>
@@ -73,48 +73,48 @@
             <div class="actor-target-col">
                 {{#if mustRoll}}
                     {{#if rolled}}
-                    <span class="target-dc-chip" data-tooltip="Constitution save DC">DC <strong>{{dc}}</strong></span>
+                    <span class="target-dc-chip" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.conSaveDcTooltip"}}">DC <strong>{{dc}}</strong></span>
                     {{#if (ne advMode "norm")}}
-                    <span class="target-mode-chip mode-{{advMode}}" data-tooltip="Roll mode">
-                        {{#if (eq advMode "adv")}}ADV{{else}}DIS{{/if}}
+                    <span class="target-mode-chip mode-{{advMode}}" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.rollModeTooltip"}}">
+                        {{#if (eq advMode "adv")}}{{localize "ionrift-respite.dawnExhaustionStage.adv"}}{{else}}{{localize "ionrift-respite.dawnExhaustionStage.dis"}}{{/if}}
                     </span>
                     {{/if}}
                     {{else}}
                     <div class="actor-dc-stepper">
-                        <button type="button" class="dc-nudge mini" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="-1" data-tooltip="Lower DC for {{actorName}}">
+                        <button type="button" class="dc-nudge mini" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="-1" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.lowerDcTooltip" name=actorName}}">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <span class="target-dc-chip" data-tooltip="Constitution save DC">DC <strong>{{dc}}</strong></span>
-                        <button type="button" class="dc-nudge mini" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="1" data-tooltip="Raise DC for {{actorName}}">
+                        <span class="target-dc-chip" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.conSaveDcTooltip"}}">DC <strong>{{dc}}</strong></span>
+                        <button type="button" class="dc-nudge mini" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="1" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.raiseDcTooltip" name=actorName}}">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
                     <button type="button" class="target-mode-chip mode-{{advMode}} clickable"
                             data-action="cycleExhaustionAdvMode" data-actor-id="{{actorId}}"
-                            data-tooltip="{{actorName}} · {{#if (eq advMode "adv")}}Advantage{{else if (eq advMode "dis")}}Disadvantage{{else}}Normal{{/if}} (click to cycle)">
-                        {{#if (eq advMode "adv")}}ADV{{else if (eq advMode "dis")}}DIS{{else}}NORM{{/if}}
+                            data-tooltip="{{#if (eq advMode "adv")}}{{localize "ionrift-respite.dawnExhaustionStage.cycleModeTooltip" name=actorName mode=(localize "ionrift-respite.dawnExhaustionStage.advantage")}}{{else if (eq advMode "dis")}}{{localize "ionrift-respite.dawnExhaustionStage.cycleModeTooltip" name=actorName mode=(localize "ionrift-respite.dawnExhaustionStage.disadvantage")}}{{else}}{{localize "ionrift-respite.dawnExhaustionStage.cycleModeTooltip" name=actorName mode=(localize "ionrift-respite.dawnExhaustionStage.normal")}}{{/if}}">
+                        {{#if (eq advMode "adv")}}{{localize "ionrift-respite.dawnExhaustionStage.adv"}}{{else if (eq advMode "dis")}}{{localize "ionrift-respite.dawnExhaustionStage.dis"}}{{else}}{{localize "ionrift-respite.dawnExhaustionStage.norm"}}{{/if}}
                     </button>
                     {{/if}}
                 {{else}}
-                <span class="target-exempt-chip"><i class="fas fa-check"></i> Exempt</span>
+                <span class="target-exempt-chip"><i class="fas fa-check"></i> {{localize "ionrift-respite.dawnExhaustionStage.exempt"}}</span>
                 {{/if}}
             </div>
             <div class="actor-action-col">
                 {{#if rolled}}
                     {{#if passed}}
-                    <div class="result-badge passed" data-tooltip="Rolled {{rollTotal}} vs DC {{dc}}">
-                        <i class="fas fa-check-circle"></i> Saved ({{rollTotal}})
+                    <div class="result-badge passed" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.savedTooltip" roll=(concat rollTotal "") dc=(concat dc "")}}">
+                        <i class="fas fa-check-circle"></i> {{localize "ionrift-respite.dawnExhaustionStage.saved" roll=(concat rollTotal "")}}
                         {{#if ../isGM}}
-                        <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Reroll save">
+                        <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.rerollSaveTooltip"}}">
                             <i class="fas fa-rotate-right"></i>
                         </button>
                         {{/if}}
                     </div>
                     {{else}}
-                    <div class="result-badge failed" data-tooltip="Rolled {{rollTotal}} vs DC {{dc}}. +1 exhaustion.">
-                        <i class="fas fa-skull"></i> Failed ({{rollTotal}})
+                    <div class="result-badge failed" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.failedTooltip" roll=(concat rollTotal "") dc=(concat dc "")}}">
+                        <i class="fas fa-skull"></i> {{localize "ionrift-respite.dawnExhaustionStage.failed" roll=(concat rollTotal "")}}
                         {{#if ../isGM}}
-                        <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Reroll save">
+                        <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.rerollSaveTooltip"}}">
                             <i class="fas fa-rotate-right"></i>
                         </button>
                         {{/if}}
@@ -123,26 +123,26 @@
                 {{else if mustRoll}}
                     {{#if ../isGM}}
                     <div class="gm-awaiting-roll-cell">
-                        <span class="badge-waiting-player" data-tooltip="Awaiting player to roll their Constitution save">
-                            <i class="fas fa-hourglass-half"></i> Pending
+                        <span class="badge-waiting-player" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.awaitingPlayerTooltip"}}">
+                            <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.dawnExhaustionStage.pending"}}
                         </span>
                         <button type="button" class="btn-dawn-fallback-roll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}"
-                                data-tooltip="Roll on behalf of {{actorName}} (if AFK)">
+                                data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.rollOnBehalfTooltip" name=actorName}}">
                             <i class="fas fa-dice-d20"></i>
                         </button>
                     </div>
                     {{else}}
-                    <span class="badge-waiting-gm"><i class="fas fa-hourglass-half"></i> Pending</span>
+                    <span class="badge-waiting-gm"><i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.dawnExhaustionStage.pending"}}</span>
                     {{/if}}
                 {{else}}
-                    <span class="badge-waived-pill"><i class="fas fa-shield-heart"></i> Waived</span>
+                    <span class="badge-waived-pill"><i class="fas fa-shield-heart"></i> {{localize "ionrift-respite.dawnExhaustionStage.waived"}}</span>
                 {{/if}}
             </div>
             {{#if ../isGM}}
             <div class="actor-override-col">
                 <button type="button" class="btn-gear-override {{#if isOverrideOpen}}active{{/if}}"
                         data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}"
-                        data-tooltip="Adjust DC, roll mode, or waive the save">
+                        data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.overrideTooltip"}}">
                     <i class="fas fa-sliders"></i>
                 </button>
             </div>
@@ -153,24 +153,24 @@
                 <div class="override-drawer-controls">
                     <label class="override-checkbox-label">
                         <input type="checkbox" data-action="toggleMustRollExhaustion" data-actor-id="{{actorId}}" {{#if mustRoll}}checked{{/if}}>
-                        <span>Require save</span>
+                        <span>{{localize "ionrift-respite.dawnExhaustionStage.requireSave"}}</span>
                     </label>
                     <div class="override-dc-stepper">
-                        <span class="stepper-label">DC</span>
+                        <span class="stepper-label">{{localize "ionrift-respite.dawnExhaustionStage.dcLabel"}}</span>
                         <button type="button" class="btn-step" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="-1">−</button>
                         <span class="dawn-dc-readout">{{dc}}</span>
                         <button type="button" class="btn-step" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="1">+</button>
                     </div>
                     <div class="override-mode-segment" role="group">
                         <button type="button" class="btn-mode adv {{#if (eq advMode "adv")}}active{{/if}}"
-                                data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="adv">ADV</button>
+                                data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="adv">{{localize "ionrift-respite.dawnExhaustionStage.adv"}}</button>
                         <button type="button" class="btn-mode norm {{#if (eq advMode "norm")}}active{{/if}}"
-                                data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="norm">NORM</button>
+                                data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="norm">{{localize "ionrift-respite.dawnExhaustionStage.norm"}}</button>
                         <button type="button" class="btn-mode dis {{#if (eq advMode "dis")}}active{{/if}}"
-                                data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="dis">DIS</button>
+                                data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="dis">{{localize "ionrift-respite.dawnExhaustionStage.dis"}}</button>
                     </div>
-                    <button type="button" class="btn-close-override" data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}" data-tooltip="Close adjustments">
-                        <i class="fas fa-check"></i> Done
+                    <button type="button" class="btn-close-override" data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.closeAdjustmentsTooltip"}}">
+                        <i class="fas fa-check"></i> {{localize "ionrift-respite.dawnExhaustionStage.done"}}
                     </button>
                 </div>
             </div>
@@ -193,12 +193,12 @@
                     <div class="dawn-hero-meta">
                         <div class="dawn-hero-name-row">
                             <span class="dawn-hero-name">{{actorName}}</span>
-                            {{#if isSelf}}<span class="badge-you">You</span>{{/if}}
+                            {{#if isSelf}}<span class="badge-you">{{localize "ionrift-respite.dawnExhaustionStage.you"}}</span>{{/if}}
                         </div>
                         <div class="dawn-hero-vitals-row">
-                            <span class="hero-vital-pill con" data-tooltip="Constitution save modifier"><i class="fas fa-shield-heart"></i> CON Save {{conModString}}</span>
-                            <span class="hero-vital-pill exh {{#if currentExhaustion}}has-exh{{/if}}" data-tooltip="Current exhaustion level">
-                                <i class="fas fa-person-falling-burst"></i> Exhaustion {{currentExhaustion}}
+                            <span class="hero-vital-pill con" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.conModifierTooltip"}}"><i class="fas fa-shield-heart"></i> {{localize "ionrift-respite.dawnExhaustionStage.conSaveMod" mod=(concat conModString "")}}</span>
+                            <span class="hero-vital-pill exh {{#if currentExhaustion}}has-exh{{/if}}" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.currentExhaustionLevelTooltip"}}">
+                                <i class="fas fa-person-falling-burst"></i> {{localize "ionrift-respite.dawnExhaustionStage.exhaustionLevel" level=(concat currentExhaustion "")}}
                             </span>
                         </div>
                     </div>
@@ -215,16 +215,16 @@
                     <div class="hero-outcome-banner passed">
                         <i class="fas fa-check-circle fa-2x"></i>
                         <div class="outcome-copy">
-                            <span class="outcome-verdict">Constitution Save Passed</span>
-                            <span class="outcome-detail">Rolled <strong>{{rollTotal}}</strong> vs DC {{dc}}. No exhaustion gained.</span>
+                            <span class="outcome-verdict">{{localize "ionrift-respite.dawnExhaustionStage.heroSavePassedVerdict"}}</span>
+                            <span class="outcome-detail">{{{localize "ionrift-respite.dawnExhaustionStage.heroSavePassedDetail" roll=(concat rollTotal "") dc=(concat dc "")}}}</span>
                         </div>
                     </div>
                     {{else}}
                     <div class="hero-outcome-banner failed">
                         <i class="fas fa-skull-crossbones fa-2x"></i>
                         <div class="outcome-copy">
-                            <span class="outcome-verdict">Constitution Save Failed</span>
-                            <span class="outcome-detail">Rolled <strong>{{rollTotal}}</strong> vs DC {{dc}}. +1 Exhaustion gained.</span>
+                            <span class="outcome-verdict">{{localize "ionrift-respite.dawnExhaustionStage.heroSaveFailedVerdict"}}</span>
+                            <span class="outcome-detail">{{{localize "ionrift-respite.dawnExhaustionStage.heroSaveFailedDetail" roll=(concat rollTotal "") dc=(concat dc "")}}}</span>
                         </div>
                     </div>
                     {{/if}}
@@ -233,21 +233,21 @@
                         <div class="roll-prompt-stakes">
                             <span class="stakes-dc">DC <strong>{{dc}}</strong></span>
                             {{#if (eq advMode "adv")}}
-                            <span class="stakes-mode mode-adv"><i class="fas fa-angles-up"></i> Advantage</span>
+                            <span class="stakes-mode mode-adv"><i class="fas fa-angles-up"></i> {{localize "ionrift-respite.dawnExhaustionStage.advantage"}}</span>
                             {{else if (eq advMode "dis")}}
-                            <span class="stakes-mode mode-dis"><i class="fas fa-angles-down"></i> Disadvantage</span>
+                            <span class="stakes-mode mode-dis"><i class="fas fa-angles-down"></i> {{localize "ionrift-respite.dawnExhaustionStage.disadvantage"}}</span>
                             {{/if}}
                         </div>
                         <button type="button" class="btn-hero-roll-dawn" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}">
-                            <i class="fas fa-dice-d20"></i> Roll Constitution Save
+                            <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.dawnExhaustionStage.rollConstitutionSave"}}
                         </button>
                     </div>
                 {{else}}
                     <div class="hero-outcome-banner waived">
                         <i class="fas fa-shield-heart fa-2x"></i>
                         <div class="outcome-copy">
-                            <span class="outcome-verdict">Exempt</span>
-                            <span class="outcome-detail">No exhaustion check required this morning.</span>
+                            <span class="outcome-verdict">{{localize "ionrift-respite.dawnExhaustionStage.exempt"}}</span>
+                            <span class="outcome-detail">{{localize "ionrift-respite.dawnExhaustionStage.noCheckRequired"}}</span>
                         </div>
                     </div>
                 {{/if}}
@@ -260,7 +260,7 @@
         {{#if companionCharacters.length}}
         <div class="dawn-companions-deck-section">
             <div class="dawn-companions-header">
-                <i class="fas fa-users"></i> Companion Status
+                <i class="fas fa-users"></i> {{localize "ionrift-respite.dawnExhaustionStage.companionStatus"}}
             </div>
             <div class="dawn-companions-grid">
                 {{#each companionCharacters}}
@@ -269,25 +269,25 @@
                     <div class="comp-chip-info">
                         <div class="comp-chip-name-row">
                             <span class="comp-chip-name">{{actorName}}</span>
-                            {{#if isSelf}}<span class="badge-you mini">You</span>{{/if}}
+                            {{#if isSelf}}<span class="badge-you mini">{{localize "ionrift-respite.dawnExhaustionStage.you"}}</span>{{/if}}
                         </div>
                         <div class="comp-chip-status">
                             {{#if rolled}}
                                 {{#if passed}}
-                                <span class="chip-status passed"><i class="fas fa-check"></i> Saved ({{rollTotal}})</span>
+                                <span class="chip-status passed"><i class="fas fa-check"></i> {{localize "ionrift-respite.dawnExhaustionStage.saved" roll=(concat rollTotal "")}}</span>
                                 {{else}}
-                                <span class="chip-status failed"><i class="fas fa-skull"></i> Failed ({{rollTotal}})</span>
+                                <span class="chip-status failed"><i class="fas fa-skull"></i> {{localize "ionrift-respite.dawnExhaustionStage.failed" roll=(concat rollTotal "")}}</span>
                                 {{/if}}
                             {{else if mustRoll}}
                                 {{#if isOwner}}
-                                <button type="button" class="btn-comp-roll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Roll save for {{actorName}}">
-                                    <i class="fas fa-dice-d20"></i> Roll DC {{dc}}
+                                <button type="button" class="btn-comp-roll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="{{localize "ionrift-respite.dawnExhaustionStage.rollSaveForTooltip" name=actorName}}">
+                                    <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.dawnExhaustionStage.rollDc" dc=(concat dc "")}}
                                 </button>
                                 {{else}}
-                                <span class="chip-status pending"><i class="fas fa-hourglass-half"></i> Pending</span>
+                                <span class="chip-status pending"><i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.dawnExhaustionStage.pending"}}</span>
                                 {{/if}}
                             {{else}}
-                                <span class="chip-status waived"><i class="fas fa-shield-heart"></i> Exempt</span>
+                                <span class="chip-status waived"><i class="fas fa-shield-heart"></i> {{localize "ionrift-respite.dawnExhaustionStage.exempt"}}</span>
                             {{/if}}
                         </div>
                     </div>

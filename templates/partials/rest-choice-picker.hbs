@@ -1,6 +1,6 @@
 {{!-- Open picker for Gather or Activities. Hidden once that step is committed. --}}
 {{#if totmStationCards.length}}
-<div class="sust-section-label">{{#if (eq selectedWorkflowStep "gather")}}GATHER PROVISIONS{{else}}ACTIVITIES{{/if}}</div>
+<div class="sust-section-label">{{#if (eq selectedWorkflowStep "gather")}}{{localize "ionrift-respite.restChoicePicker.gatherProvisions"}}{{else}}{{localize "ionrift-respite.restChoicePicker.activities"}}{{/if}}</div>
 <div class="rest-night-stations{{#if (eq selectedWorkflowStep "gather")}} is-gather{{/if}}">
     {{#each totmStationCards}}
     <div class="rest-night-station">

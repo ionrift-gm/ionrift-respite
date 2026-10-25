@@ -18,12 +18,12 @@
                         <span class="totm-detail-name sust-commit-title">{{mealCommit.title}}</span>
                         <div class="sust-commit-badges">
                             {{#if mealCommit.isFed}}
-                            <span class="sust-badge sust-badge-fed"><i class="fas fa-check" aria-hidden="true"></i> Fed</span>
+                            <span class="sust-badge sust-badge-fed"><i class="fas fa-check" aria-hidden="true"></i> {{localize "ionrift-respite.restSustenanceWithFire.fed"}}</span>
                             {{else}}
-                            <span class="sust-badge sust-badge-starving"><i class="fas fa-exclamation" aria-hidden="true"></i> Starving</span>
+                            <span class="sust-badge sust-badge-starving"><i class="fas fa-exclamation" aria-hidden="true"></i> {{localize "ionrift-respite.restSustenanceWithFire.starving"}}</span>
                             {{/if}}
                             {{#if mealCommit.isHydrated}}
-                            <span class="sust-badge sust-badge-hydrated"><i class="fas fa-tint" aria-hidden="true"></i> Hydrated</span>
+                            <span class="sust-badge sust-badge-hydrated"><i class="fas fa-tint" aria-hidden="true"></i> {{localize "ionrift-respite.restSustenanceWithFire.hydrated"}}</span>
                             {{else}}
                             <span class="sust-badge sust-badge-thirsty"><i class="fas fa-tint-slash" aria-hidden="true"></i> {{mealCommit.waterShortLabel}}</span>
                             {{/if}}
@@ -31,8 +31,8 @@
                     </div>
                 </div>
                 {{#unless @root.characterReady}}
-                <button type="button" class="totm-commit-change-btn" data-action="unlockSustenance" data-actor-id="{{selectedCharacterId}}" data-tooltip="Change rations">
-                    <i class="fas fa-undo-alt" aria-hidden="true"></i> Change
+                <button type="button" class="totm-commit-change-btn" data-action="unlockSustenance" data-actor-id="{{selectedCharacterId}}" data-tooltip="{{localize "ionrift-respite.restSustenanceWithFire.changeRationsTooltip"}}">
+                    <i class="fas fa-undo-alt" aria-hidden="true"></i> {{localize "ionrift-respite.restSustenanceWithFire.change"}}
                 </button>
                 {{/unless}}
             </div>
@@ -56,14 +56,14 @@
 
             {{#if mealCommit.sendoff.hasBuff}}
             <div class="sust-sendoff has-buff sust-commit-sendoff">
-                <span class="sust-sendoff-kicker"><i class="fas fa-sparkles" aria-hidden="true"></i> Send-off Buff</span>
+                <span class="sust-sendoff-kicker"><i class="fas fa-sparkles" aria-hidden="true"></i> {{localize "ionrift-respite.restSustenanceWithFire.sendoffBuff"}}</span>
                 <strong>{{mealCommit.sendoff.itemName}}</strong>
                 <div class="sust-sendoff-hero"><b>{{mealCommit.sendoff.buffSummary}}</b></div>
             </div>
             {{else}}
             <div class="sust-sendoff empty sust-commit-sendoff">
-                <span class="sust-sendoff-kicker">Send-off</span>
-                <span class="sust-sendoff-dur">Sates only (No buff into the next day).</span>
+                <span class="sust-sendoff-kicker">{{localize "ionrift-respite.restSustenanceWithFire.sendoff"}}</span>
+                <span class="sust-sendoff-dur">{{localize "ionrift-respite.restSustenanceWithFire.satesOnly"}}</span>
             </div>
             {{/if}}
 
@@ -81,11 +81,11 @@
         <div class="rest-step-pacing">
             {{#if @root.characterReady}}
             <button type="button" class="btn-step-ready rest-ready-btn is-ready" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
-                <i class="fas fa-check-circle" aria-hidden="true"></i> <span>Ready (Edit Choices)</span>
+                <i class="fas fa-check-circle" aria-hidden="true"></i> <span>{{localize "ionrift-respite.restSustenanceWithFire.readyEditChoices"}}</span>
             </button>
             {{else}}
             <button type="button" class="btn-step-ready rest-ready-btn" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
-                <i class="fas fa-check" aria-hidden="true"></i> <span>Ready for Night</span>
+                <i class="fas fa-check" aria-hidden="true"></i> <span>{{localize "ionrift-respite.restSustenanceWithFire.readyForNight"}}</span>
             </button>
             {{/if}}
         </div>
