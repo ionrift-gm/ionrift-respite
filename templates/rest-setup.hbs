@@ -2152,28 +2152,28 @@
                 {{#if (eq resolvedOutcome "triumph")}}
                 <div class="event-resolution pass">
                     <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.events.checkPassed"}}</div>
-                    <div class="event-resolution-narrative">The party takes the challenge head on.</div>
+                    <div class="event-resolution-narrative">{{localize "ionrift-respite.restSetup.events.challengeHeadOn"}}</div>
                 </div>
                 {{else if (eq resolvedOutcome "success")}}
                 <div class="event-resolution pass">
                     <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.events.checkPassed"}}</div>
-                    <div class="event-resolution-narrative">The party weathers the challenge.</div>
+                    <div class="event-resolution-narrative">{{localize "ionrift-respite.restSetup.events.weathersChallenge"}}</div>
                 </div>
                 {{else if (eq resolvedOutcome "mixed")}}
                 <div class="event-resolution partial">
                     <div class="event-resolution-verdict"><i class="fas fa-exclamation-triangle"></i> {{localize "ionrift-respite.restSetup.events.partialSuccess"}}</div>
-                    <div class="event-resolution-narrative">Things could have gone better.</div>
+                    <div class="event-resolution-narrative">{{localize "ionrift-respite.restSetup.events.couldHaveGoneBetter"}}</div>
                 </div>
                 {{else}}
                 <div class="event-resolution fail">
                     <div class="event-resolution-verdict"><i class="fas fa-skull-crossbones"></i> {{localize "ionrift-respite.restSetup.events.checkFailed"}}</div>
-                    <div class="event-resolution-narrative">The situation takes a turn for the worse.</div>
+                    <div class="event-resolution-narrative">{{localize "ionrift-respite.restSetup.events.turnForTheWorse"}}</div>
                 </div>
                 {{/if}}
 
                 {{#if playerConsequences.length}}
                 <div class="event-player-consequences">
-                    <div class="event-player-consequences-head"><i class="fas fa-hourglass-half"></i> After the rest</div>
+                    <div class="event-player-consequences-head"><i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.restSetup.events.afterTheRest"}}</div>
                     {{#each playerConsequences}}
                     <div class="event-player-consequence"><i class="fas {{icon}}"></i> {{text}}</div>
                     {{/each}}
@@ -2216,8 +2216,8 @@
         {{/each}}
         {{else}}
         <div class="respite-event-card ambient">
-            <div class="event-name">Quiet Rest</div>
-            <div class="event-description">The night passes without incident.</div>
+            <div class="event-name">{{localize "ionrift-respite.restSetup.events.quietRest"}}</div>
+            <div class="event-description">{{localize "ionrift-respite.restSetup.events.nightPassesWithoutIncident"}}</div>
         </div>
         {{/if}}
 
@@ -2225,9 +2225,9 @@
         <div class="event-narration-hint">
             <i class="fas fa-theater-masks"></i>
             {{#if hasEncounterEvent}}
-            <em>Set the scene before battle begins.</em>
+            <em>{{localize "ionrift-respite.restSetup.events.setSceneBeforeBattle"}}</em>
             {{else}}
-            <em>Describe the outcome to your players before proceeding.</em>
+            <em>{{localize "ionrift-respite.restSetup.events.describeOutcomeBeforeProceeding"}}</em>
             {{/if}}
         </div>
         {{/if}}
@@ -2242,9 +2242,9 @@
         {{!-- Camp Preparations: camp activity rolls (persists after resolve for GM narration) --}}
         {{#if pendingCampRolls.length}}
         <div class="respite-event-card ambient camp-prep-card">
-            <div class="event-name"><i class="fas fa-shield-alt"></i> Camp Preparations</div>
+            <div class="event-name"><i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.events.campPreparations"}}</div>
             <div class="event-description">
-                {{#if campPrepsResolved}}Describe the results to your players before the encounter check.{{else}}Waiting for camp activity rolls to resolve before the encounter check.{{/if}}
+                {{#if campPrepsResolved}}{{localize "ionrift-respite.restSetup.events.campPrepsResolvedDesc"}}{{else}}{{localize "ionrift-respite.restSetup.events.waitingCampActivityRolls"}}{{/if}}
             </div>
             <div class="camp-prep-list">
                 {{#each pendingCampRolls}}
@@ -2260,19 +2260,19 @@
                     <span class="camp-prep-result fail"><i class="fas fa-times"></i> {{total}}</span>
                     {{else}}
                     {{#if requested}}
-                    <span class="camp-prep-skill">{{skillName}} DC {{dc}}{{#unless (eq dc baseDC)}} <span class="camp-dc-base">(was {{baseDC}})</span>{{/unless}}</span>
-                    <span class="camp-prep-result pending"><i class="fas fa-paper-plane"></i> Sent</span>
-                    <button type="button" class="btn-roll-for-player camp-fallback" data-action="rollCampForPlayer" data-character-id="{{characterId}}" data-tooltip="Roll on their behalf">
+                    <span class="camp-prep-skill">{{skillName}} DC {{dc}}{{#unless (eq dc baseDC)}} <span class="camp-dc-base">{{localize "ionrift-respite.restSetup.events.wasBaseDc" baseDC=baseDC}}</span>{{/unless}}</span>
+                    <span class="camp-prep-result pending"><i class="fas fa-paper-plane"></i> {{localize "ionrift-respite.restSetup.events.sent"}}</span>
+                    <button type="button" class="btn-roll-for-player camp-fallback" data-action="rollCampForPlayer" data-character-id="{{characterId}}" data-tooltip="{{localize "ionrift-respite.restSetup.events.rollOnBehalf"}}">
                         <i class="fas fa-dice"></i>
                     </button>
                     {{else}}
                     <span class="camp-prep-dc-controls">
                         <span class="camp-prep-skill">{{skillName}}</span>
-                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="-1" data-tooltip="Lower DC">&minus;</button>
+                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="-1" data-tooltip="{{localize "ionrift-respite.restSetup.events.lowerCampDc"}}">&minus;</button>
                         <span class="camp-dc-value">DC {{dc}}{{#unless (eq dc baseDC)}} <span class="camp-dc-base">({{baseDC}})</span>{{/unless}}</span>
-                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="1" data-tooltip="Raise DC">+</button>
+                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="1" data-tooltip="{{localize "ionrift-respite.restSetup.events.raiseCampDc"}}">+</button>
                     </span>
-                    <button type="button" class="camp-prep-roll-btn" data-action="requestCampRoll" data-character-id="{{characterId}}" data-tooltip="Send roll request to player">
+                    <button type="button" class="camp-prep-roll-btn" data-action="requestCampRoll" data-character-id="{{characterId}}" data-tooltip="{{localize "ionrift-respite.restSetup.events.sendRollRequest"}}">
                         <i class="fas fa-dice-d20"></i>
                     </button>
                     {{/if}}
@@ -2301,64 +2301,64 @@
         <div class="art-nudge-banner event-pool-nudge-banner">
             <div class="art-nudge-content">
                 <div class="art-nudge-text">
-                    <span class="art-nudge-title">Event Pool: {{eventPoolTerrainLabel}}, {{eventPoolCount}} events curated</span>
+                    <span class="art-nudge-title">{{localize "ionrift-respite.restSetup.events.eventPoolSummary" terrain=eventPoolTerrainLabel count=eventPoolCount}}</span>
                 </div>
             </div>
             <div class="art-nudge-actions">
                 <button type="button" data-action="openEventPoolCurator" class="art-nudge-btn primary">
-                    Curate Pool
+                    {{localize "ionrift-respite.restSetup.events.curatePool"}}
                 </button>
             </div>
         </div>
         {{/if}}
 
         <div class="respite-event-card ambient event-roll-prompt nw-mode-{{eventsMode}}">
-            <div class="event-name">Night Watch</div>
+            <div class="event-name">{{localize "ionrift-respite.restSetup.events.nightWatch"}}</div>
 
             {{#if encountersEnabled}}
             {{#if noEventsInstalled}}
             {{#if isGM}}
             <div class="nw-pick-summary nw-no-events-installed">
                 <i class="fas fa-feather-alt"></i>
-                <span>No events installed for this terrain. Improvise, or add your own event files.</span>
+                <span>{{localize "ionrift-respite.restSetup.events.noEventsInstalled"}}</span>
             </div>
             {{/if}}
             {{/if}}
-            <div class="nw-mode-selector" role="tablist" aria-label="How does the night unfold?">
+            <div class="nw-mode-selector" role="tablist" aria-label="{{localize "ionrift-respite.restSetup.events.howNightUnfolds"}}">
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsRandom}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsRandom}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="random"
                     {{#if eventsCommitPending}}disabled{{/if}}
-                    data-tooltip="{{#if eventsModeRandomAvailable}}Roll against the threshold to draw from the curated terrain pool.{{else if noEventsInstalled}}No events installed for this terrain.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
+                    data-tooltip="{{#if eventsModeRandomAvailable}}{{localize "ionrift-respite.restSetup.events.randomAvailableTooltip"}}{{else if noEventsInstalled}}{{localize "ionrift-respite.restSetup.events.noEventsForTerrain"}}{{else}}{{localize "ionrift-respite.restSetup.events.noEventsInCuratedPool"}}{{/if}}"
                     {{#unless eventsModeRandomAvailable}}disabled{{/unless}}>
                     <i class="fas fa-dice-d20 nw-mode-icon"></i>
-                    <span class="nw-mode-label">Random</span>
+                    <span class="nw-mode-label">{{localize "ionrift-respite.restSetup.events.modeRandom"}}</span>
                 </button>
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsImprovise}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsImprovise}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="improvise"
                     {{#if eventsCommitPending}}disabled{{/if}}
-                    data-tooltip="Roll against the threshold to narrate your own scenario on failure.">
+                    data-tooltip="{{localize "ionrift-respite.restSetup.events.modeImproviseTooltip"}}">
                     <i class="fas fa-hat-wizard nw-mode-icon"></i>
-                    <span class="nw-mode-label">Improvise</span>
+                    <span class="nw-mode-label">{{localize "ionrift-respite.restSetup.events.modeImprovise"}}</span>
                 </button>
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsPick}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsPick}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="pick"
                     {{#if eventsCommitPending}}disabled{{/if}}
-                    data-tooltip="{{#if eventsModePickAvailable}}Select a specific event, bypassing the threshold check.{{else if noEventsInstalled}}No events installed for this terrain.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
+                    data-tooltip="{{#if eventsModePickAvailable}}{{localize "ionrift-respite.restSetup.events.pickAvailableTooltip"}}{{else if noEventsInstalled}}{{localize "ionrift-respite.restSetup.events.noEventsForTerrain"}}{{else}}{{localize "ionrift-respite.restSetup.events.noEventsInCuratedPool"}}{{/if}}"
                     {{#unless eventsModePickAvailable}}disabled{{/unless}}>
                     <i class="fas fa-book-open nw-mode-icon"></i>
-                    <span class="nw-mode-label">Pick from pool</span>
+                    <span class="nw-mode-label">{{localize "ionrift-respite.restSetup.events.modePick"}}</span>
                 </button>
             </div>
 
             {{#if eventsModeIsRandom}}
             <div class="event-description">
                 {{#if isGM}}
-                {{#if pendingCampRolls.length}}Camp preparations complete. {{/if}}Roll a d20 against the encounter threshold to see what the night brings.
+                {{#if pendingCampRolls.length}}{{localize "ionrift-respite.restSetup.events.campPrepsRollD20"}}{{else}}{{localize "ionrift-respite.restSetup.events.rollD20"}}{{/if}}
                 {{else}}
-                {{#if pendingCampRolls.length}}Camp preparations complete. {{/if}}The GM will call for a night check when ready.
+                {{#if pendingCampRolls.length}}{{localize "ionrift-respite.restSetup.events.campPrepsGmCall"}}{{else}}{{localize "ionrift-respite.restSetup.events.gmCallNightCheck"}}{{/if}}
                 {{/if}}
             </div>
             {{#if encounterBar}}
@@ -2366,7 +2366,7 @@
             {{> encounterThreshold dc=encounterBar.effectiveDC belowLabel="event triggers" eventsCommitPending=eventsCommitPending}}
             {{else if encounterBar.playerFactors.length}}
             <div class="encounter-details-player">
-                <span class="encounter-details-player-label">Camp exposure</span>
+                <span class="encounter-details-player-label">{{localize "ionrift-respite.restSetup.events.campExposure"}}</span>
                 <span class="encounter-bar-chips encounter-bar-chips--player">
                     {{#each encounterBar.playerFactors}}
                     {{#unless @first}}<span class="encounter-factor-sep" aria-hidden="true">|</span>{{/unless}}
@@ -2382,14 +2382,14 @@
 
             {{#if eventsModeIsImprovise}}
             <div class="event-description">
-                {{#if isGM}}Roll the night check. If an event triggers, run your own scenario at the table.{{else}}The GM will narrate what the night brings.{{/if}}
+                {{#if isGM}}{{localize "ionrift-respite.restSetup.events.improviseGmPrompt"}}{{else}}{{localize "ionrift-respite.restSetup.events.improvisePlayerPrompt"}}{{/if}}
             </div>
             {{#if encounterBar}}
             {{#if isGM}}
             {{> encounterThreshold dc=encounterBar.effectiveDC belowLabel="your scenario triggers" hideDisaster=true eventsCommitPending=eventsCommitPending}}
             {{else if encounterBar.playerFactors.length}}
             <div class="encounter-details-player">
-                <span class="encounter-details-player-label">Camp exposure</span>
+                <span class="encounter-details-player-label">{{localize "ionrift-respite.restSetup.events.campExposure"}}</span>
                 <span class="encounter-bar-chips encounter-bar-chips--player">
                     {{#each encounterBar.playerFactors}}
                     {{#unless @first}}<span class="encounter-factor-sep" aria-hidden="true">|</span>{{/unless}}
@@ -2405,16 +2405,16 @@
 
             {{#if eventsModeIsPick}}
             <div class="event-description">
-                Choose a specific event from the curated pool. The encounter threshold is bypassed; the event runs as written.
+                {{localize "ionrift-respite.restSetup.events.pickFromPoolDesc"}}
             </div>
             <div class="nw-pick-summary">
                 <i class="fas fa-book-open"></i>
-                <span>{{eventPoolCount}} event{{#unless (eq eventPoolCount 1)}}s{{/unless}} available for {{eventPoolTerrainLabel}}.</span>
+                <span>{{#if (eq eventPoolCount 1)}}{{localize "ionrift-respite.restSetup.events.eventPoolCountOne" terrain=eventPoolTerrainLabel count=eventPoolCount}}{{else}}{{localize "ionrift-respite.restSetup.events.eventPoolCountMany" terrain=eventPoolTerrainLabel count=eventPoolCount}}{{/if}}</span>
             </div>
             {{/if}}
             {{else}}
             <div class="event-description">
-                Encounters are off for this rest. The night passes without a check.
+                {{localize "ionrift-respite.restSetup.events.encountersOffDesc"}}
             </div>
             {{/if}}
         </div>
@@ -2423,9 +2423,9 @@
         {{else}}
         {{!-- PLAYER VIEW: activity-specific messaging --}}
         <div class="respite-event-card ambient player-activity-card">
-            <div class="event-name"><i class="fas fa-moon"></i> Resting...</div>
+            <div class="event-name"><i class="fas fa-moon"></i> {{localize "ionrift-respite.restSetup.events.resting"}}</div>
             <div class="event-description">
-                The party settles in for the night. The GM will determine what the darkness holds.
+                {{localize "ionrift-respite.restSetup.events.partySettlesDesc"}}
             </div>
 
             {{!-- Camp roll buttons for owned characters --}}
@@ -2440,8 +2440,8 @@
                         <strong>{{activityName}}</strong>
                         <span class="camp-roll-skill">{{skillName}} DC {{dc}}</span>
                     </div>
-                    <span class="camp-roll-result pass" data-tooltip="Success! Rolled {{total}}">
-                        <i class="fas fa-check-circle"></i> {{total}} - Passed
+                    <span class="camp-roll-result pass" data-tooltip="{{localize "ionrift-respite.restSetup.events.rollSuccessTooltip" total=total}}">
+                        <i class="fas fa-check-circle"></i> {{localize "ionrift-respite.restSetup.events.rollPassedResult" total=total}}
                     </span>
                     {{#each effectDescriptions}}
                     <div class="camp-roll-effect"><i class="fas fa-cog"></i> {{this}}</div>
@@ -2453,8 +2453,8 @@
                         <strong>{{activityName}}</strong>
                         <span class="camp-roll-skill">{{skillName}} DC {{dc}}</span>
                     </div>
-                    <span class="camp-roll-result fail" data-tooltip="Failed. Rolled {{total}}">
-                        <i class="fas fa-times-circle"></i> {{total}} - Failed
+                    <span class="camp-roll-result fail" data-tooltip="{{localize "ionrift-respite.restSetup.events.rollFailedTooltip" total=total}}">
+                        <i class="fas fa-times-circle"></i> {{localize "ionrift-respite.restSetup.events.rollFailedResult" total=total}}
                     </span>
                     {{#each effectDescriptions}}
                     <div class="camp-roll-effect"><i class="fas fa-cog"></i> {{this}}</div>
@@ -2475,17 +2475,17 @@
             {{#if awaitingCombat}}
             {{!-- Combat in progress, GM decides when complete --}}
             <button type="button" class="btn-primary btn-combat-complete" data-action="completeEncounter">
-                <i class="fas fa-check-circle"></i> Combat Complete
+                <i class="fas fa-check-circle"></i> {{localize "ionrift-respite.restSetup.combat.combatComplete"}}
             </button>
             <button type="button" class="btn-secondary btn-hide-window" data-action="hideWindow">
-                <i class="fas fa-eye-slash"></i> Hide
+                <i class="fas fa-eye-slash"></i> {{localize "ionrift-respite.restSetup.combat.hide"}}
             </button>
             {{else if hasEncounterEvent}}
             {{!-- Encounter triggered but not yet acknowledged --}}
             <div class="encounter-gate">
                 <div class="encounter-instructions">
                     <i class="fas fa-swords"></i>
-                    <span>An encounter has interrupted camp.</span>
+                    <span>{{localize "ionrift-respite.restSetup.combat.interruptedCamp"}}</span>
                 </div>
                 {{#if encounterAwareness}}
                 <div class="encounter-awareness-advisory">
@@ -2496,7 +2496,7 @@
                 {{#if combatBuffs}}
                 <div class="combat-readiness-report">
                     <div class="combat-readiness-header">
-                        <i class="fas fa-shield-alt"></i> Combat Readiness
+                        <i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.combat.combatReadiness"}}
                     </div>
                     {{#if combatBuffs.perCharacter.length}}
                     <div class="combat-readiness-list">
@@ -2516,16 +2516,16 @@
                     {{/if}}
                     {{#unless combatBuffs.perCharacter.length}}
                     <div class="combat-readiness-none">
-                        No combat modifiers from the party's activities.
+                        {{localize "ionrift-respite.restSetup.combat.noCombatModifiers"}}
                     </div>
                     {{/unless}}
                 </div>
                 {{/if}}
-                <button type="button" class="btn-primary btn-acknowledge-encounter" data-action="acknowledgeEncounter" data-tooltip="Minimizes to the status bar">
-                    <i class="fas fa-swords"></i> Begin Combat
+                <button type="button" class="btn-primary btn-acknowledge-encounter" data-action="acknowledgeEncounter" data-tooltip="{{localize "ionrift-respite.restSetup.combat.minimizesToStatusBar"}}">
+                    <i class="fas fa-swords"></i> {{localize "ionrift-respite.restSetup.combat.beginCombat"}}
                 </button>
                 <div class="combat-hint">
-                    <i class="fas fa-info-circle"></i> Minimizes to the status bar. Reopen when combat ends.
+                    <i class="fas fa-info-circle"></i> {{localize "ionrift-respite.restSetup.combat.minimizesHint"}}
                 </div>
             </div>
             {{else}}
@@ -2536,8 +2536,8 @@
             {{#unless (and activeTreeState (not activeTreeState.resolved))}}
             <button type="button" class="btn-primary-green" data-action="enterDawn"
                 {{#if (or resolvingRest disasterChoice (not allEventChecksResolved) (not allConsequencesResolved))}}disabled{{/if}}
-                data-tooltip="{{#if disasterChoice}}Choose a disaster outcome first{{else if (not allEventChecksResolved)}}Resolve all event skill checks first{{else if (not allConsequencesResolved)}}Roll and lock every consequence first{{else}}Exhaustion saves, then the rest ends{{/if}}">
-                <i class="fas fa-sun"></i> Dawn
+                data-tooltip="{{#if disasterChoice}}{{localize "ionrift-respite.restSetup.night.chooseDisasterFirst"}}{{else if (not allEventChecksResolved)}}{{localize "ionrift-respite.restSetup.night.resolveAllChecksFirst"}}{{else if (not allConsequencesResolved)}}{{localize "ionrift-respite.restSetup.night.rollLockConsequencesFirst"}}{{else}}{{localize "ionrift-respite.restSetup.night.exhaustionSavesThenEnd"}}{{/if}}">
+                <i class="fas fa-sun"></i> {{localize "ionrift-respite.restSetup.night.dawn"}}
             </button>
             {{/unless}}
             {{/if}}
@@ -2546,28 +2546,28 @@
         <button type="button" class="travel-skip-link nw-no-event-link" data-action="nightPasses"
             {{#if eventsCommitPending}}disabled{{/if}}
             {{#unless campPrepsResolved}}disabled{{/unless}}
-            data-tooltip="{{#if eventsCommitPending}}Waiting for the night check...{{else if campPrepsResolved}}GM override: skip the night check and run no event.{{else}}Awaiting camp activity rolls{{/if}}">
-            <i class="fas fa-moon"></i> No event
+            data-tooltip="{{#if eventsCommitPending}}{{localize "ionrift-respite.restSetup.night.waitingNightCheck"}}{{else if campPrepsResolved}}{{localize "ionrift-respite.restSetup.night.gmOverrideSkipCheck"}}{{else}}{{localize "ionrift-respite.restSetup.night.awaitingCampActivityRolls"}}{{/if}}">
+            <i class="fas fa-moon"></i> {{localize "ionrift-respite.restSetup.night.noEvent"}}
         </button>
         <button type="button" class="btn-primary btn-roll-events" data-action="commitEventsMode"
             {{#if eventsCommitPending}}disabled{{/if}}
-            {{#unless campPrepsResolved}}disabled data-tooltip="Awaiting camp activity rolls"{{/unless}}>
+            {{#unless campPrepsResolved}}disabled data-tooltip="{{localize "ionrift-respite.restSetup.night.awaitingCampActivityRolls"}}"{{/unless}}>
             {{#if eventsCommitPending}}
             <i class="fas fa-circle-notch fa-spin"></i>
-            {{#if eventsModeIsPick}}Opening pool...{{else}}Rolling...{{/if}}
+            {{#if eventsModeIsPick}}{{localize "ionrift-respite.restSetup.night.openingPool"}}{{else}}{{localize "ionrift-respite.restSetup.night.rolling"}}{{/if}}
             {{else if eventsModeIsPick}}
-            <i class="fas fa-book-open"></i> Choose event
+            <i class="fas fa-book-open"></i> {{localize "ionrift-respite.restSetup.night.chooseEvent"}}
             {{else}}
-            <i class="fas fa-dice-d20"></i> Roll for Events
+            <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.restSetup.night.rollForEvents"}}
             {{/if}}
         </button>
         {{else}}
         <button type="button" class="btn-primary btn-night-passes" data-action="nightPasses"
             {{#if eventsCommitPending}}disabled{{/if}}>
             {{#if eventsCommitPending}}
-            <i class="fas fa-circle-notch fa-spin"></i> Continuing...
+            <i class="fas fa-circle-notch fa-spin"></i> {{localize "ionrift-respite.restSetup.night.continuing"}}
             {{else}}
-            <i class="fas fa-moon"></i> The night passes
+            <i class="fas fa-moon"></i> {{localize "ionrift-respite.restSetup.night.nightPasses"}}
             {{/if}}
         </button>
         {{/if}}
@@ -2577,15 +2577,15 @@
     <div class="respite-action-bar">
         {{#if eventsRolled}}
         {{#if awaitingCombat}}
-        <span class="phase-waiting-label"><i class="fas fa-swords"></i> Combat in progress...</span>
-        <button type="button" class="btn-secondary btn-hide-window" data-action="hideWindow" data-tooltip="Minimize to the status bar">
-            <i class="fas fa-eye-slash"></i> Hide
+        <span class="phase-waiting-label"><i class="fas fa-swords"></i> {{localize "ionrift-respite.restSetup.night.combatInProgress"}}</span>
+        <button type="button" class="btn-secondary btn-hide-window" data-action="hideWindow" data-tooltip="{{localize "ionrift-respite.restSetup.combat.minimizeToStatusBar"}}">
+            <i class="fas fa-eye-slash"></i> {{localize "ionrift-respite.restSetup.combat.hide"}}
         </button>
         {{else}}
-        <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Resolving events...</span>
+        <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.restSetup.night.resolvingEvents"}}</span>
         {{/if}}
         {{else}}
-        <span class="phase-waiting-label"><i class="fas fa-moon"></i> The party rests...</span>
+        <span class="phase-waiting-label"><i class="fas fa-moon"></i> {{localize "ionrift-respite.restSetup.night.partyRests"}}</span>
         {{/if}}
     </div>
     {{/if}}
@@ -2599,22 +2599,22 @@
         <div class="respite-action-bar">
             {{#if isGM}}
             <button type="button" class="btn-secondary" data-action="returnToNight">
-                <i class="fas fa-arrow-left"></i> Back to Night
+                <i class="fas fa-arrow-left"></i> {{localize "ionrift-respite.restSetup.dawn.backToNight"}}
             </button>
             <button type="button" class="btn-primary-green" data-action="completeDawn"
                 {{#if (or resolvingRest exhaustionSummary.pending)}}disabled{{/if}}
-                data-tooltip="{{#if exhaustionSummary.pending}}Roll or waive each exhaustion save{{else}}Apply the rest and close{{/if}}">
+                data-tooltip="{{#if exhaustionSummary.pending}}{{localize "ionrift-respite.restSetup.dawn.rollWaiveSaves"}}{{else}}{{localize "ionrift-respite.restSetup.dawn.applyRestClose"}}{{/if}}">
                 {{#if resolvingRest}}
-                <i class="fas fa-circle-notch fa-spin"></i> Breaking camp...
+                <i class="fas fa-circle-notch fa-spin"></i> {{localize "ionrift-respite.restSetup.dawn.breakingCamp"}}
                 {{else}}
-                <i class="fas fa-check-double"></i> Complete Rest
+                <i class="fas fa-check-double"></i> {{localize "ionrift-respite.restSetup.dawn.completeRest"}}
                 {{/if}}
             </button>
             {{else}}
             {{#if exhaustionSummary.pending}}
-            <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Settling dawn saves ({{exhaustionSummary.pending}} pending)...</span>
+            <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.restSetup.dawn.settlingSavesPending" count=exhaustionSummary.pending}}</span>
             {{else}}
-            <span class="phase-waiting-label success"><i class="fas fa-check-double"></i> Dawn saves settled</span>
+            <span class="phase-waiting-label success"><i class="fas fa-check-double"></i> {{localize "ionrift-respite.restSetup.dawn.savesSettled"}}</span>
             {{/if}}
             {{/if}}
         </div>
@@ -2626,11 +2626,11 @@
     <div class="respite-dawn-screen">
         <div class="respite-dawn-header">
             <div class="respite-dawn-title-block">
-                <span class="respite-dawn-badge"><i class="fas fa-sun"></i> Dawn Breaks</span>
-                <span class="respite-dawn-subtitle">Rest Complete · {{campStatus.weatherLabel}} · {{campStatus.comfort}}</span>
+                <span class="respite-dawn-badge"><i class="fas fa-sun"></i> {{localize "ionrift-respite.restSetup.dawn.dawnBreaks"}}</span>
+                <span class="respite-dawn-subtitle">{{localize "ionrift-respite.restSetup.dawn.restCompleteSubtitle" weather=campStatus.weatherLabel comfort=campStatus.comfort}}</span>
             </div>
             <div class="respite-dawn-pacing">
-                <span class="dawn-pacing-pill"><i class="fas fa-shield-alt"></i> {{#if (gt incidentsCount 0)}}{{incidentsCount}} Incident{{#if (gt incidentsCount 1)}}s{{/if}} Resolved{{else}}Quiet Night{{/if}}</span>
+                <span class="dawn-pacing-pill"><i class="fas fa-shield-alt"></i> {{#if (gt incidentsCount 1)}}{{localize "ionrift-respite.restSetup.dawn.incidentsResolvedMany" count=incidentsCount}}{{else if (gt incidentsCount 0)}}{{localize "ionrift-respite.restSetup.dawn.incidentsResolvedOne" count=incidentsCount}}{{else}}{{localize "ionrift-respite.restSetup.dawn.quietNight"}}{{/if}}</span>
             </div>
         </div>
 
@@ -2661,30 +2661,30 @@
                 </div>
                 <div class="dawn-card-condition">
                     {{#if (gt exhaustionDelta 0)}}
-                    <span class="dawn-cond-pill negative" title="Gained {{exhaustionDelta}} exhaustion">
-                        <i class="fas fa-person-falling-burst"></i> +{{exhaustionDelta}} Exh
+                    <span class="dawn-cond-pill negative" title="{{localize "ionrift-respite.restSetup.dawn.gainedExhaustionTitle" count=exhaustionDelta}}">
+                        <i class="fas fa-person-falling-burst"></i> {{localize "ionrift-respite.restSetup.dawn.gainedExhaustion" count=exhaustionDelta}}
                     </span>
                     {{else if saveFailed}}
-                    <span class="dawn-cond-pill amber" title="Failed CON save DC {{exhaustionDC}} (offset by rest)">
-                        <i class="fas fa-bed"></i> DC {{exhaustionDC}} Failed
+                    <span class="dawn-cond-pill amber" title="{{localize "ionrift-respite.restSetup.dawn.conSaveFailedTitle" dc=exhaustionDC}}">
+                        <i class="fas fa-bed"></i> {{localize "ionrift-respite.restSetup.dawn.dcFailed" dc=exhaustionDC}}
                     </span>
                     {{else if savePassed}}
-                    <span class="dawn-cond-pill positive" title="Passed CON save DC {{exhaustionDC}}">
-                        <i class="fas fa-shield"></i> DC {{exhaustionDC}} Passed
+                    <span class="dawn-cond-pill positive" title="{{localize "ionrift-respite.restSetup.dawn.conSavePassedTitle" dc=exhaustionDC}}">
+                        <i class="fas fa-shield"></i> {{localize "ionrift-respite.restSetup.dawn.dcPassed" dc=exhaustionDC}}
                     </span>
                     {{else if (lt exhaustionDelta 0)}}
-                    <span class="dawn-cond-pill positive" title="Exhaustion reduced by 1">
-                        <i class="fas fa-sparkles"></i> -1 Exh
+                    <span class="dawn-cond-pill positive" title="{{localize "ionrift-respite.restSetup.dawn.exhaustionReducedTitle"}}">
+                        <i class="fas fa-sparkles"></i> {{localize "ionrift-respite.restSetup.dawn.minusOneExh"}}
                     </span>
                     {{else}}
                     <span class="dawn-cond-pill neutral">
-                        <i class="fas fa-sparkles"></i> Fully Rested
+                        <i class="fas fa-sparkles"></i> {{localize "ionrift-respite.restSetup.dawn.fullyRested"}}
                     </span>
                     {{/if}}
 
                     {{#if eventDamage}}
-                    <span class="dawn-cond-pill damage" title="Took {{eventDamage}} damage during night">
-                        <i class="fas fa-tint"></i> -{{eventDamage}} HP
+                    <span class="dawn-cond-pill damage" title="{{localize "ionrift-respite.restSetup.dawn.tookDamageTitle" damage=eventDamage}}">
+                        <i class="fas fa-tint"></i> {{localize "ionrift-respite.restSetup.dawn.minusHp" damage=eventDamage}}
                     </span>
                     {{/if}}
                 </div>
@@ -2695,15 +2695,15 @@
         <div class="respite-dawn-footer">
             <div class="respite-dawn-footer-hint">
                 <i class="fas fa-scroll"></i>
-                <span>Rest applied to character sheets. Collapsible summary will be posted to chat upon breaking camp.</span>
+                <span>{{localize "ionrift-respite.restSetup.dawn.summaryPostedToChat"}}</span>
             </div>
             <div class="respite-dawn-footer-actions">
                 {{#if isGM}}
                 <button type="button" class="btn-primary-green btn-break-camp" data-action="finalize">
-                    <i class="fas fa-campground"></i> Break Camp & Post to Chat
+                    <i class="fas fa-campground"></i> {{{localize "ionrift-respite.restSetup.dawn.breakCampPostChat"}}}
                 </button>
                 {{else}}
-                <span class="player-waiting-pill"><i class="fas fa-hourglass-half"></i> Waiting for GM to break camp...</span>
+                <span class="player-waiting-pill"><i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.restSetup.dawn.waitingGmBreakCamp"}}</span>
                 {{/if}}
             </div>
         </div>
@@ -2716,27 +2716,27 @@
         {{#if gmCopySpellProposal.charged}}
         {{!-- CHARGED STATE: Gold taken, awaiting player's Arcana roll --}}
         <div style="font-weight: 600; color: rgba(34,197,94,0.9); font-size: 0.85rem; margin-bottom: 0.4rem;">
-            <i class="fas fa-coins"></i> Gold Charged: Awaiting Arcana Roll
+            <i class="fas fa-coins"></i> {{localize "ionrift-respite.restSetup.copySpell.chargedAwaitingRoll"}}
         </div>
         <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); line-height: 1.5;">
             <strong>{{gmCopySpellProposal.actorName}}</strong>:
-            Level <strong>{{gmCopySpellProposal.spellLevel}}</strong> spell.
-            <strong>{{gmCopySpellProposal.cost}}gp</strong> charged
-            ({{gmCopySpellProposal.remainingGold}}gp remaining).<br>
+            {{{localize "ionrift-respite.restSetup.copySpell.levelSpell" level=gmCopySpellProposal.spellLevel}}}
+            {{{localize "ionrift-respite.restSetup.copySpell.gpCharged" cost=gmCopySpellProposal.cost}}}
+            {{{localize "ionrift-respite.restSetup.copySpell.gpRemaining" remaining=gmCopySpellProposal.remainingGold}}}<br>
             <i class="fas fa-dice-d20" style="color: rgba(126,184,218,0.8);"></i>
-            Awaiting Arcana roll: DC <strong>{{gmCopySpellProposal.dc}}</strong>.
+            {{{localize "ionrift-respite.restSetup.copySpell.awaitingArcanaRoll" dc=gmCopySpellProposal.dc}}}
         </div>
         <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.3rem; font-style: italic;">
-            If the player disconnected, use re-send or roll on their behalf.
+            {{localize "ionrift-respite.restSetup.copySpell.disconnectedHint"}}
         </div>
         <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
             <button type="button" data-action="resendCopySpellRoll"
                 style="flex: 1; padding: 0.3rem 0.5rem; border-radius: 4px; background: linear-gradient(135deg, rgba(126,184,218,0.3), rgba(126,184,218,0.15)); border: 1px solid rgba(126,184,218,0.4); color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.75rem; cursor: pointer;">
-                <i class="fas fa-redo"></i> Re-send Roll
+                <i class="fas fa-redo"></i> {{localize "ionrift-respite.restSetup.copySpell.resendRoll"}}
             </button>
             <button type="button" data-action="gmCopySpellFallback"
                 style="flex: 1; padding: 0.3rem 0.5rem; border-radius: 4px; background: linear-gradient(135deg, rgba(243,156,18,0.3), rgba(243,156,18,0.15)); border: 1px solid rgba(243,156,18,0.4); color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.75rem; cursor: pointer;">
-                <i class="fas fa-dice-d20"></i> GM Rolls Instead
+                <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.restSetup.copySpell.gmRollsInstead"}}
             </button>
             <button type="button" data-action="dismissGmCopySpell"
                 style="padding: 0.3rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.75rem; cursor: pointer;">
@@ -2746,40 +2746,40 @@
         {{else}}
         {{!-- INITIAL STATE: Proposal received, GM decides to charge --}}
         <div style="font-weight: 600; color: rgba(180,140,240,0.9); font-size: 0.85rem; margin-bottom: 0.4rem;">
-            <i class="fas fa-scroll"></i> Copy Spell Request
+            <i class="fas fa-scroll"></i> {{localize "ionrift-respite.restSetup.copySpell.copySpellRequest"}}
         </div>
         <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); line-height: 1.5;">
-            <strong>{{gmCopySpellProposal.actorName}}</strong> wants to copy a
-            <strong>Level {{gmCopySpellProposal.spellLevel}}</strong> spell.<br>
+            {{{localize "ionrift-respite.restSetup.copySpell.wantsToCopy" actor=gmCopySpellProposal.actorName}}}
+            {{{localize "ionrift-respite.restSetup.copySpell.levelSpellStrong" level=gmCopySpellProposal.spellLevel}}}<br>
             <i class="fas fa-coins" style="color: rgba(255,200,100,0.8);"></i>
-            Cost: <strong>{{gmCopySpellProposal.cost}}gp</strong>
-            (has {{gmCopySpellProposal.currentGold}}gp)
+            {{{localize "ionrift-respite.restSetup.copySpell.costGp" cost=gmCopySpellProposal.cost}}}
+            {{localize "ionrift-respite.restSetup.copySpell.hasGp" gold=gmCopySpellProposal.currentGold}}
             {{#unless gmCopySpellProposal.canAfford}}
-            <span style="color: #ef9a9a;"> - insufficient gold</span>
+            <span style="color: #ef9a9a;"> {{localize "ionrift-respite.restSetup.copySpell.insufficientGold"}}</span>
             {{/unless}}
             <br>
             <i class="fas fa-dice-d20" style="color: rgba(126,184,218,0.8);"></i>
-            Arcana DC: <strong>{{gmCopySpellProposal.dc}}</strong>
+            {{{localize "ionrift-respite.restSetup.copySpell.arcanaDc" dc=gmCopySpellProposal.dc}}}
         </div>
         <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.3rem; font-style: italic;">
-            Determine which spell the player is copying. On success, add it to their spell listing.
-            If copying from a scroll, the scroll is consumed regardless of outcome.
+            {{localize "ionrift-respite.restSetup.copySpell.determineSpell"}}
+            {{localize "ionrift-respite.restSetup.copySpell.scrollConsumed"}}
         </div>
         <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
             {{#if gmCopySpellProposal.canAfford}}
             <button type="button" data-action="processGmCopySpell"
                 style="flex: 1; padding: 0.3rem 0.5rem; border-radius: 4px; background: linear-gradient(135deg, rgba(34,197,94,0.3), rgba(34,197,94,0.15)); border: 1px solid rgba(34,197,94,0.4); color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.75rem; cursor: pointer;">
-                <i class="fas fa-coins"></i> Charge & Send Roll
+                <i class="fas fa-coins"></i> {{{localize "ionrift-respite.restSetup.copySpell.chargeSendRoll"}}}
             </button>
             {{else}}
             <button type="button" disabled
                 style="flex: 1; padding: 0.3rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); font-weight: 600; font-size: 0.75rem; cursor: not-allowed;">
-                <i class="fas fa-coins"></i> Can't Afford
+                <i class="fas fa-coins"></i> {{{localize "ionrift-respite.restSetup.copySpell.cantAfford"}}}
             </button>
             {{/if}}
             <button type="button" data-action="dismissGmCopySpell"
                 style="padding: 0.3rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.75rem; cursor: pointer;">
-                <i class="fas fa-times"></i> Dismiss
+                <i class="fas fa-times"></i> {{localize "ionrift-respite.restSetup.copySpell.dismiss"}}
             </button>
         </div>
         {{/if}}

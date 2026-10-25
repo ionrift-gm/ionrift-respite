@@ -114,7 +114,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         id: "ionrift-respite-setup",
         classes: ["ionrift-window", "glass-ui", "ionrift-respite-app"],
         window: {
-            title: "Respite: Rest Phase",
+            title: "ionrift-respite.restSetup.windowTitle",
             resizable: true
         },
         position: {
@@ -971,12 +971,12 @@ isCampfireStationFlavorOnly() {
 getCampfireStationDialogTabs() {
         if (this._phase !== "activity" || this._isTotM) return [];
         if (this.isCampfireStationFlavorOnly()) {
-            return [{ id: "camp", label: "Camp" }];
+            return [{ id: "camp", label: game.i18n.localize("ionrift-respite.restSetup.tabs.camp") }];
         }
         if (!this.getFireTabContextForStationDialog()) return [];
         return [
-            { id: "camp", label: "Camp" },
-            { id: "fire", label: "Fire" }
+            { id: "camp", label: game.i18n.localize("ionrift-respite.restSetup.tabs.camp") },
+            { id: "fire", label: game.i18n.localize("ionrift-respite.restSetup.tabs.fire") }
         ];
     }
 
@@ -1078,7 +1078,10 @@ static #onSetupBack(event, target) {
             }
         }
 
-        ui.notifications.info(`Rest variant switched to ${next === "gritty" ? "Gritty Realism" : "Normal"}.`);
+        const variantMsg = next === "gritty"
+            ? game.i18n.localize("ionrift-respite.restSetup.notify.variantGritty")
+            : game.i18n.localize("ionrift-respite.restSetup.notify.variantNormal");
+        ui.notifications.info(variantMsg);
         this.render();
     }
 
@@ -1267,14 +1270,15 @@ static _buildTrainingProgressBar(training) {
         const rolls = training.rolls ?? [];
         const segments = rolls.map(r => {
             const fill = r.passed ? "#1c6ea4" : "rgba(0,0,0,0.14)";
-            return `<span title="Set ${r.set}: rolled ${r.total} vs DC ${training.dc}" style="flex:1;height:10px;border-radius:3px;background:${fill};"></span>`;
+            const title = game.i18n.format("ionrift-respite.restSetup.training.setTitle", { set: r.set, total: r.total, dc: training.dc });
+            return `<span title="${title}" style="flex:1;height:10px;border-radius:3px;background:${fill};"></span>`;
         }).join("");
 
         const xpLabel = training.awardedXP > 0
-            ? `<i class="fas fa-dumbbell" style="color:#6b4f00;"></i> <strong style="color:#6b4f00;">+${training.awardedXP} XP</strong> (${training.successes}/${training.numRolls} sets landed)`
-            : `<i class="fas fa-dumbbell" style="opacity:0.6;"></i> No XP this rest`;
+            ? game.i18n.format("ionrift-respite.restSetup.training.xpAwarded", { xp: training.awardedXP, successes: training.successes, total: training.numRolls })
+            : game.i18n.localize("ionrift-respite.restSetup.training.noXp");
         const reductionNote = training.xpReduction > 0
-            ? `<br><span style="font-size:0.82em;opacity:0.75;">Diminishing returns: ${training.xpReduction} XP held back this rest.</span>`
+            ? game.i18n.format("ionrift-respite.restSetup.training.xpReduction", { xp: training.xpReduction })
             : "";
 
         return `<div style="margin:4px 0;">`
@@ -1387,7 +1391,7 @@ openCraftingDrawer(event, target) {
             }
         });
         if (!opened) {
-            ui.notifications.warn("The Monster Cooking book is not available right now.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.restSetup.notify.monsterCookingUnavailable"));
         }
     }
 
@@ -2146,7 +2150,7 @@ static async #onPreviewCampFireLevel(event, target) {
 
 static async #onContinueToCampLayout(event, target) {
         if (!game.user.isGM) return;
-        ui.notifications?.info("Use the campfire on the map to finish Make Camp.");
+        ui.notifications?.info(game.i18n.localize("ionrift-respite.restSetup.notify.useCampfireOnMap"));
     }
 
     #holdWindowHeight() {
@@ -2193,11 +2197,11 @@ static async #onContinueToCampLayout(event, target) {
         const actorId = this._selectedCharacterId ?? game.user.character?.id ?? getPartyActors()[0]?.id;
         if (!actorId) return;
         if (gatherAlreadyResolved(this, actorId)) {
-            ui.notifications.info("Already gathered this rest.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.restSetup.notify.alreadyGathered"));
             return;
         }
         if (this._gatherPending?.characterId === actorId && this._gatherPending.phase === "findings") {
-            ui.notifications.info("Roll for findings before skipping.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.restSetup.notify.rollFindingsBeforeSkip"));
             return;
         }
         if (this._gatherSkipIds?.has(actorId)) return;
