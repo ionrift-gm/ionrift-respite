@@ -4,20 +4,20 @@
         <div class="dawn-lead-group">
             <div class="dawn-sun-emblem"><i class="fas fa-utensils"></i></div>
             <div class="dawn-copy-block">
-                <div class="dawn-lead-title">{{#if mealBuffTitle}}{{mealBuffTitle}}{{else}}The meal takes hold{{/if}}</div>
-                <div class="dawn-lead-hint">{{#if mealBuffHint}}{{mealBuffHint}}{{else}}These are in place before the watch.{{/if}}</div>
+                <div class="dawn-lead-title">{{#if mealBuffTitle}}{{mealBuffTitle}}{{else}}{{localize "ionrift-respite.mealBuffBeat.mealTakesHold"}}{{/if}}</div>
+                <div class="dawn-lead-hint">{{#if mealBuffHint}}{{mealBuffHint}}{{else}}{{localize "ionrift-respite.mealBuffBeat.inPlaceBeforeWatch"}}{{/if}}</div>
             </div>
         </div>
         {{#if isGM}}
         <div class="dawn-batch-cluster">
             {{#if mealBuffPending}}
             <button type="button" class="btn-dawn-batch roll-all" data-action="applyMealBuffs"
-                    data-tooltip="Apply {{mealBuffPending}} still waiting">
-                <i class="fas fa-dice-d20"></i> Apply ({{mealBuffPending}})
+                    data-tooltip="{{localize "ionrift-respite.mealBuffBeat.applyPendingTooltip" count=(concat mealBuffPending "")}}">
+                <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.mealBuffBeat.applyPendingCount" count=(concat mealBuffPending "")}}
             </button>
             {{else}}
             <div class="dawn-settled-pill">
-                <i class="fas fa-check-double"></i> Applied
+                <i class="fas fa-check-double"></i> {{localize "ionrift-respite.mealBuffBeat.appliedDefault"}}
             </div>
             {{/if}}
         </div>
@@ -31,7 +31,7 @@
                 <div class="actor-name-group">
                     <span class="actor-name">{{actorName}}</span>
                     <div class="actor-badges">
-                        <span class="pill-con">{{#if (eq kind "drink")}}Drink{{else}}Meal{{/if}}</span>
+                        <span class="pill-con">{{#if (eq kind "drink")}}{{localize "ionrift-respite.mealBuffBeat.kindDrink"}}{{else}}{{localize "ionrift-respite.mealBuffBeat.kindMeal"}}{{/if}}</span>
                     </div>
                 </div>
             </div>
@@ -42,14 +42,14 @@
             <div class="actor-action-col">
                 {{#if applied}}
                 <div class="result-badge passed">
-                    <i class="fas fa-check-circle"></i> {{#if resultLine}}{{resultLine}}{{else}}Applied{{/if}}
+                    <i class="fas fa-check-circle"></i> {{#if resultLine}}{{resultLine}}{{else}}{{localize "ionrift-respite.mealBuffBeat.appliedDefault"}}{{/if}}
                 </div>
                 {{else if (or ../isGM canApply)}}
                 <button type="button" class="btn-dawn-batch roll-all" data-action="applyOneMealBuff" data-row-id="{{id}}">
-                    <i class="fas fa-dice-d20"></i> Apply
+                    <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.mealBuffBeat.apply"}}
                 </button>
                 {{else}}
-                <span class="target-exempt-chip">Waiting</span>
+                <span class="target-exempt-chip">{{localize "ionrift-respite.mealBuffBeat.waiting"}}</span>
                 {{/if}}
             </div>
         </div>

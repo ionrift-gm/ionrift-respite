@@ -32,7 +32,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         id: "respite-item-provisions",
         tag: "form",
         window: {
-            title: "Item Provisions & Spoilage",
+            title: "ionrift-respite.itemProvisions.windowTitle",
             icon: "fas fa-carrot",
             resizable: true
         },
@@ -66,12 +66,12 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
      */
     static openForItem(item = null) {
         if (!game?.user?.isGM) {
-            ui.notifications?.warn("Respite item configuration is GM-only.");
+            ui.notifications?.warn(game.i18n.localize("ionrift-respite.itemProvisions.gmOnly"));
             return null;
         }
 
         if (item && !ItemClassifier.isConfigurableItem(item)) {
-            ui.notifications?.warn(`"${item.name}" (${item.type}) cannot be configured as provisions or containers in Respite.`);
+            ui.notifications?.warn(game.i18n.format("ionrift-respite.itemProvisions.cannotConfigure", { name: item.name, type: item.type }));
             return null;
         }
 
@@ -103,7 +103,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
      */
     static openAuditor() {
         if (!game?.user?.isGM) {
-            ui.notifications?.warn("Respite item configuration is GM-only.");
+            ui.notifications?.warn(game.i18n.localize("ionrift-respite.itemProvisions.gmOnly"));
             return null;
         }
 
@@ -149,7 +149,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
     setItem(item) {
         if (!item) return;
         if (!ItemClassifier.isConfigurableItem(item)) {
-            ui.notifications?.warn(`"${item.name}" (${item.type}) cannot be configured as provisions or containers in Respite.`);
+            ui.notifications?.warn(game.i18n.format("ionrift-respite.itemProvisions.cannotConfigure", { name: item.name, type: item.type }));
             return;
         }
         this._item = item;
@@ -183,11 +183,11 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         const isLocked = item.compendium?.locked ?? false;
 
         // Context location label
-        let sourceLocation = "World Item";
+        let sourceLocation = game.i18n.localize("ionrift-respite.itemProvisions.locationWorldItem");
         if (item.parent?.documentName === "Actor") {
-            sourceLocation = `Carried by ${item.parent.name}`;
+            sourceLocation = game.i18n.format("ionrift-respite.itemProvisions.locationCarriedBy", { name: item.parent.name });
         } else if (item.compendium) {
-            sourceLocation = `Compendium: ${item.compendium.metadata?.label ?? item.compendium.collection}`;
+            sourceLocation = game.i18n.format("ionrift-respite.itemProvisions.locationCompendium", { name: item.compendium.metadata?.label ?? item.compendium.collection });
         }
 
         const isContainer = ItemClassifier.isContainer(item);
@@ -202,7 +202,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
 
             const storagePresets = STORAGE_TYPES.map(preset => ({
                 id: preset.id,
-                label: preset.multiplier !== null ? `${preset.label} (${preset.badge} shelf life)` : preset.label,
+                label: preset.multiplier !== null ? game.i18n.format("ionrift-respite.itemProvisions.storagePresetLabel", { label: preset.label, badge: preset.badge }) : preset.label,
                 multiplier: preset.multiplier,
                 description: preset.description
             }));
@@ -295,24 +295,24 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
             satiatesFood,
             satiatesWater,
             resourceTypeOptions: [
-                { value: "", label: inferredType ? `Auto-Detect (Inferred: ${inferredType})` : "Auto-Detect (Name & Subtype)" },
-                { value: "food", label: "Ration / Food" },
-                { value: "water", label: "Drinking Water" },
-                { value: "ingredient", label: "Crafting Ingredient" },
-                { value: "fuel", label: "Camp Fuel" },
-                { value: "none", label: "Inedible / Non-Sustenance (Force Ignore)" }
+                { value: "", label: inferredType ? game.i18n.format("ionrift-respite.itemProvisions.autoDetectInferred", { type: inferredType }) : game.i18n.localize("ionrift-respite.itemProvisions.autoDetectNameSubtype") },
+                { value: "food", label: game.i18n.localize("ionrift-respite.itemProvisions.typeRationFood") },
+                { value: "water", label: game.i18n.localize("ionrift-respite.itemProvisions.typeDrinkingWater") },
+                { value: "ingredient", label: game.i18n.localize("ionrift-respite.itemProvisions.typeCraftingIngredient") },
+                { value: "fuel", label: game.i18n.localize("ionrift-respite.itemProvisions.typeCampFuel") },
+                { value: "none", label: game.i18n.localize("ionrift-respite.itemProvisions.typeInedible") }
             ],
             foodTagOptions: [
-                { value: "", label: inferredTag ? `Default (Inferred: ${inferredTag})` : "Default (Universal)" },
-                { value: "meat", label: "Raw Meat (Carnivore / Omnivore)" },
-                { value: "plant", label: "Foraged Produce (Herbivore / Omnivore)" },
-                { value: "prepared", label: "Prepared Meal (Universal)" }
+                { value: "", label: inferredTag ? game.i18n.format("ionrift-respite.itemProvisions.foodTagInferred", { tag: inferredTag }) : game.i18n.localize("ionrift-respite.itemProvisions.foodTagUniversal") },
+                { value: "meat", label: game.i18n.localize("ionrift-respite.itemProvisions.foodTagMeat") },
+                { value: "plant", label: game.i18n.localize("ionrift-respite.itemProvisions.foodTagPlant") },
+                { value: "prepared", label: game.i18n.localize("ionrift-respite.itemProvisions.foodTagPrepared") }
             ],
             drinkTypeOptions: [
-                { value: "", label: inferredDrink ? `Default (Inferred: ${inferredDrink})` : "Auto-Detect / Default" },
-                { value: "water", label: "Fresh Water" },
-                { value: "alcohol", label: "Alcohol / Ferment" },
-                { value: "oil", label: "Oil / Essence (Constructs)" }
+                { value: "", label: inferredDrink ? game.i18n.format("ionrift-respite.itemProvisions.drinkTypeInferred", { drink: inferredDrink }) : game.i18n.localize("ionrift-respite.itemProvisions.drinkTypeDefault") },
+                { value: "water", label: game.i18n.localize("ionrift-respite.itemProvisions.drinkTypeFreshWater") },
+                { value: "alcohol", label: game.i18n.localize("ionrift-respite.itemProvisions.drinkTypeAlcohol") },
+                { value: "oil", label: game.i18n.localize("ionrift-respite.itemProvisions.drinkTypeOil") }
             ]
         };
     }
@@ -396,18 +396,18 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         }
 
         if (data?.type !== "Item" || !data.uuid) {
-            ui.notifications?.warn("Only Item documents can be configured for provisions.");
+            ui.notifications?.warn(game.i18n.localize("ionrift-respite.itemProvisions.warnOnlyItemDocs"));
             return;
         }
 
         const item = await fromUuid(data.uuid);
         if (!item || item.documentName !== "Item") {
-            ui.notifications?.warn("Could not load the dropped Item.");
+            ui.notifications?.warn(game.i18n.localize("ionrift-respite.itemProvisions.warnCouldNotLoadItem"));
             return;
         }
 
         if (!ItemClassifier.isConfigurableItem(item)) {
-            ui.notifications?.warn(`"${item.name}" (${item.type}) cannot be configured in Respite. Only provisions (consumable, loot) and containers are supported.`);
+            ui.notifications?.warn(game.i18n.format("ionrift-respite.itemProvisions.warnItemNotConfigurable", { name: item.name, type: item.type }));
             return;
         }
 
@@ -425,7 +425,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         if (!uuid) return;
         const item = await fromUuid(uuid);
         if (!item) {
-            ui.notifications?.warn("Item document could not be found.");
+            ui.notifications?.warn(game.i18n.localize("ionrift-respite.itemProvisions.warnItemNotFound"));
             return;
         }
         this.setItem(item);
@@ -440,7 +440,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         if (!item) return;
 
         await ProvisionsAuditScanner.clearItemOverrides(item);
-        ui.notifications?.info(`Cleared custom Respite properties from "${name}".`);
+        ui.notifications?.info(game.i18n.format("ionrift-respite.itemProvisions.infoClearedOverrides", { name }));
         this.render({ force: true });
     }
 
@@ -510,7 +510,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         if (!this._item) return;
 
         if (this._item.compendium?.locked) {
-            ui.notifications?.warn("Cannot update item: compendium is locked. Unlock it in the Compendium tab to make changes.");
+            ui.notifications?.warn(game.i18n.localize("ionrift-respite.itemProvisions.warnCompendiumLocked"));
             return;
         }
 
@@ -537,12 +537,20 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
             try {
                 await this._item.update(updates);
                 refreshSpoilageBadgesOnOpenSheets();
-                const multLabel = preservationMultiplier === 0 ? "Stasis (no spoilage)" : `${preservationMultiplier}× shelf life`;
-                ui.notifications?.info(`Updated storage settings for "${this._item.name}": Cold Storage ${coldStorage ? `Active (${multLabel})` : "Disabled"}.`);
+                const multLabel = preservationMultiplier === 0
+                    ? game.i18n.localize("ionrift-respite.itemProvisions.stasisNoSpoilage")
+                    : game.i18n.format("ionrift-respite.itemProvisions.multiplierShelfLife", { mult: preservationMultiplier });
+                const statusLabel = coldStorage
+                    ? game.i18n.format("ionrift-respite.itemProvisions.coldStorageActive", { multLabel })
+                    : game.i18n.localize("ionrift-respite.itemProvisions.coldStorageDisabled");
+                ui.notifications?.info(game.i18n.format("ionrift-respite.itemProvisions.updatedStorageSettings", {
+                    name: this._item.name,
+                    status: statusLabel
+                }));
                 this.render({ force: true });
             } catch (err) {
                 console.error(`${MODULE_ID} | Failed to update container storage settings:`, err);
-                ui.notifications?.error(`Failed to update item: ${err.message}`);
+                ui.notifications?.error(game.i18n.format("ionrift-respite.itemProvisions.errorUpdateFailed", { message: err.message }));
             }
             return;
         }
@@ -601,11 +609,11 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         try {
             await this._item.update(updates);
             refreshSpoilageBadgesOnOpenSheets();
-            ui.notifications?.info(`Updated Respite provisions for "${this._item.name}".`);
+            ui.notifications?.info(game.i18n.format("ionrift-respite.itemProvisions.infoUpdatedProvisions", { name: this._item.name }));
             this.render({ force: true });
         } catch (err) {
             console.error(`${MODULE_ID} | Failed to update item provisions:`, err);
-            ui.notifications?.error(`Failed to update item: ${err.message}`);
+            ui.notifications?.error(game.i18n.format("ionrift-respite.itemProvisions.errorUpdateFailed", { message: err.message }));
         }
     }
 
@@ -614,17 +622,17 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         if (!this._item) return;
 
         if (this._item.compendium?.locked) {
-            ui.notifications?.warn("Cannot update item: compendium is locked. Unlock it in the Compendium tab to make changes.");
+            ui.notifications?.warn(game.i18n.localize("ionrift-respite.itemProvisions.warnCompendiumLocked"));
             return;
         }
 
         try {
             await ProvisionsAuditScanner.clearItemOverrides(this._item);
-            ui.notifications?.info(`Cleared Respite provisions for "${this._item.name}".`);
+            ui.notifications?.info(game.i18n.format("ionrift-respite.itemProvisions.infoClearedProvisions", { name: this._item.name }));
             this.render({ force: true });
         } catch (err) {
             console.error(`${MODULE_ID} | Failed to clear item provisions:`, err);
-            ui.notifications?.error(`Failed to clear item: ${err.message}`);
+            ui.notifications?.error(game.i18n.format("ionrift-respite.itemProvisions.errorClearFailed", { message: err.message }));
         }
     }
 }

@@ -2,10 +2,10 @@
 
     <nav class="respite-provisions-tab-bar">
         <button type="button" class="respite-provisions-tab-btn {{#if (eq activeTab "editor")}}active{{/if}}" data-action="switchTab" data-tab="editor">
-            <i class="fas fa-carrot"></i> Configure Item
+            <i class="fas fa-carrot"></i> {{localize "ionrift-respite.itemProvisions.tabConfigureItem"}}
         </button>
         <button type="button" class="respite-provisions-tab-btn {{#if (eq activeTab "auditor")}}active{{/if}}" data-action="switchTab" data-tab="auditor">
-            <i class="fas fa-table-list"></i> World Overrides <span class="respite-provisions-tab-badge">{{auditorCount}}</span>
+            <i class="fas fa-table-list"></i> {{localize "ionrift-respite.itemProvisions.tabWorldOverrides"}} <span class="respite-provisions-tab-badge">{{auditorCount}}</span>
         </button>
     </nav>
 
@@ -14,9 +14,9 @@
 
         {{#if hasItem}}
         <div class="respite-item-editor-scroll ionrift-list">
-            <div class="respite-item-dropzone respite-item-dropzone--compact" data-tooltip="Drop another item to switch">
+            <div class="respite-item-dropzone respite-item-dropzone--compact" data-tooltip="{{localize "ionrift-respite.itemProvisions.dropAnotherItem"}}">
                 <i class="fas fa-arrows-rotate"></i>
-                <span>Drop another item to switch</span>
+                <span>{{localize "ionrift-respite.itemProvisions.dropAnotherItem"}}</span>
             </div>
 
             <div class="respite-item-provisions-hero">
@@ -33,7 +33,7 @@
             {{#if isLocked}}
             <div class="respite-item-provisions-warning">
                 <i class="fas fa-lock"></i>
-                <span>This item is inside a locked Compendium. Unlock the compendium pack to save changes.</span>
+                <span>{{localize "ionrift-respite.itemProvisions.lockedCompendiumWarning"}}</span>
             </div>
             {{/if}}
 
@@ -42,71 +42,71 @@
                 {{#if isContainer}}
                 <div class="respite-field-row respite-field-row--card">
                     <div class="respite-field-header">
-                        <label class="respite-field-label">Cold Storage</label>
+                        <label class="respite-field-label">{{localize "ionrift-respite.itemProvisions.coldStorage"}}</label>
                         <label class="respite-checkbox-label">
                             <input type="checkbox" name="coldStorage" {{#if coldStorage}}checked{{/if}} />
-                            <span><i class="fas fa-snowflake"></i> Preserve Food &amp; Ingredients</span>
+                            <span><i class="fas fa-snowflake"></i> {{{localize "ionrift-respite.itemProvisions.preserveFoodAndIngredients"}}}</span>
                         </label>
                     </div>
-                    <p class="respite-field-hint">When enabled, perishable food and harvested monster ingredients placed inside this container have their shelf life extended.</p>
+                    <p class="respite-field-hint">{{localize "ionrift-respite.itemProvisions.coldStorageHint"}}</p>
                 </div>
 
                 <div class="respite-field-row respite-field-row--card">
-                    <label class="respite-field-label">Preservation Storage Type</label>
+                    <label class="respite-field-label">{{localize "ionrift-respite.itemProvisions.preservationStorageType"}}</label>
                     <select name="storagePreset" class="respite-select">
                         {{#each storagePresets}}
                         <option value="{{id}}" {{#if (eq id ../selectedStoragePreset)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <p class="respite-field-hint">Multiplier applied to base spoilage duration for contents inside this container.</p>
+                    <p class="respite-field-hint">{{localize "ionrift-respite.itemProvisions.preservationStorageTypeHint"}}</p>
                 </div>
 
                 <div class="respite-field-row respite-field-row--card respite-custom-multiplier-row" style="{{#unless isCustomMultiplier}}display: none;{{/unless}}">
-                    <label class="respite-field-label">Custom Multiplier</label>
+                    <label class="respite-field-label">{{localize "ionrift-respite.itemProvisions.customMultiplier"}}</label>
                     <div class="respite-input-group">
                         <input type="number" step="0.1" min="0" name="customPreservationMultiplier" class="respite-input" value="{{preservationMultiplier}}" />
-                        <span class="respite-input-suffix">× shelf life (0 = stasis)</span>
+                        <span class="respite-input-suffix">{{localize "ionrift-respite.itemProvisions.shelfLifeSuffix"}}</span>
                     </div>
-                    <p class="respite-field-hint">Custom factor multiplied against base spoilage duration.</p>
+                    <p class="respite-field-hint">{{localize "ionrift-respite.itemProvisions.customMultiplierHint"}}</p>
                 </div>
                 {{else}}
 
                 <div class="respite-field-row">
-                    <label class="respite-field-label">Sustenance Type</label>
+                    <label class="respite-field-label">{{localize "ionrift-respite.itemProvisions.sustenanceType"}}</label>
                     <select name="resourceType" class="respite-select">
                         {{#each resourceTypeOptions}}
                         <option value="{{value}}" {{#if (eq value ../resourceType)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <p class="respite-field-hint">Auto-detect uses item type and name. 'Inedible' forces Respite to completely ignore this item.</p>
+                    <p class="respite-field-hint">{{{localize "ionrift-respite.itemProvisions.sustenanceTypeHint"}}}</p>
                 </div>
 
                 <div class="respite-field-row">
-                    <label class="respite-field-label">Dietary Category</label>
+                    <label class="respite-field-label">{{localize "ionrift-respite.itemProvisions.dietaryCategory"}}</label>
                     <select name="foodTag" class="respite-select">
                         {{#each foodTagOptions}}
                         <option value="{{value}}" {{#if (eq value ../foodTag)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <p class="respite-field-hint">Defines diet. Prepared meals and rations are accepted by all character diets.</p>
+                    <p class="respite-field-hint">{{localize "ionrift-respite.itemProvisions.dietaryCategoryHint"}}</p>
                 </div>
 
                 <div class="respite-field-row">
-                    <label class="respite-field-label">Liquid / Drink Type</label>
+                    <label class="respite-field-label">{{localize "ionrift-respite.itemProvisions.liquidDrinkType"}}</label>
                     <select name="drinkType" class="respite-select">
                         {{#each drinkTypeOptions}}
                         <option value="{{value}}" {{#if (eq value ../drinkType)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <p class="respite-field-hint">Used for drinking liquids, differentiate water from alcoholic drinks and oils.</p>
+                    <p class="respite-field-hint">{{localize "ionrift-respite.itemProvisions.liquidDrinkTypeHint"}}</p>
                 </div>
 
                 <div class="respite-field-row respite-field-row--card">
                     <div class="respite-field-header">
-                        <label class="respite-field-label">Spoilage Window</label>
+                        <label class="respite-field-label">{{localize "ionrift-respite.itemProvisions.spoilageWindow"}}</label>
                         <label class="respite-checkbox-label">
                             <input type="checkbox" name="isPerishable" data-action="togglePerishable" {{#if isPerishable}}checked{{/if}} />
-                            <span>Perishable</span>
+                            <span>{{localize "ionrift-respite.itemProvisions.perishable"}}</span>
                         </label>
                     </div>
 
@@ -114,30 +114,30 @@
                         <div class="respite-spoilage-input-group">
                             <input type="number" name="spoilsValue" class="respite-input respite-input--number" value="{{spoilsValue}}" min="1" step="1" />
                             <select name="spoilageUnit" class="respite-select respite-select--inline">
-                                <option value="days" {{#if (eq spoilageUnit "days")}}selected{{/if}}>Rests / Days</option>
-                                <option value="hours" {{#if (eq spoilageUnit "hours")}}selected{{/if}}>Hours</option>
+                                <option value="days" {{#if (eq spoilageUnit "days")}}selected{{/if}}>{{localize "ionrift-respite.itemProvisions.restsDays"}}</option>
+                                <option value="hours" {{#if (eq spoilageUnit "hours")}}selected{{/if}}>{{localize "ionrift-respite.itemProvisions.hours"}}</option>
                             </select>
                         </div>
-                        <p class="respite-field-hint">Items expire and turn to spoiled food after this duration passes.</p>
+                        <p class="respite-field-hint">{{localize "ionrift-respite.itemProvisions.spoilageWindowHint"}}</p>
                     </div>
                     {{#unless isPerishable}}
-                    <p class="respite-field-hint respite-shelf-stable-note">Shelf-stable: item will not spoil over time.</p>
+                    <p class="respite-field-hint respite-shelf-stable-note">{{localize "ionrift-respite.itemProvisions.shelfStableNote"}}</p>
                     {{/unless}}
                 </div>
 
                 <div class="respite-field-row respite-field-row--card">
-                    <label class="respite-field-label">Sustenance Fulfillment</label>
+                    <label class="respite-field-label">{{localize "ionrift-respite.itemProvisions.sustenanceFulfillment"}}</label>
                     <div class="respite-checkbox-group">
                         <label class="respite-checkbox-label">
                             <input type="checkbox" name="satiatesFood" {{#if satiatesFood}}checked{{/if}} />
-                            <span><i class="fas fa-utensils"></i> Satisfies Hunger</span>
+                            <span><i class="fas fa-utensils"></i> {{localize "ionrift-respite.itemProvisions.satisfiesHunger"}}</span>
                         </label>
                         <label class="respite-checkbox-label">
                             <input type="checkbox" name="satiatesWater" {{#if satiatesWater}}checked{{/if}} />
-                            <span><i class="fas fa-tint"></i> Quenches Thirst</span>
+                            <span><i class="fas fa-tint"></i> {{localize "ionrift-respite.itemProvisions.quenchesThirst"}}</span>
                         </label>
                     </div>
-                    <p class="respite-field-hint">Selecting both enables dual credit (e.g. stews, broths, melons).</p>
+                    <p class="respite-field-hint">{{localize "ionrift-respite.itemProvisions.sustenanceFulfillmentHint"}}</p>
                 </div>
                 {{/if}}
             </div>
@@ -145,10 +145,10 @@
 
         <footer class="respite-provisions-footer">
             <button type="button" class="respite-btn respite-btn--ghost" data-action="clearProvisions" {{#if isLocked}}disabled{{/if}}>
-                <i class="fas fa-trash-can"></i> Clear Respite Properties
+                <i class="fas fa-trash-can"></i> {{localize "ionrift-respite.itemProvisions.clearRespiteProperties"}}
             </button>
             <button type="button" class="respite-btn respite-btn--primary" data-action="saveProvisions" {{#if isLocked}}disabled{{/if}}>
-                <i class="fas fa-check"></i> Save Properties
+                <i class="fas fa-check"></i> {{localize "ionrift-respite.itemProvisions.saveProperties"}}
             </button>
         </footer>
 
@@ -157,13 +157,13 @@
             <div class="respite-dropzone-icon">
                 <i class="fas fa-carrot"></i>
             </div>
-            <h3 class="respite-dropzone-title">Drop an Item Here</h3>
+            <h3 class="respite-dropzone-title">{{localize "ionrift-respite.itemProvisions.dropAnItemHere"}}</h3>
             <p class="respite-dropzone-desc">
-                Drag a consumable, loot, or container item from a character sheet, the item directory, or a compendium pack to configure its sustenance, spoilage, or cold storage properties.
+                {{localize "ionrift-respite.itemProvisions.dropzoneDesc"}}
             </p>
             {{#if auditorCount}}
             <button type="button" class="respite-btn respite-btn--ghost" data-action="switchTab" data-tab="auditor" style="margin-top: 0.5rem;">
-                <i class="fas fa-table-list"></i> View All Overrides ({{auditorCount}})
+                <i class="fas fa-table-list"></i> {{localize "ionrift-respite.itemProvisions.viewAllOverrides" count=(concat auditorCount "")}}
             </button>
             {{/if}}
         </div>
@@ -176,24 +176,24 @@
         <div class="respite-auditor-container">
             <div class="respite-auditor-toolbar">
                 <div class="respite-auditor-search-row">
-                    <input type="search" class="respite-auditor-search-input" placeholder="Search by item name or owner..." />
-                    <button type="button" class="respite-btn respite-btn--ghost" data-action="auditorRefresh" title="Refresh Audit List">
+                    <input type="search" class="respite-auditor-search-input" placeholder="{{localize "ionrift-respite.itemProvisions.searchPlaceholder"}}" />
+                    <button type="button" class="respite-btn respite-btn--ghost" data-action="auditorRefresh" title="{{localize "ionrift-respite.itemProvisions.refreshAuditList"}}">
                         <i class="fas fa-arrows-rotate"></i>
                     </button>
                 </div>
 
                 <div class="respite-auditor-filters">
-                    <button type="button" class="respite-filter-pill active" data-action="auditorFilter" data-category="all">All ({{auditorCount}})</button>
-                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="food">Food</button>
-                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="water">Water</button>
-                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="ingredient">Ingredients</button>
-                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="fuel">Fuel</button>
-                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="container">Containers</button>
-                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="shelf">Shelf-Stable</button>
+                    <button type="button" class="respite-filter-pill active" data-action="auditorFilter" data-category="all">{{localize "ionrift-respite.itemProvisions.filterAll" count=(concat auditorCount "")}}</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="food">{{localize "ionrift-respite.itemProvisions.filterFood"}}</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="water">{{localize "ionrift-respite.itemProvisions.filterWater"}}</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="ingredient">{{localize "ionrift-respite.itemProvisions.filterIngredients"}}</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="fuel">{{localize "ionrift-respite.itemProvisions.filterFuel"}}</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="container">{{localize "ionrift-respite.itemProvisions.filterContainers"}}</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="shelf">{{localize "ionrift-respite.itemProvisions.filterShelfStable"}}</button>
                 </div>
 
                 <div class="respite-auditor-meta-bar">
-                    <span>Showing <strong class="respite-auditor-visible-count">{{auditorCount}}</strong> overrides across the world</span>
+                    <span>{{{localize "ionrift-respite.itemProvisions.metaShowingOverrides" count=(concat auditorCount "")}}}</span>
                 </div>
             </div>
 
@@ -202,12 +202,12 @@
                 <table class="respite-auditor-table">
                     <thead>
                         <tr>
-                            <th class="col-item">Item</th>
-                            <th class="col-location">Location / Owner</th>
-                            <th class="col-sustenance">Sustenance</th>
-                            <th class="col-diet">Diet / Drink</th>
-                            <th class="col-spoilage">Spoilage</th>
-                            <th class="col-actions">Actions</th>
+                            <th class="col-item">{{localize "ionrift-respite.itemProvisions.colItem"}}</th>
+                            <th class="col-location">{{localize "ionrift-respite.itemProvisions.colLocation"}}</th>
+                            <th class="col-sustenance">{{localize "ionrift-respite.itemProvisions.colSustenance"}}</th>
+                            <th class="col-diet">{{localize "ionrift-respite.itemProvisions.colDiet"}}</th>
+                            <th class="col-spoilage">{{localize "ionrift-respite.itemProvisions.colSpoilage"}}</th>
+                            <th class="col-actions">{{localize "ionrift-respite.itemProvisions.colActions"}}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -237,10 +237,10 @@
                             </td>
                             <td>
                                 <div class="respite-auditor-actions">
-                                    <button type="button" class="respite-action-icon-btn respite-action-icon-btn--edit" data-action="auditorEdit" data-uuid="{{this.uuid}}" title="Edit Properties">
+                                    <button type="button" class="respite-action-icon-btn respite-action-icon-btn--edit" data-action="auditorEdit" data-uuid="{{this.uuid}}" title="{{localize "ionrift-respite.itemProvisions.editProperties"}}">
                                         <i class="fas fa-pen-to-square"></i>
                                     </button>
-                                    <button type="button" class="respite-action-icon-btn respite-action-icon-btn--danger" data-action="auditorClear" data-uuid="{{this.uuid}}" data-name="{{this.name}}" title="Clear Overrides">
+                                    <button type="button" class="respite-action-icon-btn respite-action-icon-btn--danger" data-action="auditorClear" data-uuid="{{this.uuid}}" data-name="{{this.name}}" title="{{localize "ionrift-respite.itemProvisions.clearOverrides"}}">
                                         <i class="fas fa-trash-can"></i>
                                     </button>
                                 </div>
@@ -250,7 +250,7 @@
                         <tr class="respite-auditor-no-matches" style="display: none;">
                             <td colspan="6">
                                 <div class="respite-auditor-no-matches-msg">
-                                    <i class="fas fa-search"></i> No provisions overrides match your filter.
+                                    <i class="fas fa-search"></i> {{localize "ionrift-respite.itemProvisions.noMatchesFilter"}}
                                 </div>
                             </td>
                         </tr>
@@ -260,8 +260,8 @@
             {{else}}
             <div class="respite-auditor-empty">
                 <i class="fas fa-clipboard-check"></i>
-                <h4>No Custom Overrides in World</h4>
-                <p>No items currently carry custom Respite provisions or spoilage flags. Drag an item into the Configure Item tab to create an override.</p>
+                <h4>{{localize "ionrift-respite.itemProvisions.noOverridesInWorld"}}</h4>
+                <p>{{localize "ionrift-respite.itemProvisions.noOverridesInWorldHint"}}</p>
             </div>
             {{/if}}
         </div>

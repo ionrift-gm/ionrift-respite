@@ -5,7 +5,7 @@
      Context: sustenanceDiegetic from buildSustenanceDiegetic(). --}}
 
 <div class="sust-diegetic{{#if sustenanceDiegetic.mealsLocked}} is-locked{{/if}}" data-sustenance-actor="{{sustenanceDiegetic.actorId}}"{{#if sustenanceDiegetic.mealsLocked}} data-meals-locked="1"{{/if}}>
-    <div class="sust-section-label">SUSTENANCE</div>
+    <div class="sust-section-label">{{localize "ionrift-respite.sustenanceDiegetic.sectionLabel"}}</div>
     {{#if sustenanceDiegetic.terrainNote}}
     <div class="meal-terrain-alert {{sustenanceDiegetic.terrainAlertClass}}">
         <i class="{{sustenanceDiegetic.terrainAlertIcon}}" aria-hidden="true"></i>
@@ -20,20 +20,20 @@
             {{!-- FOOD column --}}
             <div class="sust-station">
                 <div class="sust-station-head">
-                    <span class="sust-station-label">Food</span>
+                    <span class="sust-station-label">{{localize "ionrift-respite.sustenanceDiegetic.foodLabel"}}</span>
                     <span class="sust-budget{{#if sustenanceDiegetic.food.budget.isDone}} done{{/if}}">{{sustenanceDiegetic.food.budget.text}}</span>
                 </div>
-                <div class="sust-pile{{#unless sustenanceDiegetic.isMultiDay}} night{{/unless}}" aria-label="{{#if sustenanceDiegetic.isMultiDay}}Food for the week{{else}}Food for the night{{/if}}">
+                <div class="sust-pile{{#unless sustenanceDiegetic.isMultiDay}} night{{/unless}}" aria-label="{{#if sustenanceDiegetic.isMultiDay}}{{localize "ionrift-respite.sustenanceDiegetic.foodForTheWeek"}}{{else}}{{localize "ionrift-respite.sustenanceDiegetic.foodForTheNight"}}{{/if}}">
                     {{#each sustenanceDiegetic.food.slots}}
                     <span class="sust-portion-well{{#if isSend}} send{{/if}}" data-drop="food" data-slot="{{@index}}">
                         {{#if isEmpty}}
                         <span class="sust-portion{{#if isSend}} send{{/if}}">
                             {{#unless ../sustenanceDiegetic.isMultiDay}}
-                            <span class="sust-night-empty-hint"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Drag food here</span>
+                            <span class="sust-night-empty-hint"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> {{localize "ionrift-respite.sustenanceDiegetic.dragFoodHere"}}</span>
                             {{/unless}}
                         </span>
                         {{else}}
-                        <button type="button" class="sust-portion on{{#if isSend}} send{{/if}}{{#if isBuff}} buff{{/if}}{{#if img}} has-img{{else}} no-img{{/if}}" title="{{name}}, day {{day}}" data-tooltip="{{name}}.{{#if perishable}} {{spoilTooltip}}{{/if}} Click to take this off the day" data-action="clearSustenanceFood" data-actor-id="{{../sustenanceDiegetic.actorId}}" data-sust="food" data-slot="{{@index}}">
+                        <button type="button" class="sust-portion on{{#if isSend}} send{{/if}}{{#if isBuff}} buff{{/if}}{{#if img}} has-img{{else}} no-img{{/if}}" title="{{name}}, {{localize "ionrift-respite.sustenanceDiegetic.dayNumber" day=(concat day "")}}" data-tooltip="{{name}}.{{#if perishable}} {{spoilTooltip}}{{/if}} {{localize "ionrift-respite.sustenanceDiegetic.clickToTakeOffDay"}}" data-action="clearSustenanceFood" data-actor-id="{{../sustenanceDiegetic.actorId}}" data-sust="food" data-slot="{{@index}}">
                             {{#if img}}
                             <img src="{{img}}" alt="{{name}}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
                             <div class="sust-portion-fallback" style="display:none;">
@@ -55,17 +55,17 @@
                 {{!-- Send-off card --}}
                 {{#if sustenanceDiegetic.food.sendoff.empty}}
                 <div class="sust-sendoff empty">
-                    <span class="sust-sendoff-kicker">Send-off</span>
-                    <span class="sust-sendoff-dur">Nothing set for the next day.</span>
+                    <span class="sust-sendoff-kicker">{{localize "ionrift-respite.sustenanceDiegetic.sendoff"}}</span>
+                    <span class="sust-sendoff-dur">{{localize "ionrift-respite.sustenanceDiegetic.nothingSetNextDay"}}</span>
                 </div>
                 {{else}}
                 <div class="sust-sendoff{{#if sustenanceDiegetic.food.sendoff.hasBuff}} has-buff{{/if}}">
-                    <span class="sust-sendoff-kicker">Send-off</span>
+                    <span class="sust-sendoff-kicker">{{localize "ionrift-respite.sustenanceDiegetic.sendoff"}}</span>
                     <strong>{{sustenanceDiegetic.food.sendoff.itemName}}</strong>
                     {{#if sustenanceDiegetic.food.sendoff.hasBuff}}
                     <div class="sust-sendoff-hero"><b>{{sustenanceDiegetic.food.sendoff.buffSummary}}</b></div>
                     {{else}}
-                    <span class="sust-sendoff-dur">Sates only. No buff into the next day.</span>
+                    <span class="sust-sendoff-dur">{{localize "ionrift-respite.sustenanceDiegetic.satesOnlyNoBuff"}}</span>
                     {{/if}}
                 </div>
                 {{/if}}
@@ -73,7 +73,7 @@
                 <div class="sust-crumb-tray">
                     {{#each sustenanceDiegetic.food.inventory}}
                     {{#unless isDry}}
-                    <button type="button" class="sust-crumb{{#if isSelected}} on{{/if}}{{#if hasBuff}} buff{{/if}}{{#if perishable}} perishable{{/if}}" data-tooltip="{{name}}, {{available}} left.{{#if perishable}} {{spoilTooltip}}{{/if}} Click to fill the first open day, or drag onto the pile" data-sust="food" data-item="{{id}}" data-sources="{{sourcesAttr}}" data-name="{{name}}" data-img="{{img}}" data-available="{{#if stock}}{{stock}}{{else}}{{available}}{{/if}}">
+                    <button type="button" class="sust-crumb{{#if isSelected}} on{{/if}}{{#if hasBuff}} buff{{/if}}{{#if perishable}} perishable{{/if}}" data-tooltip="{{name}}, {{available}} {{localize "ionrift-respite.sustenanceDiegetic.leftPrefix"}}{{#if perishable}} {{spoilTooltip}}{{/if}} {{localize "ionrift-respite.sustenanceDiegetic.clickFillFirstOpenDay"}}" data-sust="food" data-item="{{id}}" data-sources="{{sourcesAttr}}" data-name="{{name}}" data-img="{{img}}" data-available="{{#if stock}}{{stock}}{{else}}{{available}}{{/if}}">
                         {{#if img}}
                         <img src="{{img}}" alt="{{name}}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';">
                         <span class="sust-crumb-fallback-icon" style="display:none;"><i class="fas fa-drumstick-bite" aria-hidden="true"></i></span>
@@ -93,21 +93,21 @@
             {{!-- WATER column --}}
             <div class="sust-station">
                 <div class="sust-station-head">
-                    <span class="sust-station-label">Water</span>
+                    <span class="sust-station-label">{{localize "ionrift-respite.sustenanceDiegetic.waterLabel"}}</span>
                     <span class="sust-budget water{{#if sustenanceDiegetic.water.budget.isDone}} done{{/if}}">{{sustenanceDiegetic.water.budget.text}}</span>
                 </div>
-                <div class="sust-vessel{{#if sustenanceDiegetic.isMultiDay}} days{{else}} night{{#if sustenanceDiegetic.water.sendoff.hasBuff}} send{{/if}}{{/if}}" aria-label="{{#if sustenanceDiegetic.isMultiDay}}Water for the week{{else}}Water for the night{{/if}}">
+                <div class="sust-vessel{{#if sustenanceDiegetic.isMultiDay}} days{{else}} night{{#if sustenanceDiegetic.water.sendoff.hasBuff}} send{{/if}}{{/if}}" aria-label="{{#if sustenanceDiegetic.isMultiDay}}{{localize "ionrift-respite.sustenanceDiegetic.waterForTheWeek"}}{{else}}{{localize "ionrift-respite.sustenanceDiegetic.waterForTheNight"}}{{/if}}">
                     {{#each sustenanceDiegetic.water.days}}
                     <span class="sust-day-fill{{#if isSend}} send{{/if}}{{#if hasBuff}} buff{{/if}}" data-drop="water" data-wday="{{dayIndex}}">
                         <span class="sust-water-glass" style="--fill: {{fillPercent}}%;">
                             {{#if showHalf}}
-                            <span class="sust-water-half" title="Half the day's water. Constitution save."></span>
+                            <span class="sust-water-half" title="{{{localize "ionrift-respite.sustenanceDiegetic.halfDaysWaterTitle"}}}"></span>
                             {{/if}}
                             {{#if canUndo}}
-                            <button type="button" class="sust-water-level{{#if sourceClass}} src-{{sourceClass}}{{/if}}" style="height: {{fillPercent}}%;" data-action="clearSustenanceWater" data-undo="pour" data-actor-id="{{../sustenanceDiegetic.actorId}}" data-wday="{{dayIndex}}" data-tooltip="{{#if surfaceName}}{{surfaceName}}. {{/if}}Click to take this pour off."></button>
+                            <button type="button" class="sust-water-level{{#if sourceClass}} src-{{sourceClass}}{{/if}}" style="height: {{fillPercent}}%;" data-action="clearSustenanceWater" data-undo="pour" data-actor-id="{{../sustenanceDiegetic.actorId}}" data-wday="{{dayIndex}}" data-tooltip="{{#if surfaceName}}{{surfaceName}}. {{/if}}{{localize "ionrift-respite.sustenanceDiegetic.clickTakePourOff"}}"></button>
                             {{/if}}
                             {{#if canEmpty}}
-                            <button type="button" class="sust-water-empty" data-action="clearSustenanceWater" data-undo="all" data-actor-id="{{../sustenanceDiegetic.actorId}}" data-wday="{{dayIndex}}" data-tooltip="Empty this day">Empty</button>
+                            <button type="button" class="sust-water-empty" data-action="clearSustenanceWater" data-undo="all" data-actor-id="{{../sustenanceDiegetic.actorId}}" data-wday="{{dayIndex}}" data-tooltip="{{localize "ionrift-respite.sustenanceDiegetic.emptyThisDay"}}">{{localize "ionrift-respite.sustenanceDiegetic.empty"}}</button>
                             {{/if}}
                         </span>
                     </span>
@@ -116,17 +116,17 @@
                 {{!-- Send-off card --}}
                 {{#if sustenanceDiegetic.water.sendoff.empty}}
                 <div class="sust-sendoff empty">
-                    <span class="sust-sendoff-kicker">Send-off</span>
-                    <span class="sust-sendoff-dur">Nothing set for the next day.</span>
+                    <span class="sust-sendoff-kicker">{{localize "ionrift-respite.sustenanceDiegetic.sendoff"}}</span>
+                    <span class="sust-sendoff-dur">{{localize "ionrift-respite.sustenanceDiegetic.nothingSetNextDay"}}</span>
                 </div>
                 {{else}}
                 <div class="sust-sendoff{{#if sustenanceDiegetic.water.sendoff.hasBuff}} has-buff{{/if}}">
-                    <span class="sust-sendoff-kicker">Send-off</span>
+                    <span class="sust-sendoff-kicker">{{localize "ionrift-respite.sustenanceDiegetic.sendoff"}}</span>
                     <strong>{{sustenanceDiegetic.water.sendoff.itemName}}</strong>
                     {{#if sustenanceDiegetic.water.sendoff.hasBuff}}
                     <div class="sust-sendoff-hero"><b>{{sustenanceDiegetic.water.sendoff.buffSummary}}</b></div>
                     {{else}}
-                    <span class="sust-sendoff-dur">Sates only. No buff into the next day.</span>
+                    <span class="sust-sendoff-dur">{{localize "ionrift-respite.sustenanceDiegetic.satesOnlyNoBuff"}}</span>
                     {{/if}}
                 </div>
                 {{/if}}
@@ -134,7 +134,7 @@
                 <div class="sust-crumb-tray">
                     {{#each sustenanceDiegetic.water.inventory}}
                     {{#unless isDry}}
-                    <button type="button" class="sust-crumb{{#if isSelected}} on{{/if}}{{#if hasBuff}} buff{{/if}}{{#if perishable}} perishable{{/if}}" data-tooltip="{{name}}, {{available}} left.{{#if perishable}} {{spoilTooltip}}{{/if}} Click to fill the day from this, or drag onto a glass" data-sust="water" data-item="{{id}}" data-sources="{{sourcesAttr}}" data-name="{{name}}" data-img="{{img}}" data-available="{{#if stock}}{{stock}}{{else}}{{available}}{{/if}}">
+                    <button type="button" class="sust-crumb{{#if isSelected}} on{{/if}}{{#if hasBuff}} buff{{/if}}{{#if perishable}} perishable{{/if}}" data-tooltip="{{name}}, {{available}} {{localize "ionrift-respite.sustenanceDiegetic.leftPrefix"}}{{#if perishable}} {{spoilTooltip}}{{/if}} {{localize "ionrift-respite.sustenanceDiegetic.clickFillDayFromThis"}}" data-sust="water" data-item="{{id}}" data-sources="{{sourcesAttr}}" data-name="{{name}}" data-img="{{img}}" data-available="{{#if stock}}{{stock}}{{else}}{{available}}{{/if}}">
                         {{#if img}}
                         <img src="{{img}}" alt="{{name}}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';">
                         <span class="sust-crumb-fallback-icon" style="display:none;"><i class="fas fa-tint" aria-hidden="true"></i></span>

@@ -339,13 +339,13 @@ export class MealDelegate {
             overlay.classList.add("ionrift-armor-modal-overlay");
             overlay.innerHTML = `
                     <div class="ionrift-armor-modal">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Skip Meals?</h3>
-                        <p>The following meals are empty:</p>
+                        <h3><i class="fas fa-exclamation-triangle"></i> ${game.i18n.localize("ionrift-respite.mealDelegate.skipMealsTitle")}</h3>
+                        <p>${game.i18n.localize("ionrift-respite.mealDelegate.followingMealsEmpty")}</p>
                         <ul>${skippedSlots.map(s => `<li>${s}</li>`).join("")}</ul>
-                        <p>Skipping meals has consequences.</p>
+                        <p>${game.i18n.localize("ionrift-respite.mealDelegate.skippingConsequences")}</p>
                         <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Skip Meals</button>
-                            <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
+                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> ${game.i18n.localize("ionrift-respite.mealDelegate.btnSkipMeals")}</button>
+                            <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> ${game.i18n.localize("ionrift-respite.mealDelegate.btnGoBack")}</button>
                         </div>
                     </div>`;
             document.body.appendChild(overlay);
@@ -400,7 +400,7 @@ export class MealDelegate {
             refreshStationEmptyNoticeFade(app);
         }
         app.render();
-        ui.notifications.info("Meal choices submitted.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.mealDelegate.choicesSubmitted"));
     }
 
         async onSubmitMealChoices(event, target) {
@@ -450,7 +450,7 @@ export class MealDelegate {
             refreshStationEmptyNoticeFade(app);
         }
         app.render();
-        ui.notifications.info("Meal choices submitted.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.mealDelegate.choicesSubmitted"));
     }
 
         async onProceedFromMeal(event, target) {
@@ -460,7 +460,7 @@ export class MealDelegate {
         if (app._pendingDehydrationSaves?.length > 0) {
             const unresolved = app._pendingDehydrationSaves.filter(s => !s.resolved);
             if (unresolved.length > 0) {
-                ui.notifications.warn(`Still waiting for ${unresolved.length} dehydration save(s).`);
+                ui.notifications.warn(game.i18n.format("ionrift-respite.mealDelegate.waitingForDehydrationSaves", { count: unresolved.length }));
                 return;
             }
         }
@@ -489,22 +489,25 @@ export class MealDelegate {
             const confirmed = await new Promise(resolve => {
                 const overlay = document.createElement("div");
                 overlay.classList.add("ionrift-armor-modal-overlay");
+                const consequencesText = anyPlayer
+                    ? game.i18n.localize("ionrift-respite.mealDelegate.processingConsequencesPlayer")
+                    : game.i18n.localize("ionrift-respite.mealDelegate.processingConsequencesStandard");
                 overlay.innerHTML = `
                     <div class="ionrift-armor-modal">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Characters Without Rations</h3>
-                        <p>These characters are missing rations:</p>
+                        <h3><i class="fas fa-exclamation-triangle"></i> ${game.i18n.localize("ionrift-respite.mealDelegate.missingCharactersTitle")}</h3>
+                        <p>${game.i18n.localize("ionrift-respite.mealDelegate.charactersMissingRations")}</p>
                         <ul>${missing.map(m => {
                             let detail = "";
-                            if (m.missingFood && m.missingWater) detail = " (no food or water)";
-                            else if (m.missingFood) detail = " (no food)";
-                            else if (m.missingWater) detail = " (no water)";
-                            const awaiting = m.awaitingPlayer ? ' <span style="opacity:0.6">(awaiting player)</span>' : "";
+                            if (m.missingFood && m.missingWater) detail = ` ${game.i18n.localize("ionrift-respite.mealDelegate.noFoodOrWater")}`;
+                            else if (m.missingFood) detail = ` ${game.i18n.localize("ionrift-respite.mealDelegate.noFood")}`;
+                            else if (m.missingWater) detail = ` ${game.i18n.localize("ionrift-respite.mealDelegate.noWater")}`;
+                            const awaiting = m.awaitingPlayer ? ` <span style="opacity:0.6">${game.i18n.localize("ionrift-respite.mealDelegate.awaitingPlayer")}</span>` : "";
                             return `<li>${m.name}${detail}${awaiting}</li>`;
                         }).join("")}</ul>
-                        <p>Processing now treats them as skipping all meals${anyPlayer ? ", even if a player is still choosing" : ""}, applying any starvation and dehydration.</p>
+                        <p>${consequencesText}</p>
                         <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-forward"></i> Process Anyway</button>
-                            <button class="btn-armor-cancel"><i class="fas fa-clock"></i> Go Back</button>
+                            <button class="btn-armor-confirm"><i class="fas fa-forward"></i> ${game.i18n.localize("ionrift-respite.mealDelegate.btnProcessAnyway")}</button>
+                            <button class="btn-armor-cancel"><i class="fas fa-clock"></i> ${game.i18n.localize("ionrift-respite.mealDelegate.btnGoBack")}</button>
                         </div>
                     </div>`;
                 document.body.appendChild(overlay);
@@ -519,7 +522,7 @@ export class MealDelegate {
         if (procBtn) {
             procBtn.disabled = true;
             procBtn.classList.add("is-processing");
-            procBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
+            procBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${game.i18n.localize("ionrift-respite.mealDelegate.processingSpinner")}`;
         }
 
         for (const charId of characterIds) {
@@ -574,8 +577,11 @@ export class MealDelegate {
                         }
                         r.mealExhaustionApplied += r.starvationExhaustion;
                         await stampDeprivationExhaustionFloor(actor, newLevel);
+                        const starvationMsg = r.starvationExhaustion === 1
+                            ? game.i18n.format("ionrift-respite.mealDelegate.starvationExhaustionSingle", { actor: `<strong>${r.actorName}</strong>`, count: `<strong>${r.starvationExhaustion}</strong>` })
+                            : game.i18n.format("ionrift-respite.mealDelegate.starvationExhaustionPlural", { actor: `<strong>${r.actorName}</strong>`, count: `<strong>${r.starvationExhaustion}</strong>` });
                         await ChatMessage.create({
-                                content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
+                                content: `<div class="respite-recovery-chat">${starvationMsg}</div>`,
                                 speaker: ChatMessage.getSpeaker({ actor })
                             });
                         app._pendingDehydrationSaves.push({
@@ -585,7 +591,7 @@ export class MealDelegate {
                             resolved: true,
                             passed: false,
                             total: 0,
-                            reason: `starvation (${r.starvationExhaustion} exhaustion)`
+                            reason: game.i18n.format("ionrift-respite.mealDelegate.reasonStarvation", { count: r.starvationExhaustion })
                         });
                     }
                 }
@@ -608,7 +614,7 @@ export class MealDelegate {
                         r.mealExhaustionApplied = (r.mealExhaustionApplied ?? 0) + 1;
                         await stampDeprivationExhaustionFloor(actor, newLevel);
                         await ChatMessage.create({
-                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from dehydration (less than half the day's water).</div>`,
+                            content: `<div class="respite-recovery-chat">${game.i18n.format("ionrift-respite.mealDelegate.dehydrationAutoFailExhaustion", { actor: `<strong>${r.actorName}</strong>` })}</div>`,
                             speaker: ChatMessage.getSpeaker({ actor })
                         });
                         app._pendingDehydrationSaves.push({
@@ -618,7 +624,7 @@ export class MealDelegate {
                             resolved: true,
                             passed: false,
                             total: 0,
-                            reason: "dehydration, less than half the day's water"
+                            reason: game.i18n.localize("ionrift-respite.mealDelegate.reasonDehydrationLessHalf")
                         });
                     }
                 } else if (r.dehydrationSaveDC > 0) {
@@ -670,7 +676,7 @@ export class MealDelegate {
                             r.mealExhaustionApplied = (r.mealExhaustionApplied ?? 0) + 1;
                             await stampDeprivationExhaustionFloor(actor, newLevel);
                             await ChatMessage.create({
-                                content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
+                                content: `<div class="respite-recovery-chat">${game.i18n.format("ionrift-respite.mealDelegate.dehydrationConSaveFailed", { actor: `<strong>${r.actorName}</strong>`, total, dc: r.dehydrationSaveDC })}</div>`,
                                 speaker: ChatMessage.getSpeaker({ actor })
                             });
                             if (app._restLedger) {
@@ -680,13 +686,13 @@ export class MealDelegate {
                                     icon: "fas fa-tired",
                                     actor: r.characterId,
                                     actorName: r.actorName ?? "",
-                                    summary: "+1 exhaustion",
-                                    detail: `Failed CON save (${total} vs DC ${r.dehydrationSaveDC}), dehydration`
+                                    summary: game.i18n.localize("ionrift-respite.mealDelegate.plusOneExhaustion"),
+                                    detail: game.i18n.format("ionrift-respite.mealDelegate.detailFailedConSave", { total, dc: r.dehydrationSaveDC })
                                 });
                             }
                         } else {
                             await ChatMessage.create({
-                                content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> passes the CON save (${total} vs DC ${r.dehydrationSaveDC}) and fights off dehydration.</div>`,
+                                content: `<div class="respite-recovery-chat">${game.i18n.format("ionrift-respite.mealDelegate.dehydrationConSavePassed", { actor: `<strong>${r.actorName}</strong>`, total, dc: r.dehydrationSaveDC })}</div>`,
                                 speaker: ChatMessage.getSpeaker({ actor })
                             });
                         }
@@ -722,7 +728,7 @@ export class MealDelegate {
             const allResolved = app._pendingDehydrationSaves.every(s => s.resolved);
             if (!allResolved) {
                 Logger.log(`[Respite:Meal] Waiting for dehydration save(s) to resolve...`);
-                ui.notifications.info(`Waiting for dehydration save(s) to resolve before proceeding.`);
+                ui.notifications.info(game.i18n.localize("ionrift-respite.mealDelegate.waitingForDehydrationSavesBeforeProceeding"));
                 await app._saveRestState();
                 app.render();
                 return;
@@ -766,7 +772,7 @@ export class MealDelegate {
                 const mr = app._mealResults?.find(r => r.characterId === save.characterId);
                 if (mr) mr.mealExhaustionApplied = (mr.mealExhaustionApplied ?? 0) + 1;
                 await ChatMessage.create({
-                    content: `<div class="respite-recovery-chat"><strong>${save.actorName}</strong> fails the CON save (skipped by GM) and gains 1 level of exhaustion from dehydration.</div>`,
+                    content: `<div class="respite-recovery-chat">${game.i18n.format("ionrift-respite.mealDelegate.dehydrationConSaveSkipped", { actor: `<strong>${save.actorName}</strong>` })}</div>`,
                     speaker: ChatMessage.getSpeaker({ actor })
                 });
                 if (app._restLedger) {
@@ -776,8 +782,8 @@ export class MealDelegate {
                         icon: "fas fa-tired",
                         actor: save.characterId,
                         actorName: save.actorName ?? "",
-                        summary: "+1 exhaustion",
-                        detail: "Dehydration (GM skipped save)"
+                        summary: game.i18n.localize("ionrift-respite.mealDelegate.plusOneExhaustion"),
+                        detail: game.i18n.localize("ionrift-respite.mealDelegate.detailGmSkippedSave")
                     });
                 }
             }
@@ -785,7 +791,7 @@ export class MealDelegate {
             save.resolved = true;
             save.passed = false;
             save.total = 0;
-            save.reason = "dehydration (GM skipped)";
+            save.reason = game.i18n.localize("ionrift-respite.mealDelegate.reasonGmSkipped");
         }
 
         const allResults = app._pendingDehydrationSaves.map(s => ({
@@ -803,7 +809,7 @@ export class MealDelegate {
 
         await app._saveRestState();
         app.render();
-        ui.notifications.info(`Skipped ${unresolved.length} pending save(s). Exhaustion applied.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.mealDelegate.skippedPendingSaves", { count: unresolved.length }));
     }
 
         async receiveMealChoices(userId, choices) {
@@ -953,10 +959,10 @@ export class MealDelegate {
         if (!actor) return;
 
         const confirmed = await game.ionrift.library.confirm({
-            title: "Dehydration Check",
-            content: `<p><strong>${actorName}</strong> has gone without water.</p><p>Constitution save DC ${dc} or gain 1 level of exhaustion.</p>`,
-            yesLabel: "Roll CON Save",
-            noLabel: "Cancel",
+            title: game.i18n.localize("ionrift-respite.mealDelegate.dehydrationCheckTitle"),
+            content: game.i18n.format("ionrift-respite.mealDelegate.dehydrationCheckContent", { actor: `<strong>${actorName}</strong>`, dc }),
+            yesLabel: game.i18n.localize("ionrift-respite.mealDelegate.rollConSave"),
+            noLabel: game.i18n.localize("ionrift-respite.mealDelegate.cancel"),
             yesIcon: "fas fa-dice-d20",
             noIcon: "fas fa-times",
             defaultYes: true
@@ -979,7 +985,7 @@ export class MealDelegate {
                 await presentRoll(roll);
             } catch (e) {
                 console.error(`[Respite] Dehydration save roll failed for ${actorName}:`, e);
-                ui.notifications.error(`Could not roll CON save for ${actorName}. Treating as failed.`);
+                ui.notifications.error(game.i18n.format("ionrift-respite.mealDelegate.couldNotRollConSave", { name: actorName }));
             }
 
             setTimeout(() => {
@@ -1017,7 +1023,7 @@ export class MealDelegate {
             if (mr) mr.mealExhaustionApplied = (mr.mealExhaustionApplied ?? 0) + 1;
             await stampDeprivationExhaustionFloor(actor, newLevel);
             await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> fails the CON save (${total} vs DC ${dc}) and gains 1 level of exhaustion from dehydration.</div>`,
+                content: `<div class="respite-recovery-chat">${game.i18n.format("ionrift-respite.mealDelegate.dehydrationConSaveFailed", { actor: `<strong>${actorName}</strong>`, total, dc })}</div>`,
                 speaker: ChatMessage.getSpeaker({ actor })
             });
             if (app._restLedger) {
@@ -1027,14 +1033,14 @@ export class MealDelegate {
                     icon: "fas fa-tired",
                     actor: characterId,
                     actorName: actorName ?? "",
-                    summary: "+1 exhaustion",
-                    detail: `Failed CON save (${total} vs DC ${dc}), dehydration`
+                    summary: game.i18n.localize("ionrift-respite.mealDelegate.plusOneExhaustion"),
+                    detail: game.i18n.format("ionrift-respite.mealDelegate.detailFailedConSave", { total, dc })
                 });
                 app._refreshLedgerApp?.();
             }
         } else if (passed) {
             await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> passes the CON save (${total} vs DC ${dc}) and fights off dehydration.</div>`,
+                content: `<div class="respite-recovery-chat">${game.i18n.format("ionrift-respite.mealDelegate.dehydrationConSavePassed", { actor: `<strong>${actorName}</strong>`, total, dc })}</div>`,
                 speaker: actor ? ChatMessage.getSpeaker({ actor }) : undefined
             });
         }
@@ -1100,7 +1106,10 @@ export class MealDelegate {
             // If assigning to a specific slot that already has this item, it's a re-assign (allow)
             const isReassign = slotIndex !== undefined && arr[slotIndex] === itemId;
             if (!isReassign && alreadyAssigned >= available) {
-                ui.notifications.warn(`Not enough ${slot === "food" ? "rations" : "water"} to fill another slot.`);
+                const slotName = slot === "food"
+                    ? game.i18n.localize("ionrift-respite.mealDelegate.slotRations")
+                    : game.i18n.localize("ionrift-respite.mealDelegate.slotWater");
+                ui.notifications.warn(game.i18n.format("ionrift-respite.mealDelegate.notEnoughToFillSlot", { slot: slotName }));
                 return;
             }
 
@@ -1159,7 +1168,7 @@ export class MealDelegate {
             // Subtract bonus water from meal credits
             slotsNeeded = Math.max(0, slotsNeeded - bonusWater);
             if (slotsNeeded <= 0) {
-                ui.notifications.info("Water is already sufficient.");
+                ui.notifications.info(game.i18n.localize("ionrift-respite.mealDelegate.waterAlreadySufficient"));
                 return;
             }
 
@@ -1169,7 +1178,7 @@ export class MealDelegate {
             let totalPints = parseInt(trayCard?.dataset?.totalPints ?? trayCard?.dataset?.available ?? "0", 10);
             if (!Number.isFinite(totalPints) || totalPints < 0) totalPints = 0;
             if (totalPints <= 0) {
-                ui.notifications.warn("This water source is empty.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.mealDelegate.waterSourceEmpty"));
                 return;
             }
 
@@ -1355,8 +1364,11 @@ export class MealDelegate {
                     }
                     r.mealExhaustionApplied += r.starvationExhaustion;
                     await stampDeprivationExhaustionFloor(actor, newLevel);
+                    const starvationMsg = r.starvationExhaustion === 1
+                        ? game.i18n.format("ionrift-respite.mealDelegate.starvationExhaustionSingle", { actor: `<strong>${r.actorName}</strong>`, count: `<strong>${r.starvationExhaustion}</strong>` })
+                        : game.i18n.format("ionrift-respite.mealDelegate.starvationExhaustionPlural", { actor: `<strong>${r.actorName}</strong>`, count: `<strong>${r.starvationExhaustion}</strong>` });
                     await ChatMessage.create({
-                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
+                        content: `<div class="respite-recovery-chat">${starvationMsg}</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
                     });
                 }
@@ -1375,8 +1387,11 @@ export class MealDelegate {
                     }
                     r.mealExhaustionApplied += r.essenceExhaustion;
                     await stampDeprivationExhaustionFloor(actor, newLevel);
+                    const essenceMsg = r.essenceExhaustion === 1
+                        ? game.i18n.format("ionrift-respite.mealDelegate.essenceExhaustionSingle", { actor: `<strong>${r.actorName}</strong>`, count: `<strong>${r.essenceExhaustion}</strong>` })
+                        : game.i18n.format("ionrift-respite.mealDelegate.essenceExhaustionPlural", { actor: `<strong>${r.actorName}</strong>`, count: `<strong>${r.essenceExhaustion}</strong>` });
                     await ChatMessage.create({
-                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.essenceExhaustion}</strong> level${r.essenceExhaustion > 1 ? "s" : ""} of exhaustion from essence depletion.</div>`,
+                        content: `<div class="respite-recovery-chat">${essenceMsg}</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
                     });
                 }
@@ -1397,7 +1412,7 @@ export class MealDelegate {
                     r.mealExhaustionApplied += 1;
                     await stampDeprivationExhaustionFloor(actor, newLevel);
                     await ChatMessage.create({
-                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from dehydration (less than half the day's water).</div>`,
+                        content: `<div class="respite-recovery-chat">${game.i18n.format("ionrift-respite.mealDelegate.dehydrationAutoFailExhaustion", { actor: `<strong>${r.actorName}</strong>` })}</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
                     });
                 } else if (r.dehydrationSaveDC > 0) {
@@ -1428,12 +1443,12 @@ export class MealDelegate {
                         r.mealExhaustionApplied += 1;
                         await stampDeprivationExhaustionFloor(actor, newLevel);
                         await ChatMessage.create({
-                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${roll.total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
+                            content: `<div class="respite-recovery-chat">${game.i18n.format("ionrift-respite.mealDelegate.dehydrationConSaveFailed", { actor: `<strong>${r.actorName}</strong>`, total: roll.total, dc: r.dehydrationSaveDC })}</div>`,
                             speaker: ChatMessage.getSpeaker({ actor })
                         });
                     } else {
                         await ChatMessage.create({
-                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> passes the CON save (${roll.total} vs DC ${r.dehydrationSaveDC}) and fights off dehydration.</div>`,
+                            content: `<div class="respite-recovery-chat">${game.i18n.format("ionrift-respite.mealDelegate.dehydrationConSavePassed", { actor: `<strong>${r.actorName}</strong>`, total: roll.total, dc: r.dehydrationSaveDC })}</div>`,
                             speaker: ChatMessage.getSpeaker({ actor })
                         });
                     }

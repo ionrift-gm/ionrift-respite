@@ -4,20 +4,20 @@
 {{#if sustenanceDiegetic.isMultiDay}}
 <div class="rest-step-pacing sust-card-foot">
     {{#if sustenanceDiegetic.mealsLocked}}
-    <span class="sust-meals-state"><i class="fas fa-lock" aria-hidden="true"></i> Choices Locked</span>
+    <span class="sust-meals-state"><i class="fas fa-lock" aria-hidden="true"></i> {{localize "ionrift-respite.sustenanceCardFoot.choicesLocked"}}</span>
     {{#if sustenanceDiegetic.canUnlock}}
-    <button type="button" class="btn-step-ready rest-ready-btn is-ready" data-action="unlockMeals" data-actor-id="{{sustenanceDiegetic.actorId}}" data-tooltip="Unlock choices to edit">
-        <i class="fas fa-check-circle" aria-hidden="true"></i> <span>Ready (Edit Choices)</span>
+    <button type="button" class="btn-step-ready rest-ready-btn is-ready" data-action="unlockMeals" data-actor-id="{{sustenanceDiegetic.actorId}}" data-tooltip="{{localize "ionrift-respite.sustenanceCardFoot.unlockChoicesTooltip"}}">
+        <i class="fas fa-check-circle" aria-hidden="true"></i> <span>{{localize "ionrift-respite.sustenanceCardFoot.readyEditChoices"}}</span>
     </button>
     {{/if}}
     {{else}}
     {{#if sustenanceDiegetic.canInteract}}
-    <button type="button" class="btn-step-ready rest-ready-btn" data-action="lockMeals" data-actor-id="{{sustenanceDiegetic.actorId}}" data-tooltip="Lock in choices and mark ready">
-        <i class="fas fa-check" aria-hidden="true"></i> <span>Ready for Rest</span>
+    <button type="button" class="btn-step-ready rest-ready-btn" data-action="lockMeals" data-actor-id="{{sustenanceDiegetic.actorId}}" data-tooltip="{{localize "ionrift-respite.sustenanceCardFoot.lockChoicesTooltip"}}">
+        <i class="fas fa-check" aria-hidden="true"></i> <span>{{localize "ionrift-respite.sustenanceCardFoot.readyForRest"}}</span>
     </button>
     {{else}}
     <span class="tier-action-placeholder">
-        <i class="fas fa-hourglass-half"></i> <span>Awaiting Choices</span>
+        <i class="fas fa-hourglass-half"></i> <span>{{localize "ionrift-respite.sustenanceCardFoot.awaitingChoices"}}</span>
     </span>
     {{/if}}
     {{/if}}
@@ -25,10 +25,10 @@
 {{else}}
 <div class="sust-card-foot sust-card-foot-single">
     {{#if sustenanceDiegetic.mealsSubmitted}}
-    <span class="sust-meals-state is-submitted"><i class="fas fa-check-circle" aria-hidden="true"></i> Rations consumed</span>
+    <span class="sust-meals-state is-submitted"><i class="fas fa-check-circle" aria-hidden="true"></i> {{localize "ionrift-respite.sustenanceCardFoot.rationsConsumed"}}</span>
     {{else}}
-    <button type="button" class="sust-lock-meals btn-submit-meals" data-action="submitMealChoices" data-actor-id="{{sustenanceDiegetic.actorId}}" data-tooltip="Submit food and water rations">
-        <i class="fas fa-utensils" aria-hidden="true"></i> Submit rations
+    <button type="button" class="sust-lock-meals btn-submit-meals" data-action="submitMealChoices" data-actor-id="{{sustenanceDiegetic.actorId}}" data-tooltip="{{localize "ionrift-respite.sustenanceCardFoot.submitRationsTooltip"}}">
+        <i class="fas fa-utensils" aria-hidden="true"></i> {{localize "ionrift-respite.sustenanceCardFoot.submitRations"}}
     </button>
     {{/if}}
 </div>

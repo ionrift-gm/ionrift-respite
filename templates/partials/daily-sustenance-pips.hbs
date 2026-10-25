@@ -2,15 +2,15 @@
 {{#if isSustenanceDrawerOpen}}
 <div class="sustenance-breakdown-drawer">
     <div class="breakdown-drawer-header">
-        <span class="drawer-header-title">Daily Provisions</span>
-        <span class="drawer-header-subtitle">Routine camp provisions + departure send-off</span>
+        <span class="drawer-header-title">{{localize "ionrift-respite.dailySustenance.headerTitle"}}</span>
+        <span class="drawer-header-subtitle">{{localize "ionrift-respite.dailySustenance.headerSubtitle"}}</span>
     </div>
     <div class="breakdown-tracks-grid">
         <!-- Food Strip -->
         <div class="breakdown-track food-track">
             <div class="track-header">
-                <span class="track-title"><i class="fas fa-bread-slice"></i> Daily Food Plan</span>
-                <span class="track-summary {{#if foodFlow.isShort}}shortfall{{else}}fulfilled{{/if}}">{{#if foodFlow.isShort}}{{foodFlow.shortfallDays}}d Short{{else}}All Days Fed{{/if}}</span>
+                <span class="track-title"><i class="fas fa-bread-slice"></i> {{localize "ionrift-respite.dailySustenance.foodTrackTitle"}}</span>
+                <span class="track-summary {{#if foodFlow.isShort}}shortfall{{else}}fulfilled{{/if}}">{{#if foodFlow.isShort}}{{localize "ionrift-respite.dailySustenance.daysShort" days=(concat foodFlow.shortfallDays "")}}{{else}}{{localize "ionrift-respite.dailySustenance.allDaysFed"}}{{/if}}</span>
             </div>
             <div class="daily-pip-strip">
                 {{#each foodDailyPips}}
@@ -25,16 +25,16 @@
                 {{/each}}
             </div>
             <div class="track-footer">
-                <span>Routine Provisions (Days 1-6)</span>
-                <span>Departure Meal</span>
+                <span>{{localize "ionrift-respite.dailySustenance.routineProvisionsDays"}}</span>
+                <span>{{localize "ionrift-respite.dailySustenance.departureMeal"}}</span>
             </div>
         </div>
 
         <!-- Water Strip -->
         <div class="breakdown-track water-track">
             <div class="track-header">
-                <span class="track-title"><i class="fas fa-droplet"></i> Daily Hydration Track</span>
-                <span class="track-summary {{#if waterFlow.isShort}}shortfall{{else}}fulfilled{{/if}}">{{#if waterFlow.isShort}}{{waterFlow.shortfallUnits}}u Short{{else}}All Days Hydrated{{/if}}</span>
+                <span class="track-title"><i class="fas fa-droplet"></i> {{localize "ionrift-respite.dailySustenance.waterTrackTitle"}}</span>
+                <span class="track-summary {{#if waterFlow.isShort}}shortfall{{else}}fulfilled{{/if}}">{{#if waterFlow.isShort}}{{localize "ionrift-respite.dailySustenance.unitsShort" units=(concat waterFlow.shortfallUnits "")}}{{else}}{{localize "ionrift-respite.dailySustenance.allDaysHydrated"}}{{/if}}</span>
             </div>
             <div class="daily-pip-strip">
                 {{#each waterDailyPips}}
@@ -50,11 +50,11 @@
             </div>
             <div class="track-footer">
                 {{#if waterFlow.isShort}}
-                <span class="water-warning"><i class="fas fa-triangle-exclamation"></i> {{waterFlow.shortfallUnits}}u short (No waterskins)</span>
-                <span class="water-action">Refill at stream or gather</span>
+                <span class="water-warning"><i class="fas fa-triangle-exclamation"></i> {{localize "ionrift-respite.dailySustenance.waterWarningNoWaterskins" units=(concat waterFlow.shortfallUnits "")}}</span>
+                <span class="water-action">{{localize "ionrift-respite.dailySustenance.refillAtStreamOrGather"}}</span>
                 {{else}}
-                <span>Routine Water</span>
-                <span>Departure Drink</span>
+                <span>{{localize "ionrift-respite.dailySustenance.routineWater"}}</span>
+                <span>{{localize "ionrift-respite.dailySustenance.departureDrink"}}</span>
                 {{/if}}
             </div>
         </div>

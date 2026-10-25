@@ -21,7 +21,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
     static DEFAULT_OPTIONS = {
         id: "respite-diet-config",
         window: {
-            title: "Food & Diet",
+            title: "ionrift-respite.dietConfig.windowTitle",
             icon: "fas fa-utensils",
             resizable: true
         },
@@ -29,22 +29,34 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
         classes: ["ionrift-window"]
     };
 
-    static FOOD_TAG_LABELS = {
-        meat: "Meat", plant: "Plant", prepared: "Prepared"
-    };
+    static get FOOD_TAG_LABELS() {
+        return {
+            meat: game.i18n.localize("ionrift-respite.dietConfig.tagMeat"),
+            plant: game.i18n.localize("ionrift-respite.dietConfig.tagPlant"),
+            prepared: game.i18n.localize("ionrift-respite.dietConfig.tagPrepared")
+        };
+    }
 
-    static FOOD_TAG_TIPS = {
-        meat: "Animal protein: Fresh Meat, Fish, Eggs, Jerky",
-        plant: "Foraged vegetation: Berries, Mushrooms, Herbs, Roots",
-        prepared: "Processed food: Rations, Porridge, and cooked meals"
-    };
+    static get FOOD_TAG_TIPS() {
+        return {
+            meat: game.i18n.localize("ionrift-respite.dietConfig.tipMeat"),
+            plant: game.i18n.localize("ionrift-respite.dietConfig.tipPlant"),
+            prepared: game.i18n.localize("ionrift-respite.dietConfig.tipPrepared")
+        };
+    }
 
-    static DRINK_LABELS = {
-        water: "Water", alcohol: "Alcohol", oil: "Oil / Fuel"
-    };
+    static get DRINK_LABELS() {
+        return {
+            water: game.i18n.localize("ionrift-respite.dietConfig.drinkWater"),
+            alcohol: game.i18n.localize("ionrift-respite.dietConfig.drinkAlcohol"),
+            oil: game.i18n.localize("ionrift-respite.dietConfig.drinkOil")
+        };
+    }
 
-    static RESOURCE_LABELS = {
-        fuel: "Scrap"
+    static get RESOURCE_LABELS() {
+        return {
+            fuel: game.i18n.localize("ionrift-respite.dietConfig.resourceFuel")
+        };
     };
 
     constructor(options = {}) {
@@ -124,30 +136,30 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
             html += `
             <div class="diet-global-section">
                 <div class="diet-global-title">
-                    <i class="fas fa-drumstick-bite"></i> Meal tracking
+                    <i class="fas fa-drumstick-bite"></i> ${game.i18n.localize("ionrift-respite.dietConfig.globalMealTracking")}
                 </div>
                 <label class="diet-global-toggle">
                     <input type="checkbox" class="diet-track-food-cb" ${trackOn ? "checked" : ""} />
                     <span class="diet-global-switch"></span>
                     <span class="diet-global-copy">
-                        <span class="diet-global-name">Track food &amp; water</span>
-                        <span class="diet-global-hint">Adds a Meal phase to long rests. Characters consume rations and water, with advisories for starvation and dehydration.</span>
+                        <span class="diet-global-name">${game.i18n.localize("ionrift-respite.dietConfig.trackFoodWater")}</span>
+                        <span class="diet-global-hint">${game.i18n.localize("ionrift-respite.dietConfig.trackFoodWaterHint")}</span>
                     </span>
                 </label>
                 <label class="diet-global-toggle ${trackOn ? "" : "is-disabled"}">
                     <input type="checkbox" class="diet-partial-cb" ${context.partialSustenance ? "checked" : ""} ${partialDisabled} />
                     <span class="diet-global-switch"></span>
                     <span class="diet-global-copy">
-                        <span class="diet-global-name">Partial sustenance <span class="diet-global-tag">house rule</span></span>
-                        <span class="diet-global-hint">In terrains needing double rations or water, partial fulfilment still helps: +2 to the CON save (water) or a longer grace period (food). Turn off for strict RAW.</span>
+                        <span class="diet-global-name">${game.i18n.localize("ionrift-respite.dietConfig.partialSustenance")}</span>
+                        <span class="diet-global-hint">${game.i18n.localize("ionrift-respite.dietConfig.partialSustenanceHint")}</span>
                     </span>
                 </label>
                 <label class="diet-global-toggle">
                     <input type="checkbox" class="diet-spoilage-suffix-cb" ${context.spoilageNameSuffix ? "checked" : ""} />
                     <span class="diet-global-switch"></span>
                     <span class="diet-global-copy">
-                        <span class="diet-global-name">Spoilage name suffixes</span>
-                        <span class="diet-global-hint">Append freshness to perishable names on grant (e.g. Bird Eggs (3d)) so stacks with different timers stay separate.</span>
+                        <span class="diet-global-name">${game.i18n.localize("ionrift-respite.dietConfig.spoilageSuffix")}</span>
+                        <span class="diet-global-hint">${game.i18n.localize("ionrift-respite.dietConfig.spoilageSuffixHint")}</span>
                     </span>
                 </label>
             </div>`;
@@ -156,10 +168,10 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
             <div class="diet-summary-bar">
                 <span class="diet-summary-count">
                     <i class="fas fa-utensils"></i>
-                    <strong>${context.rows.length}</strong> characters
+                    ${game.i18n.format("ionrift-respite.dietConfig.charactersCount", { count: `<strong>${context.rows.length}</strong>` })}
                 </span>
                 <span class="diet-summary-hint">
-                    Select a preset or expand to customise.
+                    ${game.i18n.localize("ionrift-respite.dietConfig.summaryHint")}
                 </span>
             </div>`;
         }
@@ -179,12 +191,12 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     <img class="diet-actor-portrait" src="${row.img}" alt="${row.name}" />
                     <div class="diet-actor-info">
                         <span class="diet-actor-name">${row.name}</span>
-                        <span class="diet-actor-label">${row.diet.label}${row.isEssence ? ' <i class="fas fa-bolt diet-essence-icon"></i>' : ""}${row.isNone ? ' <i class="fas fa-ban diet-none-icon" title="No sustenance required"></i>' : ""}</span>
+                        <span class="diet-actor-label">${row.diet.label}${row.isEssence ? ' <i class="fas fa-bolt diet-essence-icon"></i>' : ""}${row.isNone ? ` <i class="fas fa-ban diet-none-icon" title="${game.i18n.localize("ionrift-respite.dietConfig.noSustenanceRequired")}"></i>` : ""}</span>
                     </div>
                     <select class="diet-preset-select" data-actor-id="${row.id}">
                         ${presetOptions}
                     </select>
-                    <button type="button" class="diet-expand-btn" data-actor-id="${row.id}" title="Customise">
+                    <button type="button" class="diet-expand-btn" data-actor-id="${row.id}" title="${game.i18n.localize("ionrift-respite.dietConfig.customise")}">
                         <i class="fas ${expandIcon}"></i>
                     </button>
                 </div>`;
@@ -196,15 +208,14 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     html += `
                     <div class="diet-none-hint">
                         <i class="fas fa-info-circle"></i>
-                        This character does not need food, water, or essence during rest, and cannot receive cooked meal buffs.
-                        Choose <strong>Maintenance</strong> or another essence preset if upkeep is required.
+                        ${game.i18n.localize("ionrift-respite.dietConfig.noneHint")}
                     </div>`;
                 } else if (row.isFood) {
                     // Food tags for biological characters
                     const canEatTags = row.diet.canEatTags ?? ["meat", "plant", "prepared"];
                     html += `
                     <div class="diet-field-row">
-                        <label class="diet-field-label">Can eat</label>
+                        <label class="diet-field-label">${game.i18n.localize("ionrift-respite.dietConfig.canEat")}</label>
                         <div class="diet-tag-group">
                             ${context.foodTags.map(t => {
                                 const active = canEatTags.includes(t);
@@ -222,12 +233,12 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                 if (row.eatsFuel) {
                     html += `
                     <div class="diet-field-row">
-                        <label class="diet-field-label">Can consume</label>
+                        <label class="diet-field-label">${game.i18n.localize("ionrift-respite.dietConfig.canConsume")}</label>
                         <div class="diet-tag-group">
                             <label class="diet-tag-label active">
                                 <input type="checkbox" class="diet-can-eat-cb" data-actor-id="${row.id}" data-type="fuel" checked />
                                 <span class="diet-tag-check"></span>
-                                <span class="diet-tag-text">Scrap</span>
+                                <span class="diet-tag-text">${game.i18n.localize("ionrift-respite.dietConfig.resourceFuel")}</span>
                             </label>
                         </div>
                     </div>`;
@@ -236,7 +247,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                 // Drink row (shown for everyone, relevant drinks differ by preset)
                 html += `
                     <div class="diet-field-row">
-                        <label class="diet-field-label">Can drink</label>
+                        <label class="diet-field-label">${game.i18n.localize("ionrift-respite.dietConfig.canDrink")}</label>
                         <div class="diet-tag-group">
                             ${context.drinkTypes.map(t => {
                                 const active = row.diet.canDrink.includes(t);
@@ -255,13 +266,13 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     html += `
                     <div class="diet-essence-section">
                         <div class="diet-field-row">
-                            <label class="diet-field-label"><i class="fas fa-bolt"></i> Essence items</label>
+                            <label class="diet-field-label"><i class="fas fa-bolt"></i> ${game.i18n.localize("ionrift-respite.dietConfig.essenceItems")}</label>
                             <input type="text" class="diet-text-input diet-custom-food" data-actor-id="${row.id}"
                                 value="${essenceItems}"
-                                placeholder="e.g. Soul Fragment, Mana Crystal, Incense" />
+                                placeholder="${game.i18n.localize("ionrift-respite.dietConfig.placeholderEssence")}" />
                         </div>
                         <span class="diet-essence-hint">
-                            Items consumed each rest for sustenance. Failing to recharge reduces hit die recovery.
+                            ${game.i18n.localize("ionrift-respite.dietConfig.essenceHint")}
                         </span>
                     </div>`;
                 } else {
@@ -276,27 +287,27 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     html += showCustomFields ? `
                     <div class="diet-custom-section">
                         <div class="diet-field-row">
-                            <label class="diet-field-label">Additional food items</label>
+                            <label class="diet-field-label">${game.i18n.localize("ionrift-respite.dietConfig.additionalFood")}</label>
                             <input type="text" class="diet-text-input diet-custom-food" data-actor-id="${row.id}"
                                 value="${(row.diet.customFoodNames ?? []).join(", ")}"
-                                placeholder="e.g. Goodberries, Arcane Rations" />
+                                placeholder="${game.i18n.localize("ionrift-respite.dietConfig.placeholderFood")}" />
                         </div>
                         <div class="diet-field-row">
-                            <label class="diet-field-label">Additional drink items</label>
+                            <label class="diet-field-label">${game.i18n.localize("ionrift-respite.dietConfig.additionalDrink")}</label>
                             <input type="text" class="diet-text-input diet-custom-water" data-actor-id="${row.id}"
                                 value="${(row.diet.customWaterNames ?? []).join(", ")}"
-                                placeholder="e.g. Healing Tea" />
+                                placeholder="${game.i18n.localize("ionrift-respite.dietConfig.placeholderDrink")}" />
                         </div>
                         <div class="diet-field-row">
-                            <label class="diet-field-label">Excluded items</label>
+                            <label class="diet-field-label">${game.i18n.localize("ionrift-respite.dietConfig.excludedItems")}</label>
                             <input type="text" class="diet-text-input diet-exclude-names" data-actor-id="${row.id}"
                                 value="${(row.diet.excludeNames ?? []).join(", ")}"
-                                placeholder="e.g. Fresh Meat, Smoked Fish" />
+                                placeholder="${game.i18n.localize("ionrift-respite.dietConfig.placeholderExclusions")}" />
                         </div>
                     </div>
                     ` : `
                     <button type="button" class="diet-show-custom-btn" data-actor-id="${row.id}">
-                        <i class="fas fa-plus"></i> Add custom items or exclusions
+                        <i class="fas fa-plus"></i> ${game.i18n.localize("ionrift-respite.dietConfig.addCustomItems")}
                     </button>
                     `;
                 }
@@ -313,7 +324,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
         html += `
         <div class="diet-actions">
             <button type="button" class="diet-save-btn">
-                <i class="fas fa-save"></i> Save Diets
+                <i class="fas fa-save"></i> ${game.i18n.localize("ionrift-respite.dietConfig.saveDiets")}
             </button>
         </div>`;
 
@@ -520,9 +531,12 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
         }
 
         if (saved > 0) {
-            ui.notifications.info(`Diet profiles saved for ${saved} character${saved !== 1 ? "s" : ""}.`);
+            const msg = saved === 1
+                ? game.i18n.format("ionrift-respite.dietConfig.savedSingle", { count: saved })
+                : game.i18n.format("ionrift-respite.dietConfig.savedPlural", { count: saved });
+            ui.notifications.info(msg);
         } else {
-            ui.notifications.info("No changes to save.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.dietConfig.noChangesToSave"));
         }
 
         this.close();
@@ -548,30 +562,31 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
 
     async _showBalanceWarning(names) {
         return new Promise(resolve => {
+            const verb = names.length === 1
+                ? game.i18n.localize("ionrift-respite.dietConfig.has")
+                : game.i18n.localize("ionrift-respite.dietConfig.have");
             const d = new Dialog({
-                title: "Sustenance Imbalance",
+                title: game.i18n.localize("ionrift-respite.dietConfig.imbalanceTitle"),
                 content: `
                     <div class="diet-balance-warning">
                         <p><i class="fas fa-exclamation-triangle"></i>
-                        <strong>${names.join(", ")}</strong> ${names.length === 1 ? "has" : "have"} sustenance set to <strong>None</strong>
-                        , while other characters still need food, water, or essence.</p>
-                        <p>This may create an imbalance. Consider switching to <strong>Essence</strong>
-                        so non-biological characters still face resource pressure.</p>
+                        ${game.i18n.format("ionrift-respite.dietConfig.imbalanceBody1", { names: `<strong>${names.join(", ")}</strong>`, verb })}</p>
+                        <p>${game.i18n.localize("ionrift-respite.dietConfig.imbalanceBody2")}</p>
                     </div>`,
                 buttons: {
                     essence: {
                         icon: '<i class="fas fa-bolt"></i>',
-                        label: "Switch to Essence",
+                        label: game.i18n.localize("ionrift-respite.dietConfig.btnSwitchToEssence"),
                         callback: () => resolve("add-essence")
                     },
                     save: {
                         icon: '<i class="fas fa-save"></i>',
-                        label: "Save anyway",
+                        label: game.i18n.localize("ionrift-respite.dietConfig.btnSaveAnyway"),
                         callback: () => resolve("save")
                     },
                     cancel: {
                         icon: '<i class="fas fa-times"></i>',
-                        label: "Go back",
+                        label: game.i18n.localize("ionrift-respite.dietConfig.btnGoBack"),
                         callback: () => resolve("cancel")
                     }
                 },
@@ -585,25 +600,32 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
     async _showEmptyDietWarning(names) {
         return new Promise(resolve => {
             const plural = names.length > 1;
+            const reqVerb = plural
+                ? game.i18n.localize("ionrift-respite.dietConfig.require")
+                : game.i18n.localize("ionrift-respite.dietConfig.requires");
+            const haveVerb = plural
+                ? game.i18n.localize("ionrift-respite.dietConfig.have")
+                : game.i18n.localize("ionrift-respite.dietConfig.has");
+            const charSubject = plural
+                ? game.i18n.localize("ionrift-respite.dietConfig.theseCharacters")
+                : game.i18n.localize("ionrift-respite.dietConfig.thisCharacter");
             const d = new Dialog({
-                title: "Empty Diet",
+                title: game.i18n.localize("ionrift-respite.dietConfig.emptyDietTitle"),
                 content: `
                     <div class="diet-balance-warning">
                         <p><i class="fas fa-exclamation-triangle"></i>
-                        <strong>${names.join(", ")}</strong> ${plural ? "require" : "requires"} sustenance
-                        but ${plural ? "have" : "has"} <strong>no food, drink, or essence items</strong> configured.</p>
-                        <p>${plural ? "These characters" : "This character"} won't be able to consume anything during rest
-                        and will eventually gain exhaustion.</p>
+                        ${game.i18n.format("ionrift-respite.dietConfig.emptyDietBody1", { names: `<strong>${names.join(", ")}</strong>`, require: reqVerb, have: haveVerb })}</p>
+                        <p>${game.i18n.format("ionrift-respite.dietConfig.emptyDietBody2", { subject: charSubject })}</p>
                     </div>`,
                 buttons: {
                     save: {
                         icon: '<i class="fas fa-save"></i>',
-                        label: "Save anyway",
+                        label: game.i18n.localize("ionrift-respite.dietConfig.btnSaveAnyway"),
                         callback: () => resolve("save")
                     },
                     cancel: {
                         icon: '<i class="fas fa-times"></i>',
-                        label: "Go back and fix",
+                        label: game.i18n.localize("ionrift-respite.dietConfig.btnGoBackAndFix"),
                         callback: () => resolve("cancel")
                     }
                 },

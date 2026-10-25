@@ -21,7 +21,7 @@ export class MealBuffPickerDialog extends foundry.applications.api.ApplicationV2
     static DEFAULT_OPTIONS = {
         id: "respite-meal-buff-picker",
         window: {
-            title: "Choose buff",
+            title: "ionrift-respite.mealBuffPicker.windowTitle",
             icon: "fas fa-star",
             resizable: true
         },
@@ -110,19 +110,19 @@ export class MealBuffPickerDialog extends foundry.applications.api.ApplicationV2
     }
 
     _buildMarkup(context) {
-        const baseSection = this._buildGroupSection("Base presets", context.baseGroups);
+        const baseSection = this._buildGroupSection(game.i18n.localize("ionrift-respite.mealBuffPicker.sectionBasePresets"), context.baseGroups);
         const handlerSection = context.handlerGroups.length
-            ? this._buildGroupSection("Pack handlers", context.handlerGroups)
+            ? this._buildGroupSection(game.i18n.localize("ionrift-respite.mealBuffPicker.sectionPackHandlers"), context.handlerGroups)
             : "";
         const overlayHeader = context.overlayGroups.length
             ? `<div class="meal-buff-picker-pack-header">
-                    <span class="meal-buff-picker-pack-badge">${this._esc(context.overlayPackLabel ?? "Content pack")}</span>
-                    <span class="meal-buff-picker-pack-note">Pack-only buffs not in base presets</span>
+                    <span class="meal-buff-picker-pack-badge">${this._esc(context.overlayPackLabel ?? game.i18n.localize("ionrift-respite.mealBuffPicker.defaultPackLabel"))}</span>
+                    <span class="meal-buff-picker-pack-note">${game.i18n.localize("ionrift-respite.mealBuffPicker.packOnlyBuffsNote")}</span>
                </div>`
             : "";
         const overlaySection = context.overlayGroups.length
             ? `<section class="meal-buff-picker-section">
-                    <div class="meal-buff-picker-section-title">Pack presets</div>
+                    <div class="meal-buff-picker-section-title">${game.i18n.localize("ionrift-respite.mealBuffPicker.sectionPackPresets")}</div>
                     ${overlayHeader}
                     ${context.overlayGroups.map(group => `
                         <div class="meal-buff-picker-type-group">
@@ -135,20 +135,25 @@ export class MealBuffPickerDialog extends foundry.applications.api.ApplicationV2
             : "";
 
         const empty = !baseSection && !handlerSection && !overlaySection;
+        const tierLabel = context.tier === "ambitious"
+            ? game.i18n.localize("ionrift-respite.mealBuffPicker.tierAmbitious")
+            : game.i18n.localize("ionrift-respite.mealBuffPicker.tierStandard");
+        const leadText = game.i18n.format("ionrift-respite.mealBuffPicker.leadText", {
+            profession: `<strong>${this._esc(context.professionId)}</strong>`,
+            tier: tierLabel
+        });
 
         return `
             <p class="meal-buff-picker-lead">
-                Buffs for <strong>${this._esc(context.professionId)}</strong>
-                (${context.tier === "ambitious" ? "ambitious output" : "standard output"}).
-                Only presets for this profession are listed.
+                ${leadText}
             </p>
             <div class="meal-buff-picker-scroll">
-                ${empty ? `<p class="meal-buff-picker-empty">No buff presets available for this profession.</p>` : ""}
+                ${empty ? `<p class="meal-buff-picker-empty">${game.i18n.localize("ionrift-respite.mealBuffPicker.emptyPresets")}</p>` : ""}
                 ${baseSection}
                 ${handlerSection}
                 ${overlaySection}
             </div>
-            <p class="meal-buff-picker-hint">Custom buffs can still be set via JSON import.</p>`;
+            <p class="meal-buff-picker-hint">${game.i18n.localize("ionrift-respite.mealBuffPicker.customBuffsHint")}</p>`;
     }
 
     _wireEvents(el) {
