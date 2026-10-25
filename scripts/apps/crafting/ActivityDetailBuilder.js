@@ -19,7 +19,7 @@ import {
 } from "../../data/RestConstants.js";
 import { CARD_FADED_HINTS, clipToCardHint } from "../../data/activityCardHint.js";
 import { MODULE_ID } from "../../data/moduleId.js";
-import { getFletchingTierLabel } from "../../services/crafting/settings/FletchingSettings.js";
+import { getFletchingTier, getFletchingTierLabel } from "../../services/crafting/settings/FletchingSettings.js";
 
 /**
  * Resolve the armour sleep hint for an actor doing a given activity.
@@ -195,7 +195,7 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
     if (activityId === "act_fletch" && !outcomeHints.length) {
         const yieldLabel = getFletchingTierLabel();
         const kind = followUpValue === "bolts" ? "bolts" : "arrows";
-        const text = yieldLabel && yieldLabel !== "Off"
+        const text = yieldLabel && getFletchingTier() > 0
             ? `Pass the check, then roll ${yieldLabel} ${kind}.`
             : "Replenishes ammunition on a successful check.";
         outcomeHints.push({ text, type: "success" });

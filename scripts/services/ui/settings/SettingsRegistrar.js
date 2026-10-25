@@ -23,9 +23,9 @@ import { MODULE_ID } from "../../../data/moduleId.js";
 export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.registerMenu(MODULE_ID, "eventBrowser", {
-        name: "Event Pool",
-        label: "Curate Event Pool",
-        hint: "Browse, import, and enable night events.",
+        name: "ionrift-respite.menus.eventBrowser.name",
+        label: "ionrift-respite.menus.eventBrowser.label",
+        hint: "ionrift-respite.menus.eventBrowser.hint",
         icon: "fas fa-book-open",
         type: EventBrowserApp,
         restricted: true
@@ -41,36 +41,36 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.registerMenu(MODULE_ID, "dietConfigMenu", {
-        name: "Food & Diet",
-        label: "Configure Food & Diet",
-        hint: "Meal tracking, homebrew rules, and diets.",
+        name: "ionrift-respite.menus.dietConfigMenu.name",
+        label: "ionrift-respite.menus.dietConfigMenu.label",
+        hint: "ionrift-respite.menus.dietConfigMenu.hint",
         icon: "fas fa-utensils",
         type: DietConfigApp,
         restricted: true
     });
 
     game.settings.registerMenu(MODULE_ID, "itemProvisionsConfig", {
-        name: "Item Provisions",
-        label: "Configure Item Provisions",
-        hint: "Audit world overrides, configure food spoilage, diet tags, and drink classifications.",
+        name: "ionrift-respite.menus.itemProvisionsConfig.name",
+        label: "ionrift-respite.menus.itemProvisionsConfig.label",
+        hint: "ionrift-respite.menus.itemProvisionsConfig.hint",
         icon: "fas fa-carrot",
         type: ItemProvisionsApp,
         restricted: true
     });
 
     game.settings.registerMenu(MODULE_ID, "activityConfig", {
-        name: "Travel & Activities",
-        label: "Configure Travel & Activities",
-        hint: "Travel phase and camp activity toggles",
+        name: "ionrift-respite.menus.activityConfig.name",
+        label: "ionrift-respite.menus.activityConfig.label",
+        hint: "ionrift-respite.menus.activityConfig.hint",
         icon: "fas fa-campground",
         type: ActivityConfigApp,
         restricted: true
     });
 
     game.settings.registerMenu(MODULE_ID, "recipeEditor", {
-        name: "Custom Recipes",
-        label: "Edit Custom Recipes",
-        hint: "Homebrew recipes by profession. (Ingredient names must match Respite Custom or Respite Items)",
+        name: "ionrift-respite.menus.recipeEditor.name",
+        label: "ionrift-respite.menus.recipeEditor.label",
+        hint: "ionrift-respite.menus.recipeEditor.hint",
         icon: "fas fa-mortar-pestle",
         type: RecipeEditorApp,
         restricted: true
@@ -88,40 +88,40 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.registerMenu(MODULE_ID, "recoveryConfig", {
-        name: "Recovery Rules",
-        label: "Configure Recovery",
-        hint: "Armor sleep rules, spell recovery, Song of Rest, and Hit Dice options.",
+        name: "ionrift-respite.menus.recoveryConfig.name",
+        label: "ionrift-respite.menus.recoveryConfig.label",
+        hint: "ionrift-respite.menus.recoveryConfig.hint",
         icon: "fas fa-heart-pulse",
         type: RecoveryConfigApp,
         restricted: true
     });
 
     game.settings.registerMenu(MODULE_ID, "playerRestrictions", {
-        name: "Player Restrictions",
-        label: "Configure Restrictions",
-        hint: "Rest interception, quantity locks, and attunement limits.",
+        name: "ionrift-respite.menus.playerRestrictions.name",
+        label: "ionrift-respite.menus.playerRestrictions.label",
+        hint: "ionrift-respite.menus.playerRestrictions.hint",
         icon: "fas fa-user-lock",
         type: PlayerRestrictionsApp,
         restricted: true
     });
 
     game.settings.register(MODULE_ID, "restInterfaceMode", {
-        name: "Rest Interface Mode",
-        hint: "One window: full rest in a UI panel. Camp stations: place camp pieces on the scene.",
+        name: "ionrift-respite.settings.restInterfaceMode.name",
+        hint: "ionrift-respite.settings.restInterfaceMode.hint",
         scope: "world",
         config: true,
         type: String,
         default: "theater",
         choices: {
-            theater: "One window",
-            stations: "Camp stations"
+            theater: "ionrift-respite.settings.restInterfaceMode.choices.theater",
+            stations: "ionrift-respite.settings.restInterfaceMode.choices.stations"
         },
         restricted: true
     });
 
     game.settings.register(MODULE_ID, "interceptRests", {
-        name: "Intercept Player Rests",
-        hint: "Block default Short/Long Rest buttons. Players use the Respite flow instead.",
+        name: "ionrift-respite.settings.interceptRests.name",
+        hint: "ionrift-respite.settings.interceptRests.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -130,8 +130,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "armorDoffRule", {
-        name: "Armor Sleep Penalties",
-        hint: "Medium/heavy armor: fewer Hit Dice recovered & no exhaustion reduction (Xanathar's).",
+        name: "ionrift-respite.settings.armorDoffRule.name",
+        hint: "ionrift-respite.settings.armorDoffRule.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -140,8 +140,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableComfort", {
-        name: "Comfort Rules (Homebrew)",
-        hint: "Terrain comfort, fire, and gear recovery. Off: no comfort penalties, fire phase, or terrain exhaustion saves.",
+        name: "ionrift-respite.settings.enableComfort.name",
+        hint: "ionrift-respite.settings.enableComfort.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -151,8 +151,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableCampfireMinigame", {
-        name: "Campfire Minigame",
-        hint: "Use the campfire minigame for lighting and fire intensity instead of tier buttons.",
+        name: "ionrift-respite.settings.enableCampfireMinigame.name",
+        hint: "ionrift-respite.settings.enableCampfireMinigame.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -161,8 +161,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableWorkbenchIdentify", {
-        name: "Identify and Potion Tasting",
-        hint: "Allow Identify, focus, and potion tasting during rests.",
+        name: "ionrift-respite.settings.enableWorkbenchIdentify.name",
+        hint: "ionrift-respite.settings.enableWorkbenchIdentify.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -171,8 +171,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "spellRecoveryMaxLevel", {
-        name: "Spell Recovery Max Level",
-        hint: "Highest slot level for Arcane/Natural Recovery (2014 default: 5).",
+        name: "ionrift-respite.settings.spellRecoveryMaxLevel.name",
+        hint: "ionrift-respite.settings.spellRecoveryMaxLevel.hint",
         scope: "world",
         config: false,
         type: Number,
@@ -182,22 +182,22 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "songOfRestTiming", {
-        name: "Song of Rest Timing",
-        hint: "When the Song of Rest bonus die is rolled on a short rest.",
+        name: "ionrift-respite.settings.songOfRestTiming.name",
+        hint: "ionrift-respite.settings.songOfRestTiming.hint",
         scope: "world",
         config: false,
         type: String,
         default: "endOfRest",
         choices: {
-            endOfRest: "End of short rest",
-            withFirstHitDie: "With first Hit Die",
+            endOfRest: "ionrift-respite.settings.songOfRestTiming.choices.endOfRest",
+            withFirstHitDie: "ionrift-respite.settings.songOfRestTiming.choices.withFirstHitDie",
         },
         restricted: true,
     });
 
     game.settings.register(MODULE_ID, "maxValueHitDice", {
-        name: "Short Rest: Max Hit Dice (Homebrew)",
-        hint: "Short rest Hit Dice heal for maximum + CON instead of rolling.",
+        name: "ionrift-respite.settings.maxValueHitDice.name",
+        hint: "ionrift-respite.settings.maxValueHitDice.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -206,16 +206,16 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "shortRestFireWarmth", {
-        name: "Campfire Warmth",
-        hint: "When enabled, an overnight rest uses the campfire. A Warm Camp expends 1 fuel and provides 'warmth healing' when spending Hit Dice.",
+        name: "ionrift-respite.settings.shortRestFireWarmth.name",
+        hint: "ionrift-respite.settings.shortRestFireWarmth.hint",
         scope: "world",
         config: false,
         type: String,
         default: "none",
         choices: {
-            none: "Disabled (No campfire requirement)",
-            "1": "+1 Hit Point per Hit Die",
-            "1d4": "+1d4 Hit Points per Hit Die"
+            none: "ionrift-respite.settings.shortRestFireWarmth.choices.none",
+            "1": "ionrift-respite.settings.shortRestFireWarmth.choices.n1",
+            "1d4": "ionrift-respite.settings.shortRestFireWarmth.choices.n1d4"
         },
         restricted: true,
         onChange: () => {
@@ -228,8 +228,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "maxWaterPerDayCap", {
-        name: "Max Water Cap",
-        hint: "Maximum pints required per day across all conditions and terrain.",
+        name: "ionrift-respite.settings.maxWaterPerDayCap.name",
+        hint: "ionrift-respite.settings.maxWaterPerDayCap.hint",
         scope: "world",
         config: false,
         type: Number,
@@ -238,8 +238,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "maxFoodPerDayCap", {
-        name: "Max Food Cap",
-        hint: "Maximum food units required per day across all conditions and terrain.",
+        name: "ionrift-respite.settings.maxFoodPerDayCap.name",
+        hint: "ionrift-respite.settings.maxFoodPerDayCap.hint",
         scope: "world",
         config: false,
         type: Number,
@@ -248,8 +248,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableTraining", {
-        name: "Training Activity (legacy)",
-        hint: "Legacy toggle. Migrated to trainingXpTier on first load.",
+        name: "ionrift-respite.settings.enableTraining.name",
+        hint: "ionrift-respite.settings.enableTraining.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -258,8 +258,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "trainingXpTier", {
-        name: "Training XP Tier",
-        hint: "0 off. 1-5: fail/pass XP per set (3/10 to 10/50).",
+        name: "ionrift-respite.settings.trainingXpTier.name",
+        hint: "ionrift-respite.settings.trainingXpTier.hint",
         scope: "world",
         config: false,
         type: Number,
@@ -275,8 +275,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableProfessions", {
-        name: "Crafting Professions",
-        hint: "Show cooking and crafting during rest.",
+        name: "ionrift-respite.settings.enableProfessions.name",
+        hint: "ionrift-respite.settings.enableProfessions.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -285,8 +285,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableBrewingAlcohol", {
-        name: "Alcoholic drinks",
-        hint: "Wine, mead, and draught recipes.",
+        name: "ionrift-respite.settings.enableBrewingAlcohol.name",
+        hint: "ionrift-respite.settings.enableBrewingAlcohol.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -299,8 +299,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "chefTreatCookingOnly", {
-        name: "Chef Treats Only (RAW)",
-        hint: "No camp meals; Chef Bolstering Treats only.",
+        name: "ionrift-respite.settings.chefTreatCookingOnly.name",
+        hint: "ionrift-respite.settings.chefTreatCookingOnly.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -314,8 +314,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "chefTreatsProvideSustenance", {
-        name: "Chef Treats Provide Sustenance",
-        hint: "Whether Chef treats and replenishing meals satisfy a character's daily food requirement during rest.",
+        name: "ionrift-respite.settings.chefTreatsProvideSustenance.name",
+        hint: "ionrift-respite.settings.chefTreatsProvideSustenance.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -324,8 +324,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableFletching", {
-        name: "Fletching Activity (legacy)",
-        hint: "Legacy toggle. Migrated to fletchingYieldTier on first load.",
+        name: "ionrift-respite.settings.enableFletching.name",
+        hint: "ionrift-respite.settings.enableFletching.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -334,8 +334,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "fletchingYieldTier", {
-        name: "Fletching Yield Tier",
-        hint: "0 off. 1-5: success yield dice (2d4+prof to 2d20+prof).",
+        name: "ionrift-respite.settings.fletchingYieldTier.name",
+        hint: "ionrift-respite.settings.fletchingYieldTier.hint",
         scope: "world",
         config: false,
         type: Number,
@@ -351,8 +351,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableEncounters", {
-        name: "Night Encounters (Homebrew)",
-        hint: "Night check, Keep Watch, and camp defenses. Off: night passes with no check.",
+        name: "ionrift-respite.settings.enableEncounters.name",
+        hint: "ionrift-respite.settings.enableEncounters.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -361,8 +361,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableCopySpell", {
-        name: "Copy Spell Activity",
-        hint: "Show 'Copy Spell' on long rests for wizards with a spellbook.",
+        name: "ionrift-respite.settings.enableCopySpell.name",
+        hint: "ionrift-respite.settings.enableCopySpell.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -371,8 +371,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enablePrayMeditate", {
-        name: "Pray / Meditate Activity",
-        hint: "Religion or Insight for temp HP",
+        name: "ionrift-respite.settings.enablePrayMeditate.name",
+        hint: "ionrift-respite.settings.enablePrayMeditate.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -381,8 +381,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableForaging", {
-        name: "Travel Foraging",
-        hint: "Allow foraging on travel days.",
+        name: "ionrift-respite.settings.enableForaging.name",
+        hint: "ionrift-respite.settings.enableForaging.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -391,8 +391,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableHunting", {
-        name: "Travel Hunting",
-        hint: "Allow hunting on travel days.",
+        name: "ionrift-respite.settings.enableHunting.name",
+        hint: "ionrift-respite.settings.enableHunting.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -401,8 +401,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "campFuelFindChance", {
-        name: "Camp Fuel Find Chance",
-        hint: "Percent chance a successful forage also grants kindling. 0 disables.",
+        name: "ionrift-respite.settings.campFuelFindChance.name",
+        hint: "ionrift-respite.settings.campFuelFindChance.hint",
         scope: "world",
         config: false,
         type: Number,
@@ -416,8 +416,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "homebrewProvisionOnly", {
-        name: "Homebrew Provisions Only",
-        hint: "Cooking, forage, and hunt use custom recipes and Respite Custom only.",
+        name: "ionrift-respite.settings.homebrewProvisionOnly.name",
+        hint: "ionrift-respite.settings.homebrewProvisionOnly.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -441,8 +441,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "useTravel", {
-        name: "Use Travel",
-        hint: "Include the travel phase on long rests. Off skips to camp.",
+        name: "ionrift-respite.settings.useTravel.name",
+        hint: "ionrift-respite.settings.useTravel.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -470,8 +470,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     // Default off so a fresh world matches the Standard Quick Setup profile;
     // the Survival profile turns meal tracking on.
     game.settings.register(MODULE_ID, "trackFood", {
-        name: "Track Food & Water",
-        hint: "Show the Meal phase on long rests (rations, water, starvation).",
+        name: "ionrift-respite.settings.trackFood.name",
+        hint: "ionrift-respite.settings.trackFood.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -482,8 +482,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     // Default off so a fresh world matches the Standard Quick Setup profile;
     // the Survival profile turns this leniency on alongside meal tracking.
     game.settings.register(MODULE_ID, "partialSustenance", {
-        name: "Partial Sustenance (House Rule)",
-        hint: "Partial food/water in harsh terrains still helps (CON bonus). Off for strict RAW.",
+        name: "ionrift-respite.settings.partialSustenance.name",
+        hint: "ionrift-respite.settings.partialSustenance.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -493,8 +493,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     // Surfaced in the Food & Diet dialog (DietConfigApp), not the native panel.
     game.settings.register(MODULE_ID, "spoilageNameSuffix", {
-        name: "Spoilage Name Suffixes",
-        hint: "Append freshness to perishable names on grant (e.g. Bird Eggs (3d)) so stacks stay separate.",
+        name: "ionrift-respite.settings.spoilageNameSuffix.name",
+        hint: "ionrift-respite.settings.spoilageNameSuffix.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -503,8 +503,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "lockPlayerQuantity", {
-        name: "Lock Player Quantity Controls",
-        hint: "Players cannot change item quantities. GM still can.",
+        name: "ionrift-respite.settings.lockPlayerQuantity.name",
+        hint: "ionrift-respite.settings.lockPlayerQuantity.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -513,8 +513,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "lockAttuneOutsideRest", {
-        name: "Lock Attunement to Rest",
-        hint: "Players may only attune or unattune during a rest.",
+        name: "ionrift-respite.settings.lockAttuneOutsideRest.name",
+        hint: "ionrift-respite.settings.lockAttuneOutsideRest.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -531,8 +531,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "campfireTokenName", {
-        name: "Campfire Token Name",
-        hint: "Scene token name linked to campfire light. Case-insensitive.",
+        name: "ionrift-respite.settings.campfireTokenName.name",
+        hint: "ionrift-respite.settings.campfireTokenName.hint",
         scope: "world",
         config: false,
         type: String,
@@ -541,8 +541,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "torchTokenName", {
-        name: "Perimeter Torch Token Name",
-        hint: "Scene token name for perimeter torches. All matches toggle together.",
+        name: "ionrift-respite.settings.torchTokenName.name",
+        hint: "ionrift-respite.settings.torchTokenName.hint",
         scope: "world",
         config: false,
         type: String,
@@ -551,8 +551,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "torchAutoLink", {
-        name: "Auto-Link Torches to Campfire",
-        hint: "Perimeter torches light and extinguish with the campfire.",
+        name: "ionrift-respite.settings.torchAutoLink.name",
+        hint: "ionrift-respite.settings.torchAutoLink.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -561,8 +561,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "customFoodNames", {
-        name: "Custom Food Items",
-        hint: "Extra food names for the meal phase, comma-separated (e.g. scrap metal, goodberries).",
+        name: "ionrift-respite.settings.customFoodNames.name",
+        hint: "ionrift-respite.settings.customFoodNames.hint",
         scope: "world",
         config: false,
         type: String,
@@ -571,8 +571,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "customWaterNames", {
-        name: "Custom Water Items",
-        hint: "Extra water names for the meal phase, comma-separated (e.g. oil, wine, ale).",
+        name: "ionrift-respite.settings.customWaterNames.name",
+        hint: "ionrift-respite.settings.customWaterNames.hint",
         scope: "world",
         config: false,
         type: String,
@@ -708,8 +708,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     // Parked. Kept registered so existing worlds still load. Not shown in settings.
     game.settings.register(MODULE_ID, "ambientAfkHud", {
-        name: "Ambient AFK HUD",
-        hint: "Parked. AFK strip hidden until this HUD is revised.",
+        name: "ionrift-respite.settings.ambientAfkHud.name",
+        hint: "ionrift-respite.settings.ambientAfkHud.hint",
         scope: "world",
         config: false,
         type: Boolean,
@@ -719,8 +719,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "hideTerrainBanners", {
-        name: "Hide Terrain Banners",
-        hint: "Hide the terrain artwork banner at the top of rest windows for a more compact view.",
+        name: "ionrift-respite.settings.hideTerrainBanners.name",
+        hint: "ionrift-respite.settings.hideTerrainBanners.hint",
         scope: "world",
         config: true,
         type: Boolean,
@@ -736,14 +736,14 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "uiTheme", {
-        name: "UI Theme",
-        hint: "Choose between Ionrift Glass (translucent frosted glass) or Gilded Slate (opaque panel).",
+        name: "ionrift-respite.settings.uiTheme.name",
+        hint: "ionrift-respite.settings.uiTheme.hint",
         scope: "client",
         config: false,
         type: String,
         choices: {
-            "glass": "Ionrift Glass (Translucent)",
-            "cockpit": "Gilded Slate (Overhaul)"
+            "glass": "ionrift-respite.settings.uiTheme.choices.glass",
+            "cockpit": "ionrift-respite.settings.uiTheme.choices.cockpit"
         },
         default: "glass",
         onChange: (theme) => {
@@ -764,7 +764,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "afkPanelLayout", {
-        name: "AFK panel layout",
+        name: "ionrift-respite.settings.afkPanelLayout.name",
         scope: "client",
         config: false,
         type: Object,
@@ -772,8 +772,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "debug", {
-        name: "Debug Mode",
-        hint: "Enable verbose logging for rest flow.",
+        name: "ionrift-respite.settings.debug.name",
+        hint: "ionrift-respite.settings.debug.hint",
         scope: "client",
         config: false,
         type: Boolean,
@@ -782,9 +782,9 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.registerMenu(MODULE_ID, "clearRestState", {
-        name: "Reset Rest State",
-        label: "Reset Rest State",
-        hint: "Clear stuck rest locks, remove camp tokens on the active scene, and reload clients.",
+        name: "ionrift-respite.menus.clearRestState.name",
+        label: "ionrift-respite.menus.clearRestState.label",
+        hint: "ionrift-respite.menus.clearRestState.hint",
         icon: "fas fa-broom",
         type: class ClearRestStateApp extends FormApplication {
             async _updateObject() {
@@ -792,8 +792,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
             }
             async render() {
                 const proceed = await Dialog.confirm({
-                    title: "Reset Rest State",
-                    content: "<p>Clears rest locks and in-progress rest state, removes camp tokens on the active scene, and reloads all clients.</p>",
+                    title: game.i18n.localize("ionrift-respite.menus.clearRestState.dialogTitle"),
+                    content: game.i18n.localize("ionrift-respite.menus.clearRestState.dialogContent"),
                     yes: () => true,
                     no: () => false,
                     defaultYes: false
@@ -822,127 +822,231 @@ export function registerItemEnrichments() {
     game.ionrift?.library?.enrichment?.registerBatch({
 
         "bedroll": {
-            html: comfortOn
-                ? `<hr><p><strong>Respite:</strong> A character carrying a bedroll recovers <strong>+1 Hit Die</strong> during a long rest, regardless of camp comfort level. This bonus stacks with normal HD recovery.</p>`
-                : `<hr><p><strong>Respite:</strong> Bedroll tracked for rest flavour. <em>Comfort rules disabled. No HD bonus applied.</em></p>`,
-            tags: comfortOn ? ["+1 HD Recovery"] : ["Comfort Off"]
+            get html() {
+                return comfortOn
+                ? game.i18n.localize("ionrift-respite.enrichment.bedroll.htmlComfortOn")
+                : game.i18n.localize("ionrift-respite.enrichment.bedroll.htmlComfortOff");
+            },
+            get tags() {
+                return comfortOn ? [game.i18n.localize("ionrift-respite.enrichment.tags.plusOneHdRecovery")] : [game.i18n.localize("ionrift-respite.enrichment.tags.comfortOff")];
+            }
         },
 
         "two-person tent": {
-            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects.</p>`,
-            tags: ["Shelter", "Weather Protection"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.tent.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.shelter"), game.i18n.localize("ionrift-respite.enrichment.tags.weatherProtection")];
+            }
         },
         "tent, two-person": {
-            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects.</p>`,
-            tags: ["Shelter", "Weather Protection"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.tent.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.shelter"), game.i18n.localize("ionrift-respite.enrichment.tags.weatherProtection")];
+            }
         },
         "pavilion": {
-            html: `<hr><p><strong>Respite:</strong> A large pavilion tent provides <strong>Shelter</strong> during rest. Provides full weather protection and significantly reduces the encounter DC.</p>`,
-            tags: ["Shelter", "Full Weather Protection"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.pavilion.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.shelter"), game.i18n.localize("ionrift-respite.enrichment.tags.fullWeatherProtection")];
+            }
         },
         "tent": {
-            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects.</p>`,
-            tags: ["Shelter", "Weather Protection"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.tent.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.shelter"), game.i18n.localize("ionrift-respite.enrichment.tags.weatherProtection")];
+            }
         },
 
         "mess kit": {
-            html: comfortOn
-                ? `<hr><p><strong>Respite:</strong> A character carrying a mess kit gains <strong>advantage on the exhaustion save</strong> during rest, but only when the campfire is lit. Without a fire, the mess kit provides no mechanical benefit. Functions identically to Cook's Utensils for this purpose.</p>`
-                : `<hr><p><strong>Respite:</strong> Mess kit tracked for rest flavour. <em>Comfort rules disabled. No exhaustion advantage applied.</em></p>`,
-            tags: comfortOn ? ["Exhaustion Advantage (with fire)"] : ["Comfort Off"]
+            get html() {
+                return comfortOn
+                ? game.i18n.localize("ionrift-respite.enrichment.messKit.htmlComfortOn")
+                : game.i18n.localize("ionrift-respite.enrichment.messKit.htmlComfortOff");
+            },
+            get tags() {
+                return comfortOn ? [game.i18n.localize("ionrift-respite.enrichment.tags.exhaustionAdvantageWithFire")] : [game.i18n.localize("ionrift-respite.enrichment.tags.comfortOff")];
+            }
         },
 
         "cook's utensils": {
-            html: comfortOn
-                ? `<hr><p><strong>Respite:</strong> A character carrying Cook's Utensils gains <strong>advantage on the exhaustion save</strong> during rest when the campfire is lit. Also qualifies for the <strong>Cooking</strong> crafting profession, allowing the character to prepare meals that grant temporary buffs.</p>`
-                : `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Cooking</strong> crafting profession during rest. <em>Comfort rules disabled. No exhaustion advantage applied.</em></p>`,
-            tags: comfortOn ? ["Exhaustion Advantage (with fire)", "Cooking Profession"] : ["Cooking Profession", "Comfort Off"]
+            get html() {
+                return comfortOn
+                ? game.i18n.localize("ionrift-respite.enrichment.cooksUtensils.htmlComfortOn")
+                : game.i18n.localize("ionrift-respite.enrichment.cooksUtensils.htmlComfortOff");
+            },
+            get tags() {
+                return comfortOn ? [game.i18n.localize("ionrift-respite.enrichment.tags.exhaustionAdvantageWithFire"), game.i18n.localize("ionrift-respite.enrichment.tags.cookingProfession")] : [game.i18n.localize("ionrift-respite.enrichment.tags.cookingProfession"), game.i18n.localize("ionrift-respite.enrichment.tags.comfortOff")];
+            }
         },
 
         "rations": {
-            html: `<hr><p><strong>Respite:</strong> Consumed during the <strong>Meal Phase</strong> of a long rest. Each character requires 1 ration per day (some terrains require 2). Characters who go without food risk exhaustion after their grace period expires. Rations are automatically decremented during the rest flow.</p>`,
-            tags: ["Meal Phase (1/day)"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.rations.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.mealPhaseOncePerDay")];
+            }
         },
         "rations (1 day)": {
-            html: `<hr><p><strong>Respite:</strong> Consumed during the <strong>Meal Phase</strong> of a long rest. Each character requires 1 ration per day (some terrains require 2). Characters who go without food risk exhaustion after their grace period expires. Rations are automatically decremented during the rest flow.</p>`,
-            tags: ["Meal Phase (1/day)"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.rations.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.mealPhaseOncePerDay")];
+            }
         },
 
         "waterskin": {
-            html: `<hr><p><strong>Respite:</strong> Used during the <strong>Meal Phase</strong> of a long rest. Each remaining use is <strong>1 pint</strong>. A full waterskin holds 4. A character needs <strong>8 pints</strong> a day (1 gallon); desert needs <strong>16</strong>. Half that amount calls for a <strong>DC 15 Constitution save</strong>. Less than half is exhaustion, with no save. The rest spends those uses and leaves the waterskin on the sheet.</p>`,
-            tags: ["8 pints/day", "Dehydration Tracking"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.waterskin.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.eightPintsPerDay"), game.i18n.localize("ionrift-respite.enrichment.tags.dehydrationTracking")];
+            }
         },
 
         "herbalism kit": {
-            html: `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Herbalism</strong> crafting profession during rest. Characters proficient with this kit can gather and prepare herbal remedies, antidotes, and poultices during the Activity phase.</p>`,
-            tags: ["Herbalism Profession"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.herbalismKit.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.herbalismProfession")];
+            }
         },
 
         "healer's kit": {
-            html: `<hr><p><strong>Respite:</strong> Used during the <strong>Tend Wounds</strong> activity. Grants advantage on the Medicine check and adds 1d4 to the healing roll (1 charge spent). Characters with the <strong>Healer</strong> feat use the feat formula (1d6 + 4 + target level) instead.</p>`,
-            tags: ["Tend Wounds Activity"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.healersKit.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.tendWoundsActivity")];
+            }
         },
 
         "alchemist's supplies": {
-            html: `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Alchemy</strong> crafting profession during rest. Characters proficient with these supplies can brew potions and concoctions during the Activity phase.</p>`,
-            tags: ["Alchemy Profession"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.alchemistsSupplies.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.alchemyProfession")];
+            }
         },
 
         "tinker's tools": {
-            html: `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Tinkering</strong> crafting profession during rest. Characters proficient with these tools can repair gear or craft small mechanical devices during the Activity phase.</p>`,
-            tags: ["Tinkering Profession"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.tinkersTools.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.tinkeringProfession")];
+            }
         },
 
         "tinderbox": {
-            html: comfortOn
-                ? `<hr><p><strong>Respite:</strong> Required to <strong>light the campfire</strong> during the Camp phase. Without a tinderbox (or equivalent), the party cannot start a fire, losing access to cooking, warmth bonuses, and campfire-dependent activities. One tinderbox serves the whole party.</p>`
-                : `<hr><p><strong>Respite:</strong> Tinderbox tracked for rest flavour. <em>Comfort rules disabled. Fire phase is bypassed.</em></p>`,
-            tags: comfortOn ? ["Campfire (required)"] : ["Comfort Off"]
+            get html() {
+                return comfortOn
+                ? game.i18n.localize("ionrift-respite.enrichment.tinderbox.htmlComfortOn")
+                : game.i18n.localize("ionrift-respite.enrichment.tinderbox.htmlComfortOff");
+            },
+            get tags() {
+                return comfortOn ? [game.i18n.localize("ionrift-respite.enrichment.tags.campfireRequired")] : [game.i18n.localize("ionrift-respite.enrichment.tags.comfortOff")];
+            }
         },
 
         "fresh meat": {
-            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (1 day).</strong> Raw game meat from hunting. Spoils after 1 rest if not cooked or preserved. Used as a cooking ingredient for recipes that call for meat. Cooking transforms it into a meal that feeds the party and may grant temporary buffs.</p>`,
-            tags: ["Perishable (1 day)", "Cooking Ingredient"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.freshMeat.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.perishableOneDay"), game.i18n.localize("ionrift-respite.enrichment.tags.cookingIngredient")];
+            }
         },
         "fresh fish": {
-            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (1 day).</strong> Caught fresh from rivers or marshland. Spoils after 1 rest if not cooked. Used as a cooking ingredient for fish-based recipes.</p>`,
-            tags: ["Perishable (1 day)", "Cooking Ingredient"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.freshFish.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.perishableOneDay"), game.i18n.localize("ionrift-respite.enrichment.tags.cookingIngredient")];
+            }
         },
         "choice cut": {
-            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (1 day).</strong> A prime cut from an exceptional hunt. Spoils after 1 rest but produces superior meals when cooked. Higher-quality recipes may require choice cuts specifically.</p>`,
-            tags: ["Perishable (1 day)", "Premium Ingredient"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.choiceCut.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.perishableOneDay"), game.i18n.localize("ionrift-respite.enrichment.tags.premiumIngredient")];
+            }
         },
         "wild berries": {
-            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Foraged fruit. Can be eaten raw or used as a cooking ingredient. Spoils after 3 rests. Recipes using berries tend to produce preserves that last longer.</p>`,
-            tags: ["Perishable (3 days)", "Edible Raw", "Cooking Ingredient"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.wildBerries.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.perishableThreeDay"), game.i18n.localize("ionrift-respite.enrichment.tags.edibleRaw"), game.i18n.localize("ionrift-respite.enrichment.tags.cookingIngredient")];
+            }
         },
         "edible berries": {
-            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Foraged fruit. Can be eaten raw or used as a cooking ingredient. Spoils after 3 rests.</p>`,
-            tags: ["Perishable (3 days)", "Edible Raw", "Cooking Ingredient"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.edibleBerries.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.perishableThreeDay"), game.i18n.localize("ionrift-respite.enrichment.tags.edibleRaw"), game.i18n.localize("ionrift-respite.enrichment.tags.cookingIngredient")];
+            }
         },
         "edible mushrooms": {
-            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Foraged fungi. Can be eaten raw (with some risk) or used in cooking. Spoils after 3 rests.</p>`,
-            tags: ["Perishable (3 days)", "Cooking Ingredient"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.edibleMushrooms.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.perishableThreeDay"), game.i18n.localize("ionrift-respite.enrichment.tags.cookingIngredient")];
+            }
         },
         "wild herbs": {
-            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Aromatic herbs foraged in the wild. Essential cooking ingredient for many recipes. Also used in herbalism. Spoils after 3 rests.</p>`,
-            tags: ["Perishable (3 days)", "Cooking Ingredient", "Herbalism Ingredient"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.wildHerbs.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.perishableThreeDay"), game.i18n.localize("ionrift-respite.enrichment.tags.cookingIngredient"), game.i18n.localize("ionrift-respite.enrichment.tags.herbalismIngredient")];
+            }
         },
         "healing herbs": {
-            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Medicinal herbs foraged in the wild. Used in herbalism recipes and some advanced cooking. Spoils after 3 rests.</p>`,
-            tags: ["Perishable (3 days)", "Herbalism Ingredient"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.healingHerbs.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.perishableThreeDay"), game.i18n.localize("ionrift-respite.enrichment.tags.herbalismIngredient")];
+            }
         },
         "spiced jerky": {
-            html: `<hr><p><strong>Respite:</strong> Dried, seasoned meat strips. <strong>Shelf-stable</strong> (does not spoil). Equivalent to rations for the Meal Phase. A cooking output that preserves meat for long journeys.</p>`,
-            tags: ["Shelf-stable", "Meal Phase (1/day)"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.spicedJerky.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.shelfStable"), game.i18n.localize("ionrift-respite.enrichment.tags.mealPhaseOncePerDay")];
+            }
         },
         "smoked fish": {
-            html: `<hr><p><strong>Respite:</strong> Cured fish. <strong>Shelf-stable</strong> (does not spoil). Equivalent to rations for the Meal Phase. A cooking output that preserves fish for travel.</p>`,
-            tags: ["Shelf-stable", "Meal Phase (1/day)"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.smokedFish.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.shelfStable"), game.i18n.localize("ionrift-respite.enrichment.tags.mealPhaseOncePerDay")];
+            }
         },
         "bird eggs": {
-            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (1 day).</strong> Foraged or gathered from nests. Fragile and quick to spoil. Used as a cooking ingredient.</p>`,
-            tags: ["Perishable (1 day)", "Cooking Ingredient"]
+            get html() {
+                return game.i18n.localize("ionrift-respite.enrichment.birdEggs.html");
+            },
+            get tags() {
+                return [game.i18n.localize("ionrift-respite.enrichment.tags.perishableOneDay"), game.i18n.localize("ionrift-respite.enrichment.tags.cookingIngredient")];
+            }
         }
     });
 }

@@ -28,33 +28,34 @@ const PLAYER_KEYS = [
 
 const PROFILE_KEYS = [...COMPLEXITY_KEYS, ...PLAYER_KEYS];
 
+// Getters: registered at init and read at render, after translations load.
 const KEY_LABELS = {
-    enableComfort: "Comfort rules",
-    enableCampfireMinigame: "Campfire minigame (TotM)",
-    enableProfessions: "Crafting professions",
-    trainingXpTier: "Training activity",
-    fletchingYieldTier: "Fletching yield",
-    enableEncounters: "Night encounters & watch",
-    enableCopySpell: "Copy Spell activity",
-    enablePrayMeditate: "Pray / Meditate activity",
-    enableWorkbenchIdentify: "Identify and potion tasting",
-    enableForaging: "Foraging activity",
-    enableHunting: "Hunting activity",
-    useTravel: "Use travel",
-    trackFood: "Meal tracking",
-    partialSustenance: "Partial sustenance",
-    armorDoffRule: "Armor sleep penalties",
-    interceptRests: "Intercept player rests",
-    lockAttuneOutsideRest: "Lock attunement to rest",
-    lockPlayerQuantity: "Lock player quantities"
+    get enableComfort() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.enableComfort"); },
+    get enableCampfireMinigame() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.enableCampfireMinigame"); },
+    get enableProfessions() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.enableProfessions"); },
+    get trainingXpTier() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.trainingXpTier"); },
+    get fletchingYieldTier() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.fletchingYieldTier"); },
+    get enableEncounters() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.enableEncounters"); },
+    get enableCopySpell() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.enableCopySpell"); },
+    get enablePrayMeditate() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.enablePrayMeditate"); },
+    get enableWorkbenchIdentify() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.enableWorkbenchIdentify"); },
+    get enableForaging() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.enableForaging"); },
+    get enableHunting() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.enableHunting"); },
+    get useTravel() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.useTravel"); },
+    get trackFood() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.trackFood"); },
+    get partialSustenance() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.partialSustenance"); },
+    get armorDoffRule() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.armorDoffRule"); },
+    get interceptRests() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.interceptRests"); },
+    get lockAttuneOutsideRest() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.lockAttuneOutsideRest"); },
+    get lockPlayerQuantity() { return game.i18n.localize("ionrift-respite.settingsPanel.keyLabels.lockPlayerQuantity"); }
 };
 
 const PROFILES = [
     {
         id: "simple",
-        label: "Simple",
+        get label() { return game.i18n.localize("ionrift-respite.settingsPanel.profiles.simple.label"); },
         icon: "fas fa-feather",
-        desc: "Bare-bones rest. No comfort, professions, food, encounters, or extra activities.",
+        get desc() { return game.i18n.localize("ionrift-respite.settingsPanel.profiles.simple.desc"); },
         values: {
             enableComfort: false,
             enableCampfireMinigame: false,
@@ -78,9 +79,9 @@ const PROFILES = [
     },
     {
         id: "standard",
-        label: "Standard",
+        get label() { return game.i18n.localize("ionrift-respite.settingsPanel.profiles.standard.label"); },
         icon: "fas fa-campground",
-        desc: "Full camp: professions, fletching, and night encounters. No comfort tiers or food.",
+        get desc() { return game.i18n.localize("ionrift-respite.settingsPanel.profiles.standard.desc"); },
         values: {
             enableComfort: false,
             enableCampfireMinigame: true,
@@ -104,9 +105,9 @@ const PROFILES = [
     },
     {
         id: "survival",
-        label: "Survival",
+        get label() { return game.i18n.localize("ionrift-respite.settingsPanel.profiles.survival.label"); },
         icon: "fas fa-mountain-sun",
-        desc: "Standard plus comfort tiers, food, and water. Strict rations, locked quantities.",
+        get desc() { return game.i18n.localize("ionrift-respite.settingsPanel.profiles.survival.desc"); },
         values: {
             enableComfort: true,
             enableCampfireMinigame: true,
@@ -131,11 +132,11 @@ const PROFILES = [
 ];
 
 const GROUPS = [
-    { title: "Start here", icon: "fas fa-flag", keys: ["restInterfaceMode", "eventBrowser"] },
-    { title: "Rules & activities", icon: "fas fa-scroll", keys: ["recoveryConfig", "activityConfig", "dietConfigMenu"] },
-    { title: "Players", icon: "fas fa-users", keys: ["playerRestrictions"] },
-    { title: "Display", icon: "fas fa-eye", keys: ["hideTerrainBanners"] },
-    { title: "Tools", icon: "fas fa-wrench", keys: ["clearRestState"] }
+    { get title() { return game.i18n.localize("ionrift-respite.settingsPanel.groups.startHere"); }, icon: "fas fa-flag", keys: ["restInterfaceMode", "eventBrowser"] },
+    { get title() { return game.i18n.localize("ionrift-respite.settingsPanel.groups.rulesActivities"); }, icon: "fas fa-scroll", keys: ["recoveryConfig", "activityConfig", "dietConfigMenu"] },
+    { get title() { return game.i18n.localize("ionrift-respite.settingsPanel.groups.players"); }, icon: "fas fa-users", keys: ["playerRestrictions"] },
+    { get title() { return game.i18n.localize("ionrift-respite.settingsPanel.groups.display"); }, icon: "fas fa-eye", keys: ["hideTerrainBanners"] },
+    { get title() { return game.i18n.localize("ionrift-respite.settingsPanel.groups.tools"); }, icon: "fas fa-wrench", keys: ["clearRestState"] }
 ];
 
 /**
@@ -154,7 +155,7 @@ function formatProfileCell(key, value) {
         const text = getFletchingTierLabel(tier);
         return { text, cssClass: tier > 0 ? "on" : "off" };
     }
-    return { text: value ? "On" : "Off", cssClass: value ? "on" : "off" };
+    return { text: value ? game.i18n.localize("ionrift-respite.settingsPanel.cellOn") : game.i18n.localize("ionrift-respite.settingsPanel.cellOff"), cssClass: value ? "on" : "off" };
 }
 
 export function registerRespiteSettingsPanel() {
@@ -166,14 +167,14 @@ export function registerRespiteSettingsPanel() {
         moduleLabel: "Respite",
         anchorKey: "eventBrowser",
         quickSetup: {
-            title: "Quick setup",
-            subtitle: "Pick a starting point for the table. Every option stays adjustable in the panels below.",
+            get title() { return game.i18n.localize("ionrift-respite.settingsPanel.quickSetup.title"); },
+            get subtitle() { return game.i18n.localize("ionrift-respite.settingsPanel.quickSetup.subtitle"); },
             profiles: PROFILES,
             profileKeys: PROFILE_KEYS,
             keyLabels: KEY_LABELS,
             formatCell: formatProfileCell,
-            confirmNote: "The interface mode, scene token names, and per-character diets are left as they are. Fine-tune anything afterward in the panels below.",
-            confirmRowGroups: [{ beforeKey: PLAYER_KEYS[0], label: "Player rules" }]
+            get confirmNote() { return game.i18n.localize("ionrift-respite.settingsPanel.quickSetup.confirmNote"); },
+            confirmRowGroups: [{ beforeKey: PLAYER_KEYS[0], get label() { return game.i18n.localize("ionrift-respite.settingsPanel.quickSetup.playerRulesGroup"); } }]
         },
         groups: GROUPS
     });

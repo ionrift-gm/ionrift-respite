@@ -6,11 +6,11 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
 export const FLETCHING_YIELD_TIERS = [
     null,
-    { label: "2d4 + prof", sides: 4, formula: "2d4+prof" },
-    { label: "2d6 + prof", sides: 6, formula: "2d6+prof" },
-    { label: "2d8 + prof", sides: 8, formula: "2d8+prof" },
-    { label: "2d10 + prof", sides: 10, formula: "2d10+prof" },
-    { label: "2d20 + prof", sides: 20, formula: "2d20+prof" }
+    { get label() { return game.i18n.localize("ionrift-respite.fletching.tiers.tier1"); }, sides: 4, formula: "2d4+prof" },
+    { get label() { return game.i18n.localize("ionrift-respite.fletching.tiers.tier2"); }, sides: 6, formula: "2d6+prof" },
+    { get label() { return game.i18n.localize("ionrift-respite.fletching.tiers.tier3"); }, sides: 8, formula: "2d8+prof" },
+    { get label() { return game.i18n.localize("ionrift-respite.fletching.tiers.tier4"); }, sides: 10, formula: "2d10+prof" },
+    { get label() { return game.i18n.localize("ionrift-respite.fletching.tiers.tier5"); }, sides: 20, formula: "2d20+prof" }
 ];
 
 export const FLETCHING_YIELD_TIER_MAX = FLETCHING_YIELD_TIERS.length - 1;
@@ -71,8 +71,8 @@ export function isFletchingEnabled() {
  */
 export function getFletchingTierLabel(tier = getFletchingTier()) {
     const clamped = Math.max(0, Math.min(FLETCHING_YIELD_TIER_MAX, Math.round(tier)));
-    if (clamped === 0) return "Off";
-    return FLETCHING_YIELD_TIERS[clamped]?.label ?? "Off";
+    if (clamped === 0) return game.i18n.localize("ionrift-respite.fletching.tiers.off");
+    return FLETCHING_YIELD_TIERS[clamped]?.label ?? game.i18n.localize("ionrift-respite.fletching.tiers.off");
 }
 
 /**

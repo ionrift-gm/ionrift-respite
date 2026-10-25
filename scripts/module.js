@@ -244,12 +244,12 @@ function _canStartRest(restType = "long") {
 
     if (renderedApp) {
         renderedApp.bringToFront?.();
-        ui.notifications.warn("A rest is already in progress.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.restStart.alreadyInProgress"));
         return false;
     }
 
     if (hasResumeIndicator) {
-        ui.notifications.warn("A rest is in progress. Use the resume button in the status bar.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.restStart.inProgressUseResume"));
         return false;
     }
 
@@ -274,7 +274,7 @@ function _canStartRest(restType = "long") {
 
     // Calendar: 1 long rest per in-game day (short rests are unlimited per RAW)
     if (restType === "long" && CalendarHandler.hasRestedToday()) {
-        ui.notifications.warn("The party has already rested today. Advance the calendar to rest again.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.restStart.alreadyRestedToday"));
         return false;
     }
 
@@ -292,25 +292,31 @@ Hooks.once("init", async () => {
     Handlebars.registerHelper("join", (arr, sep) => Array.isArray(arr) ? arr.join(sep) : "");
     Handlebars.registerHelper("upper", (str) => typeof str === "string" ? str.toUpperCase() : str);
     Handlebars.registerHelper("humanDuration", (d) => {
-        const map = { next_rest: "until next rest", end_of_rest: "end of rest", "1_hour": "1 hour", "8_hours": "8 hours", permanent: "permanent" };
+        const map = {
+            next_rest: game.i18n.localize("ionrift-respite.helpers.duration.nextRest"),
+            end_of_rest: game.i18n.localize("ionrift-respite.helpers.duration.endOfRest"),
+            "1_hour": game.i18n.localize("ionrift-respite.helpers.duration.oneHour"),
+            "8_hours": game.i18n.localize("ionrift-respite.helpers.duration.eightHours"),
+            permanent: game.i18n.localize("ionrift-respite.helpers.duration.permanent")
+        };
         return typeof d === "string" ? (map[d] ?? d.replace(/_/g, " ")) : d;
     });
     // Shared comfort-tier explanation. Used as a tooltip wherever a comfort badge
     // renders, so the mechanical meaning travels with the label.
     Handlebars.registerHelper("comfortHint", (tier) => {
         const map = {
-            safe: "Safe: full HP and Hit Dice back. No risk of a night event.",
-            sheltered: "Sheltered: full HP and Hit Dice back. A normal night.",
-            rough: "Rough: full HP, 1 fewer Hit Die back. CON save DC 10 or +1 exhaustion.",
-            hostile: "Hostile: regain 75% of max HP from the rest, 2 fewer Hit Dice back. Existing exhaustion sticks. CON save DC 15 or +1 exhaustion."
+            safe: game.i18n.localize("ionrift-respite.helpers.comfortHint.safe"),
+            sheltered: game.i18n.localize("ionrift-respite.helpers.comfortHint.sheltered"),
+            rough: game.i18n.localize("ionrift-respite.helpers.comfortHint.rough"),
+            hostile: game.i18n.localize("ionrift-respite.helpers.comfortHint.hostile")
         };
-        return map[typeof tier === "string" ? tier.toLowerCase() : tier] ?? "Rest comfort affects HP and Hit Dice recovery.";
+        return map[typeof tier === "string" ? tier.toLowerCase() : tier] ?? game.i18n.localize("ionrift-respite.helpers.comfortHint.fallback");
     });
     Handlebars.registerHelper("fireTierPlain", (id) => {
         const map = {
-            embers: "No cooking. No comfort change.",
-            campfire: "Cooking and warmth. Easier for enemies to spot (higher encounter chance).",
-            bonfire: "+1 camp comfort. Visible from far off; enemies spot the camp easily."
+            embers: game.i18n.localize("ionrift-respite.helpers.fireTierPlain.embers"),
+            campfire: game.i18n.localize("ionrift-respite.helpers.fireTierPlain.campfire"),
+            bonfire: game.i18n.localize("ionrift-respite.helpers.fireTierPlain.bonfire")
         };
         return map[typeof id === "string" ? id : ""] ?? "";
     });
@@ -459,7 +465,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
         game.ionrift.hud.registerSceneControl(controls, {
             group: "tokens",
             name: "respite",
-            title: "Begin Rest (Respite)",
+            title: game.i18n.localize("ionrift-respite.sceneControl.beginRest"),
             icon: "fas fa-campground",
             order: 10,
             onClick: startRest
@@ -476,7 +482,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
 
     const toolDef = {
         name: "respite",
-        title: "Begin Rest (Respite)",
+        title: game.i18n.localize("ionrift-respite.sceneControl.beginRest"),
         icon: "fas fa-campground",
         button: true,
         order: 10
@@ -501,7 +507,7 @@ Hooks.on("chatMessage", (log, message, chatData) => {
 
     if (msg === "/bivouac") {
         if (game.ionrift?.respite?.adapter?.supportsShortRest === false) {
-            ui.notifications.info("Short rests are not used in this system.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.chatCommand.shortRestsNotUsed"));
             return false;
         }
         if (!_canStartRest("short")) return false;
@@ -794,9 +800,9 @@ Hooks.once("ready", async () => {
             if (!f?.isCampFurniture || f.isPlayerGear) return;
             const user = game.users.get(userId);
             if (user?.isGM) {
-                ui.notifications.warn("Use Move fire in the Respite window to relocate the campfire and stations.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.campTokens.deleteBlockedGm"));
             } else {
-                ui.notifications.warn("Camp layout tokens cannot be deleted during a rest.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.campTokens.deleteBlockedPlayer"));
             }
             return false;
         } catch {
@@ -956,26 +962,31 @@ Hooks.once("ready", async () => {
     if (savedRest?.engine) {
         const age = Date.now() - (savedRest.timestamp ?? 0);
         const ageLabel = age < 3600000
-            ? `${Math.round(age / 60000)} minutes ago`
+            ? game.i18n.format("ionrift-respite.resume.minutesAgo", { count: Math.round(age / 60000) })
             : age < 86400000
-                ? `${Math.round(age / 3600000)} hours ago`
-                : `${Math.round(age / 86400000)} days ago`;
+                ? game.i18n.format("ionrift-respite.resume.hoursAgo", { count: Math.round(age / 3600000) })
+                : game.i18n.format("ionrift-respite.resume.daysAgo", { count: Math.round(age / 86400000) });
 
         // Block new rest creation while the resume prompt is open
         respiteFlowActive = true;
 
         const isPastSetup = savedRest.phase && savedRest.phase !== "setup";
         const rewardWarning = isPastSetup
-            ? `<p style="color: #e8a44a;"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Activities have been selected. Spell copies or event discoveries may have already granted items. Discarding and re-resting could produce duplicate rewards.</p>`
+            ? game.i18n.localize("ionrift-respite.resume.rest.rewardWarning")
             : "";
 
         let resume = false;
         try {
             resume = await game.ionrift.library.confirm({
-                title: "Interrupted Rest Found",
-                content: `<p>An interrupted rest was found (saved ${ageLabel}).</p><p><strong>Phase:</strong> ${savedRest.phase ?? "unknown"}</p><p><strong>Terrain:</strong> ${savedRest.engine.terrainTag ?? "unknown"}</p>${rewardWarning}`,
-                yesLabel: "Resume Rest",
-                noLabel: "Discard",
+                title: game.i18n.localize("ionrift-respite.resume.rest.title"),
+                content: game.i18n.format("ionrift-respite.resume.rest.content", {
+                    age: ageLabel,
+                    phase: savedRest.phase ?? game.i18n.localize("ionrift-respite.resume.unknown"),
+                    terrain: savedRest.engine.terrainTag ?? game.i18n.localize("ionrift-respite.resume.unknown"),
+                    warning: rewardWarning
+                }),
+                yesLabel: game.i18n.localize("ionrift-respite.resume.rest.yes"),
+                noLabel: game.i18n.localize("ionrift-respite.resume.discard"),
                 yesIcon: "fas fa-campground",
                 noIcon: "fas fa-trash",
                 defaultYes: true
@@ -1023,13 +1034,13 @@ Hooks.once("ready", async () => {
                         clearActiveRestApp();
                         console.error(`${MODULE_ID} | Failed to open restored rest UI:`, e);
                         ui.notifications.warn(
-                            "Could not open the rest window. Saved rest is still in world settings. Reload after updating the module, or discard Active Rest in module settings if you must start over."
+                            game.i18n.localize("ionrift-respite.resume.rest.openFailed")
                         );
                         resumeUiOk = false;
                     }
 
                     if (resumeUiOk) {
-                        ui.notifications.info("Interrupted rest resumed.");
+                        ui.notifications.info(game.i18n.localize("ionrift-respite.resume.rest.resumed"));
                         Logger.log?.(MODULE_LABEL, "Restored interrupted rest from world flags.");
 
                         setTimeout(() => {
@@ -1042,7 +1053,7 @@ Hooks.once("ready", async () => {
                     }
                 } else {
                     respiteFlowActive = false;
-                    ui.notifications.warn("Could not restore rest state. Starting fresh.");
+                    ui.notifications.warn(game.i18n.localize("ionrift-respite.resume.rest.restoreFailed"));
                     await game.settings.set(MODULE_ID, "activeRest", {});
                     clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup on failed restore:`, err));
                     resetCampSession();
@@ -1072,19 +1083,23 @@ Hooks.once("ready", async () => {
             if (savedGritty?.type) {
                 const age = Date.now() - (savedGritty.timestamp ?? 0);
                 const ageLabel = age < 3600000
-                    ? `${Math.round(age / 60000)} minutes ago`
+                    ? game.i18n.format("ionrift-respite.resume.minutesAgo", { count: Math.round(age / 60000) })
                     : age < 86400000
-                        ? `${Math.round(age / 3600000)} hours ago`
-                        : `${Math.round(age / 86400000)} days ago`;
+                        ? game.i18n.format("ionrift-respite.resume.hoursAgo", { count: Math.round(age / 3600000) })
+                        : game.i18n.format("ionrift-respite.resume.daysAgo", { count: Math.round(age / 86400000) });
 
-                const typeLabel = savedGritty.type === "bivouac" ? "Overnight Rest (Short Rest)" : "7-Day Downtime (Long Rest)";
+                const typeLabel = savedGritty.type === "bivouac" ? game.i18n.localize("ionrift-respite.resume.gritty.typeBivouac") : game.i18n.localize("ionrift-respite.resume.gritty.typeDowntime");
                 let resume = false;
                 try {
                     resume = await game.ionrift.library.confirm({
-                        title: "Interrupted Gritty Rest Found",
-                        content: `<p>A ${typeLabel} was interrupted (saved ${ageLabel}).</p><p><strong>Terrain:</strong> ${savedGritty.terrainTag ?? "unknown"}</p>`,
-                        yesLabel: "Resume",
-                        noLabel: "Discard",
+                        title: game.i18n.localize("ionrift-respite.resume.gritty.title"),
+                        content: game.i18n.format("ionrift-respite.resume.gritty.content", {
+                            type: typeLabel,
+                            age: ageLabel,
+                            terrain: savedGritty.terrainTag ?? game.i18n.localize("ionrift-respite.resume.unknown")
+                        }),
+                        yesLabel: game.i18n.localize("ionrift-respite.resume.gritty.yes"),
+                        noLabel: game.i18n.localize("ionrift-respite.resume.discard"),
                         yesIcon: "fas fa-campground",
                         noIcon: "fas fa-trash",
                         defaultYes: true
@@ -1104,7 +1119,7 @@ Hooks.once("ready", async () => {
                         app._rehydrate?.(savedGritty);
                         app.render({ force: true });
                     }
-                    ui.notifications.info("Interrupted gritty rest resumed.");
+                    ui.notifications.info(game.i18n.localize("ionrift-respite.resume.gritty.resumed"));
                 } else {
                     await game.settings.set(MODULE_ID, "activeGrittyRest", {});
                 }
@@ -1119,20 +1134,23 @@ Hooks.once("ready", async () => {
     if (savedShortRest?.timestamp && !respiteFlowActive) {
         const age = Date.now() - (savedShortRest.timestamp ?? 0);
         const ageLabel = age < 3600000
-            ? `${Math.round(age / 60000)} minutes ago`
+            ? game.i18n.format("ionrift-respite.resume.minutesAgo", { count: Math.round(age / 60000) })
             : age < 86400000
-                ? `${Math.round(age / 3600000)} hours ago`
-                : `${Math.round(age / 86400000)} days ago`;
+                ? game.i18n.format("ionrift-respite.resume.hoursAgo", { count: Math.round(age / 3600000) })
+                : game.i18n.format("ionrift-respite.resume.daysAgo", { count: Math.round(age / 86400000) });
 
         respiteFlowActive = true;
 
         let resume = false;
         try {
             resume = await game.ionrift.library.confirm({
-                title: "Interrupted Short Rest Found",
-                content: `<p>An interrupted short rest was found (saved ${ageLabel}).</p><p><strong>Shelter:</strong> ${savedShortRest.activeShelter ?? "none"}</p>`,
-                yesLabel: "Resume Short Rest",
-                noLabel: "Discard",
+                title: game.i18n.localize("ionrift-respite.resume.short.title"),
+                content: game.i18n.format("ionrift-respite.resume.short.content", {
+                    age: ageLabel,
+                    shelter: savedShortRest.activeShelter ?? game.i18n.localize("ionrift-respite.resume.none")
+                }),
+                yesLabel: game.i18n.localize("ionrift-respite.resume.short.yes"),
+                noLabel: game.i18n.localize("ionrift-respite.resume.discard"),
                 yesIcon: "fas fa-mug-hot",
                 noIcon: "fas fa-trash",
                 defaultYes: true
@@ -1150,11 +1168,11 @@ Hooks.once("ready", async () => {
                 if (restored) {
                     registerActiveShortRestApp(app);
                     app.render({ force: true });
-                    ui.notifications.info("Interrupted short rest resumed.");
+                    ui.notifications.info(game.i18n.localize("ionrift-respite.resume.short.resumed"));
                     Logger.log?.(MODULE_LABEL, "Restored interrupted short rest from world settings.");
                 } else {
                     respiteFlowActive = false;
-                    ui.notifications.warn("Could not restore short rest state. Starting fresh.");
+                    ui.notifications.warn(game.i18n.localize("ionrift-respite.resume.short.restoreFailedFresh"));
                     await game.settings.set(MODULE_ID, "activeShortRest", {});
                 }
             } catch (e) {
@@ -1177,7 +1195,7 @@ Hooks.once("ready", async () => {
             activeRestSetupApp._combatAcknowledged = true;
             activeRestSetupApp._saveRestState();
             activeRestSetupApp.render({ force: true });
-            ui.notifications.info("Combat resolved. Rest may now proceed.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.combat.resolvedRestProceeds"));
             Logger.log?.(MODULE_LABEL, "Combat ended, rest flow unblocked.");
         }
         const grittyDowntime = getActiveRestSessionApp?.("downtime");
@@ -1187,7 +1205,7 @@ Hooks.once("ready", async () => {
             grittyDowntime._saveSessionState();
             grittyDowntime._broadcastSync();
             grittyDowntime.render({ force: true });
-            ui.notifications.info(`Combat resolved for Night ${grittyDowntime._activePacingNight}. Camp resolution resumed.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.combat.resolvedNight", { night: grittyDowntime._activePacingNight }));
             Logger.log?.(MODULE_LABEL, `Night ${grittyDowntime._activePacingNight} combat ended, downtime flow resumed.`);
         }
     });
@@ -1216,7 +1234,7 @@ function _blockPlayerRest(actor, config) {
     if (!game.settings.get(MODULE_ID, "interceptRests")) return true;
 
     ui.notifications.warn(
-        "Rests are managed by the GM through Respite. Ask your GM to start a rest phase."
+        game.i18n.localize("ionrift-respite.restStart.playerRestBlocked")
     );
     return false;
 }
@@ -1371,7 +1389,7 @@ export function _ensureRejoinBar(app) {
     if (existing) {
         // Bar exists; update the phase label and progress
         const phaseSpan = existing.querySelector("span:not(.respite-bar-progress)");
-        if (phaseSpan) phaseSpan.textContent = `Rest in progress (Phase: ${app?._phase ?? "active"})`;
+        if (phaseSpan) phaseSpan.textContent = game.i18n.format("ionrift-respite.rejoinBar.phaseLabel", { phase: app?._phase ?? game.i18n.localize("ionrift-respite.rejoinBar.phaseActive") });
         refreshRejoinBar(app);
         return;
     }
@@ -1398,14 +1416,14 @@ export function _removeGmShortRestIndicator() {
 function _resumeGmShortRest() {
     const saved = game.settings.get(MODULE_ID, "activeShortRest");
     if (!saved?.timestamp) {
-        ui.notifications.warn("No short rest state found.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.resume.short.noState"));
         respiteFlowActive = false;
         return;
     }
     const app = new ShortRestApp({ initialShelter: saved.activeShelter ?? "none" });
     const restored = app._loadShortRestState();
     if (!restored) {
-        ui.notifications.warn("Could not restore short rest state.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.resume.short.restoreFailed"));
         return;
     }
     registerActiveShortRestApp(app);

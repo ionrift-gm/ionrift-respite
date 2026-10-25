@@ -9,11 +9,11 @@ export const TRAINING_GUIDE_TOPIC = "training";
  */
 export const TRAINING_XP_TIERS = [
     null,
-    { label: "3 / 10 XP per set", failXp: 3, passXp: 10 },
-    { label: "5 / 20 XP per set", failXp: 5, passXp: 20 },
-    { label: "7 / 30 XP per set", failXp: 7, passXp: 30 },
-    { label: "8 / 40 XP per set", failXp: 8, passXp: 40 },
-    { label: "10 / 50 XP per set", failXp: 10, passXp: 50 }
+    { get label() { return game.i18n.localize("ionrift-respite.training.tiers.tier1"); }, failXp: 3, passXp: 10 },
+    { get label() { return game.i18n.localize("ionrift-respite.training.tiers.tier2"); }, failXp: 5, passXp: 20 },
+    { get label() { return game.i18n.localize("ionrift-respite.training.tiers.tier3"); }, failXp: 7, passXp: 30 },
+    { get label() { return game.i18n.localize("ionrift-respite.training.tiers.tier4"); }, failXp: 8, passXp: 40 },
+    { get label() { return game.i18n.localize("ionrift-respite.training.tiers.tier5"); }, failXp: 10, passXp: 50 }
 ];
 
 export const TRAINING_XP_TIER_MAX = TRAINING_XP_TIERS.length - 1;
@@ -68,8 +68,8 @@ export function isTrainingEnabled() {
  */
 export function getTrainingTierLabel(tier = getTrainingTier()) {
     const clamped = Math.max(0, Math.min(TRAINING_XP_TIER_MAX, Math.round(tier)));
-    if (clamped === 0) return "Off";
-    return TRAINING_XP_TIERS[clamped]?.label ?? "Off";
+    if (clamped === 0) return game.i18n.localize("ionrift-respite.training.tiers.off");
+    return TRAINING_XP_TIERS[clamped]?.label ?? game.i18n.localize("ionrift-respite.training.tiers.off");
 }
 
 /**

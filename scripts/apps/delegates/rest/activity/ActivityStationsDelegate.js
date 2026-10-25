@@ -50,7 +50,7 @@ import { _refreshGmRestIndicator, _refreshRejoinBar } from "../../../../module.j
 import { _noteEngineFreePath } from "../../../rest/RestSetupApp.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
 import { activityFocusAfterCommit, publishCampProgress } from "../../../../services/rest/session/campProgressState.js";
-import { getFletchingTierLabel } from "../../../../services/crafting/settings/FletchingSettings.js";
+import { getFletchingTier, getFletchingTierLabel } from "../../../../services/crafting/settings/FletchingSettings.js";
 
 export class ActivityStationsDelegate {
     constructor(app) {
@@ -151,7 +151,7 @@ export class ActivityStationsDelegate {
                         if (activityId === "act_fletch") {
                             const yieldLabel = getFletchingTierLabel();
                             const kind = followUpValue === "bolts" ? "bolts" : "arrows";
-                            if (yieldLabel && yieldLabel !== "Off") {
+                            if (yieldLabel && getFletchingTier() > 0) {
                                 flavor = `Pass DC ${checkDetails.adjustedDc}. Then roll ${yieldLabel} for how many ${kind}.`;
                             }
                         }
