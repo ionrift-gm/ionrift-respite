@@ -12,51 +12,51 @@ import { MODULE_ID } from "../../data/moduleId.js";
 const RECOVERY_SECTIONS = [
     {
         id: "longRest",
-        label: "Long Rest",
+        get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.longRest.label"); },
         icon: "fas fa-moon",
-        hint: "Camp comfort, armor at sleep, and TotM ceremony options.",
+        get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.longRest.hint"); },
         settings: [
             {
                 key: "enableComfort",
-                label: "Comfort Rules",
+                get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.enableComfort.label"); },
                 icon: "fas fa-thermometer-half",
-                hint: "Terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Off in Standard; Survival Quick Setup turns this on. When off: no comfort penalties, no fire phase, no terrain exhaustion saves.",
+                get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.enableComfort.hint"); },
                 type: "boolean"
             },
             {
                 key: "enableCampfireMinigame",
-                label: "Campfire Minigame",
+                get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.enableCampfireMinigame.label"); },
                 icon: "fas fa-fire",
-                hint: "Make Camp uses the minigame as the lighting ceremony. During Activities, the minigame manages fire intensity instead of tier buttons (TotM side panel or Stations Fire tab).",
+                get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.enableCampfireMinigame.hint"); },
                 type: "boolean"
             },
             {
                 key: "enableWorkbenchIdentify",
-                label: "Identify and Potion Tasting",
+                get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.enableWorkbenchIdentify.label"); },
                 icon: "fas fa-search",
-                hint: "Identify, focus examination, and potion tasting during rests. TotM Examine tab, station Examine/Identify, and the short-rest Identify tab. Off in Simple Quick Setup.",
+                get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.enableWorkbenchIdentify.hint"); },
                 type: "boolean"
             },
             {
                 key: "armorDoffRule",
-                label: "Armor Sleep Penalties",
+                get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.armorDoffRule.label"); },
                 icon: "fas fa-shield-alt",
-                hint: "Characters sleeping in medium or heavy armor recover fewer Hit Dice and cannot reduce exhaustion (Xanathar's). Characters on watch are exempt.",
+                get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.armorDoffRule.hint"); },
                 type: "boolean"
             }
         ]
     },
     {
         id: "shortRest",
-        label: "Short Rest",
+        get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.shortRest.label"); },
         icon: "fas fa-hourglass-half",
-        hint: "Hit Die spending, Bard Song of Rest, and wizard or druid spell slot recovery.",
+        get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.shortRest.hint"); },
         settings: [
             {
                 key: "spellRecoveryMaxLevel",
-                label: "Arcane / Natural Recovery Max Level",
+                get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.spellRecoveryMaxLevel.label"); },
                 icon: "fas fa-hat-wizard",
-                hint: "Maximum spell slot level recoverable when a wizard or land druid finishes a short rest (Arcane Recovery / Natural Recovery). Default 5 matches 2014 rules. Increase for homebrew.",
+                get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.spellRecoveryMaxLevel.hint"); },
                 type: "range",
                 min: 1,
                 max: 9,
@@ -64,39 +64,43 @@ const RECOVERY_SECTIONS = [
             },
             {
                 key: "songOfRestTiming",
-                label: "Song of Rest Timing",
+                get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.songOfRestTiming.label"); },
                 icon: "fas fa-music",
-                hint: "When the Bard's Song of Rest bonus die is rolled and applied.",
+                get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.songOfRestTiming.hint"); },
                 type: "select",
-                choices: {
-                    endOfRest: "End of short rest (strict timing)",
-                    withFirstHitDie: "With first Hit Die (per character, immediate)"
+                get choices() {
+                    return {
+                        endOfRest: game.i18n.localize("ionrift-respite.recoveryConfig.songOfRestTiming.choices.endOfRest"),
+                        withFirstHitDie: game.i18n.localize("ionrift-respite.recoveryConfig.songOfRestTiming.choices.withFirstHitDie")
+                    };
                 }
             },
             {
                 key: "maxValueHitDice",
-                label: "Max Value Hit Dice (Homebrew)",
+                get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.maxValueHitDice.label"); },
                 icon: "fas fa-dice-d20",
-                hint: "During short rests, each Hit Die heals for the die's maximum roll plus CON modifier instead of a random roll. Optional, not RAW.",
+                get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.maxValueHitDice.hint"); },
                 type: "boolean"
             },
             {
                 key: "chefTreatsProvideSustenance",
-                label: "Chef Treats Provide Sustenance",
+                get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.chefTreatsProvideSustenance.label"); },
                 icon: "fas fa-cookie-bite",
-                hint: "Whether Chef treats and replenishing meals satisfy a character's daily food requirement during rest.",
+                get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.chefTreatsProvideSustenance.hint"); },
                 type: "boolean"
             },
             {
                 key: "shortRestFireWarmth",
-                label: "Campfire Warmth",
+                get label() { return game.i18n.localize("ionrift-respite.recoveryConfig.shortRestFireWarmth.label"); },
                 icon: "fas fa-fire",
-                hint: "Enables the Campfire Stance ribbon during overnight Bivouac. A Warm Camp expends 1 fuel and grants warmth healing when spending Hit Dice.",
+                get hint() { return game.i18n.localize("ionrift-respite.recoveryConfig.shortRestFireWarmth.hint"); },
                 type: "select",
-                choices: {
-                    none: "Disabled (No campfire requirement)",
-                    "1": "+1 Hit Point per Hit Die",
-                    "1d4": "+1d4 Hit Points per Hit Die"
+                get choices() {
+                    return {
+                        none: game.i18n.localize("ionrift-respite.recoveryConfig.shortRestFireWarmth.choices.none"),
+                        "1": game.i18n.localize("ionrift-respite.recoveryConfig.shortRestFireWarmth.choices.n1"),
+                        "1d4": game.i18n.localize("ionrift-respite.recoveryConfig.shortRestFireWarmth.choices.n1d4")
+                    };
                 }
             }
         ]
@@ -113,7 +117,7 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
     static DEFAULT_OPTIONS = {
         id: "respite-recovery-config",
         window: {
-            title: "Recovery Rules",
+            title: "ionrift-respite.recoveryConfig.windowTitle",
             icon: "fas fa-heart-pulse",
             resizable: false
         },
@@ -145,7 +149,7 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
         const shortRestSection = context.sections.find(s => s.id === "shortRest");
 
         let html = `
-        <p class="settings-config-lead">Control how rest mechanically resolves for this world.</p>
+        <p class="settings-config-lead">${game.i18n.localize("ionrift-respite.recoveryConfig.lead")}</p>
         <div class="settings-config-layout">
             <div class="settings-config-column settings-config-column--long">`;
 
@@ -166,7 +170,7 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
         </div>
         <div class="settings-config-actions">
             <button type="button" class="settings-config-save-btn">
-                <i class="fas fa-save"></i> Save
+                <i class="fas fa-save"></i> ${game.i18n.localize("ionrift-respite.recoveryConfig.save")}
             </button>
         </div>`;
 
@@ -264,7 +268,7 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
                 if (range) await game.settings.set(MODULE_ID, setting.key, Number(range.value));
             }
         }
-        ui.notifications.info("Recovery rules saved.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.recoveryConfig.savedNotice"));
         this.close();
     }
 }

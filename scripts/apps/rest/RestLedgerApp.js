@@ -7,24 +7,27 @@
 import { MODULE_ID } from "../../data/moduleId.js";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-const PHASE_LABELS = {
-    setup: "Setup",
-    travel: "Travel",
-    camp: "Camp",
-    activity: "Activity",
-    meal: "Meal",
-    events: "Events",
-    resolve: "Recovery"
-};
+function getPhaseLabel(phase) {
+    switch (phase) {
+        case "setup": return game.i18n.localize("ionrift-respite.restLedger.phase.setup");
+        case "travel": return game.i18n.localize("ionrift-respite.restLedger.phase.travel");
+        case "camp": return game.i18n.localize("ionrift-respite.restLedger.phase.camp");
+        case "activity": return game.i18n.localize("ionrift-respite.restLedger.phase.activity");
+        case "meal": return game.i18n.localize("ionrift-respite.restLedger.phase.meal");
+        case "events": return game.i18n.localize("ionrift-respite.restLedger.phase.events");
+        case "resolve": return game.i18n.localize("ionrift-respite.restLedger.phase.recovery");
+        default: return phase;
+    }
+}
 
 const FILTER_CHIPS = [
-    { key: "all", label: "All" },
-    { key: "setup", label: "Setup" },
-    { key: "camp", label: "Camp" },
-    { key: "activity", label: "Activity" },
-    { key: "meal", label: "Meal" },
-    { key: "events", label: "Events" },
-    { key: "resolve", label: "Recovery" }
+    { key: "all", get label() { return game.i18n.localize("ionrift-respite.restLedger.filter.all"); } },
+    { key: "setup", get label() { return getPhaseLabel("setup"); } },
+    { key: "camp", get label() { return getPhaseLabel("camp"); } },
+    { key: "activity", get label() { return getPhaseLabel("activity"); } },
+    { key: "meal", get label() { return getPhaseLabel("meal"); } },
+    { key: "events", get label() { return getPhaseLabel("events"); } },
+    { key: "resolve", get label() { return getPhaseLabel("resolve"); } }
 ];
 
 export class RestLedgerApp extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -34,7 +37,7 @@ export class RestLedgerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         classes: ["ionrift-window", "glass-ui", "ionrift-respite-app"],
         tag: "div",
         window: {
-            title: "Rest Ledger",
+            title: "ionrift-respite.restLedger.windowTitle",
             icon: "fas fa-book",
             resizable: true
         },
@@ -97,7 +100,7 @@ export class RestLedgerApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (!entries?.length) continue;
             phaseGroups.push({
                 phase,
-                label: PHASE_LABELS[phase] ?? phase,
+                label: getPhaseLabel(phase),
                 count: entries.length,
                 collapsed: this.#collapsedPhases.has(phase),
                 entries: entries.map(e => ({
@@ -138,19 +141,19 @@ export class RestLedgerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this.#ledger) return;
         const all = this.#ledger.getAll();
         if (!all.length) {
-            ui.notifications.info("Ledger is empty.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.restLedger.emptyNotice"));
             return;
         }
         const lines = all.map(e => {
             const actor = e.actorName ? `[${e.actorName}] ` : "";
             const detail = e.detail ? ` (${e.detail})` : "";
-            return `[${PHASE_LABELS[e.phase] ?? e.phase}] ${actor}${e.summary}${detail}`;
+            return `[${getPhaseLabel(e.phase)}] ${actor}${e.summary}${detail}`;
         });
         try {
             await navigator.clipboard.writeText(lines.join("\n"));
-            ui.notifications.info("Ledger copied to clipboard.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.restLedger.copiedNotice"));
         } catch {
-            ui.notifications.warn("Could not copy to clipboard.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.restLedger.copyFailedNotice"));
         }
     }
 

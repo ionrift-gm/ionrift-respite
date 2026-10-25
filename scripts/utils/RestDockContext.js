@@ -21,16 +21,34 @@
      */
 
 const KIT_ITEMS = [
-    { key: "bedroll",  icon: "fas fa-bed",        label: "Bedroll",  labelMissing: "No Bedroll",  shortLabel: "Bedroll" },
-    { key: "tent",     icon: "fas fa-campground", label: "Tent",     labelMissing: "No Tent",     shortLabel: "Tent" },
-    { key: "messKit",  icon: "fas fa-utensils",   label: "Mess Kit", labelMissing: "No Mess Kit", shortLabel: "Mess" }
+    {
+        key: "bedroll",
+        icon: "fas fa-bed",
+        get label() { return game.i18n.localize("ionrift-respite.restDock.kit.bedroll.label"); },
+        get labelMissing() { return game.i18n.localize("ionrift-respite.restDock.kit.bedroll.labelMissing"); },
+        get shortLabel() { return game.i18n.localize("ionrift-respite.restDock.kit.bedroll.shortLabel"); }
+    },
+    {
+        key: "tent",
+        icon: "fas fa-campground",
+        get label() { return game.i18n.localize("ionrift-respite.restDock.kit.tent.label"); },
+        get labelMissing() { return game.i18n.localize("ionrift-respite.restDock.kit.tent.labelMissing"); },
+        get shortLabel() { return game.i18n.localize("ionrift-respite.restDock.kit.tent.shortLabel"); }
+    },
+    {
+        key: "messKit",
+        icon: "fas fa-utensils",
+        get label() { return game.i18n.localize("ionrift-respite.restDock.kit.messKit.label"); },
+        get labelMissing() { return game.i18n.localize("ionrift-respite.restDock.kit.messKit.labelMissing"); },
+        get shortLabel() { return game.i18n.localize("ionrift-respite.restDock.kit.messKit.shortLabel"); }
+    }
 ];
 
 const COMFORT_FALLBACK_BENEFIT = {
-    safe:      "Full HP · Max HD",
-    sheltered: "Full HP · Max HD",
-    rough:     "Full HP · −1 HD Pen · DC 10 Save",
-    exposed:   "75% HP · −2 HD Pen · DC 15 Save"
+    get safe() { return game.i18n.localize("ionrift-respite.restDock.benefit.safe"); },
+    get sheltered() { return game.i18n.localize("ionrift-respite.restDock.benefit.sheltered"); },
+    get rough() { return game.i18n.localize("ionrift-respite.restDock.benefit.rough"); },
+    get exposed() { return game.i18n.localize("ionrift-respite.restDock.benefit.exposed"); }
 };
 
 export class RestDockContext {
@@ -140,15 +158,15 @@ export class RestDockContext {
             );
             const severity = (comfortTier === "hostile" || comfortTier === "exposed" || exhaustionDC >= 15) ? "danger" : "warning";
             const icon = severity === "danger" ? "fa-skull" : "fa-dice-d20";
-            const label = `CON DC ${exhaustionDC} ➔ Exhaustion`;
+            const label = game.i18n.format("ionrift-respite.restDock.hazard.label", { dc: exhaustionDC });
 
             const tipLines = [
-                `Constitution saving throw DC ${exhaustionDC}`,
-                "Failure inflicts 1 level of Exhaustion",
-                hasAdvantage ? "Advantage on save (Mess Kit)" : "Straight roll (no Mess Kit)",
-                "Click to roll Constitution save"
+                game.i18n.format("ionrift-respite.restDock.hazard.tipSave", { dc: exhaustionDC }),
+                game.i18n.localize("ionrift-respite.restDock.hazard.tipFailure"),
+                hasAdvantage ? game.i18n.localize("ionrift-respite.restDock.hazard.tipAdvantage") : game.i18n.localize("ionrift-respite.restDock.hazard.tipStraight"),
+                game.i18n.localize("ionrift-respite.restDock.hazard.tipClick")
             ];
-            const hazardTooltip = `<strong>Exhaustion Hazard (DC ${exhaustionDC})</strong><ul style='margin:4px 0 0 16px;padding:0;'>${tipLines.map(l => `<li>${l}</li>`).join("")}</ul>`;
+            const hazardTooltip = `<strong>${game.i18n.format("ionrift-respite.restDock.hazard.title", { dc: exhaustionDC })}</strong><ul style='margin:4px 0 0 16px;padding:0;'>${tipLines.map(l => `<li>${l}</li>`).join("")}</ul>`;
 
             recoveryHazard = {
                 dc: exhaustionDC,
@@ -162,21 +180,21 @@ export class RestDockContext {
 
         // Dedicated Personal Comfort tooltip informing user of their personal comfort level and factors
         const comfortTipLines = [
-            `Personal comfort level: ${comfortLabel}`
+            game.i18n.format("ionrift-respite.restDock.comfort.personalLevel", { level: comfortLabel })
         ];
         const hasBedroll = Boolean(personalScan?.hasBedroll);
         const bedrollWaived = Boolean(personalScan?.bedrollWaived);
         if (hasBedroll) {
-            comfortTipLines.push(bedrollWaived ? "Bedroll: +1 comfort tier (waived by GM)" : "Bedroll: +1 comfort tier");
+            comfortTipLines.push(bedrollWaived ? game.i18n.localize("ionrift-respite.restDock.comfort.bedrollWaived") : game.i18n.localize("ionrift-respite.restDock.comfort.bedroll"));
         } else {
-            comfortTipLines.push("No Bedroll (resting at camp comfort)");
+            comfortTipLines.push(game.i18n.localize("ionrift-respite.restDock.comfort.noBedroll"));
         }
         const hasTent = Boolean(personalScan?.hasTent);
         if (hasTent) {
-            comfortTipLines.push("Tent: weather & encounter shelter");
+            comfortTipLines.push(game.i18n.localize("ionrift-respite.restDock.comfort.tent"));
         }
         if (comfortTier === "sheltered" || comfortTier === "safe") {
-            comfortTipLines.push("Sheltered sleep protects Hit Dice and prevents exhaustion");
+            comfortTipLines.push(game.i18n.localize("ionrift-respite.restDock.comfort.shelteredSleep"));
         }
         const comfortTooltip = personalScan?.comfortTooltip ?? bulletTip(`${actor.name}: ${comfortLabel}`, comfortTipLines);
 
@@ -202,9 +220,9 @@ export class RestDockContext {
     static #buildCompanion(actor, selectedId, finishedActorIds, characterState, isGM) {
         const state = characterState?.get?.(actor.id) ?? {};
         const warnings = [];
-        if (state.hasExhaustionRisk) warnings.push(`DC ${state.exhaustionDC || 10} Exhaustion save`);
-        if (state.hasStarvationRisk) warnings.push("Starvation risk");
-        if (state.hasDehydrationRisk) warnings.push("Dehydration risk");
+        if (state.hasExhaustionRisk) warnings.push(game.i18n.format("ionrift-respite.restDock.companion.exhaustionSave", { dc: state.exhaustionDC || 10 }));
+        if (state.hasStarvationRisk) warnings.push(game.i18n.localize("ionrift-respite.restDock.companion.starvationRisk"));
+        if (state.hasDehydrationRisk) warnings.push(game.i18n.localize("ionrift-respite.restDock.companion.dehydrationRisk"));
         const tooltipLines = [actor.name];
         if (state.statusLabel) tooltipLines.push(state.statusLabel);
         if (warnings.length) tooltipLines.push(...warnings);

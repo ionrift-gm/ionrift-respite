@@ -36,7 +36,7 @@ export class RestPresentationHelper {
         const classes = Object.values(actor.classes ?? {});
         if (classes.length) {
             const primary = classes[0];
-            const className = primary.name ?? "Adventurer";
+            const className = primary.name ?? game.i18n.localize("ionrift-respite.presentation.adventurer");
             const level = primary.system?.levels ?? actor.system?.details?.level ?? 1;
             const subclassName = primary.subclass?.name ?? actor.itemTypes?.subclass?.[0]?.name ?? "";
             subtext = subclassName ? `${className} ${level} · ${subclassName}` : `${className} ${level}`;
@@ -44,7 +44,7 @@ export class RestPresentationHelper {
         } else {
             // Fallback for non-class actors or other systems
             const level = actor.system?.details?.level ?? "";
-            subtext = level ? `Level ${level}` : "";
+            subtext = level ? game.i18n.format("ionrift-respite.presentation.levelNumber", { level }) : "";
             classKey = (actor.name ?? "").toLowerCase();
         }
 
@@ -207,49 +207,49 @@ export class RestPresentationHelper {
         let resolvedSteps = phaseSteps ? [...phaseSteps] : [];
         let resolvedAbandonAction = abandonAction;
 
-        const formattedTerrain = terrainLabel || (terrainTag ? terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1) : "Wilderness");
+        const formattedTerrain = terrainLabel || (terrainTag ? terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1) : game.i18n.localize("ionrift-respite.presentation.wilderness"));
 
         switch (type) {
             case "bivouac":
-                restHeaderTitle = "Overnight Rest";
-                restHeaderTag = `${formattedTerrain} · Gritty Overnight (8 Hours)`;
+                restHeaderTitle = game.i18n.localize("ionrift-respite.presentation.bivouac.title");
+                restHeaderTag = game.i18n.format("ionrift-respite.presentation.bivouac.tag", { terrain: formattedTerrain });
                 restHeaderTagClass = "tag-gritty tag-bivouac";
-                restHeaderSubtitle = "Hit Dice recovery, equipment tune-up & quick rations";
+                restHeaderSubtitle = game.i18n.localize("ionrift-respite.presentation.bivouac.subtitle");
                 resolvedAbandonAction = resolvedAbandonAction || "abandonBivouac";
                 if (!resolvedSteps.length) {
                     resolvedSteps = [
-                        { label: "Operations & Gear", active: true, complete: false },
-                        { label: "Hit Dice Recovery", active: false, complete: false }
+                        { label: game.i18n.localize("ionrift-respite.presentation.bivouac.stepOperationsGear"), active: true, complete: false },
+                        { label: game.i18n.localize("ionrift-respite.presentation.bivouac.stepHdRecovery"), active: false, complete: false }
                     ];
                 }
                 break;
 
             case "short":
-                restHeaderTitle = "Short Rest";
-                restHeaderTag = `${formattedTerrain} · 1 Hour`;
+                restHeaderTitle = game.i18n.localize("ionrift-respite.presentation.shortRest.title");
+                restHeaderTag = game.i18n.format("ionrift-respite.presentation.shortRest.tag", { terrain: formattedTerrain });
                 restHeaderTagClass = "tag-normal tag-short";
-                restHeaderSubtitle = "Hit Dice recovery, equipment tune-up & quick rations";
+                restHeaderSubtitle = game.i18n.localize("ionrift-respite.presentation.shortRest.subtitle");
                 resolvedAbandonAction = resolvedAbandonAction || "abandonShortRest";
                 break;
 
             case "downtime":
                 restHeaderTitle = pacingActive
-                    ? (isDawnCheck ? "Dawn · Final Check" : (totalNights === 1 ? "Overnight Vigil" : `Night ${activePacingNight} of ${totalNights}`))
+                    ? (isDawnCheck ? game.i18n.localize("ionrift-respite.presentation.downtime.dawnCheck") : (totalNights === 1 ? game.i18n.localize("ionrift-respite.presentation.downtime.overnightVigil") : game.i18n.format("ionrift-respite.presentation.downtime.nightCount", { current: activePacingNight, total: totalNights })))
                     : "";
-                restHeaderTag = formattedTerrain || "Wilderness";
+                restHeaderTag = formattedTerrain || game.i18n.localize("ionrift-respite.presentation.wilderness");
                 restHeaderTagClass = "tag-gritty tag-downtime";
                 restHeaderSubtitle = pacingActive
-                    ? (isDawnCheck ? "Party exhaustion saves, exposure review & morning transition" : (totalNights === 1 ? "8-hour rest vigilance & dawn transition" : "Nightly encounters, camp events & pacing progress"))
-                    : "Weekly activities, resource foraging & campsite management";
+                    ? (isDawnCheck ? game.i18n.localize("ionrift-respite.presentation.downtime.subtitleDawn") : (totalNights === 1 ? game.i18n.localize("ionrift-respite.presentation.downtime.subtitleVigil") : game.i18n.localize("ionrift-respite.presentation.downtime.subtitlePacing")))
+                    : game.i18n.localize("ionrift-respite.presentation.downtime.subtitleManagement");
                 resolvedAbandonAction = resolvedAbandonAction || "abandonDowntime";
                 break;
 
             case "long":
             default:
-                restHeaderTitle = (phase === "activity" || phase === "meal") ? "" : (phaseLabel || "Long Rest");
-                restHeaderTag = formattedTerrain || "Wilderness";
+                restHeaderTitle = (phase === "activity" || phase === "meal") ? "" : (phaseLabel || game.i18n.localize("ionrift-respite.presentation.longRest.title"));
+                restHeaderTag = formattedTerrain || game.i18n.localize("ionrift-respite.presentation.wilderness");
                 restHeaderTagClass = "tag-normal tag-long";
-                restHeaderSubtitle = "Camp preparation, overnight activities & sustenance";
+                restHeaderSubtitle = game.i18n.localize("ionrift-respite.presentation.longRest.subtitle");
                 resolvedAbandonAction = resolvedAbandonAction || "abandonRest";
                 break;
         }

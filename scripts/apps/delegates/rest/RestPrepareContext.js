@@ -152,7 +152,7 @@ export class RestPrepareContext {
                     ...spell,
                     available: hasCaster,
                     casterNames: casters.map(a => a.name).join(", "),
-                    hint: hasCaster ? spell.hint : `Requires ${spell.name} spell. No one in the party has it prepared.`,
+                    hint: hasCaster ? spell.hint : game.i18n.format("ionrift-respite.restPrepare.shelter.requiresSpell", { spell: spell.name }),
                     active: !!app._shelterOverrides[spell.id]
                 };
             });
@@ -160,11 +160,11 @@ export class RestPrepareContext {
         if (currentRestType === "long") {
             shelterOptions.unshift({
                 id: "tent",
-                name: "Tent",
+                name: game.i18n.localize("ionrift-respite.restPrepare.shelter.tent.name"),
                 icon: "fas fa-campground",
                 available: tentAvailable,
                 casterNames: tentOwnerNames,
-                hint: tentAvailable ? `Carried by ${tentOwnerNames}. Weather shield. Night check -2.` : "No tent in party inventory.",
+                hint: tentAvailable ? game.i18n.format("ionrift-respite.restPrepare.shelter.tent.hintCarried", { names: tentOwnerNames }) : game.i18n.localize("ionrift-respite.restPrepare.shelter.tent.hintNoTent"),
                 comfortFloor: null,
                 encounterMod: 2,
                 active: !!app._shelterOverrides.tent
@@ -173,11 +173,11 @@ export class RestPrepareContext {
 
         shelterOptions.push({
             id: "none",
-            name: "Open Air",
+            name: game.i18n.localize("ionrift-respite.restPrepare.shelter.openAir.name"),
             icon: "fas fa-cloud-moon",
             available: true,
             casterNames: null,
-            hint: "Under the open sky. No protection from weather or encounters.",
+            hint: game.i18n.localize("ionrift-respite.restPrepare.shelter.openAir.hint"),
             comfortFloor: null,
             encounterMod: 0,
             active: !!app._shelterOverrides.none
@@ -326,8 +326,8 @@ export class RestPrepareContext {
 
             const allTiles = [...tileActivities.filter(t => !t.isCrafting), ...fadedTiles];
             const CATEGORY_ORDER = [
-                { keys: ["camp", "recovery"], label: "Camp Duties" },
-                { keys: ["active", "arcane"], label: "Personal" }
+                { keys: ["camp", "recovery"], label: game.i18n.localize("ionrift-respite.restPrepare.category.campDuties") },
+                { keys: ["active", "arcane"], label: game.i18n.localize("ionrift-respite.restPrepare.category.personal") }
             ];
             // Arcane tiles (Attune, Copy Spell) sort last within Personal
             const SORT_LAST_CATS = new Set(["arcane"]);
@@ -373,9 +373,9 @@ export class RestPrepareContext {
 
             const actorItems = a.items?.map(i => i.name?.toLowerCase()) ?? [];
             const gearBadges = [
-                { id: "bedroll", icon: "fas fa-bed", name: "Bedroll", present: actorItems.some(n => n?.includes("bedroll")), tooltip: "Bedroll: +1 Hit Die recovered during long rest" },
-                { id: "messkit", icon: "fas fa-utensils", name: "Mess Kit", present: actorItems.some(n => n?.includes("mess kit") || (n?.includes("cook") && n?.includes("utensil"))), tooltip: "Mess Kit: advantage on exhaustion saves (requires lit fire)" },
-                { id: "tent", icon: "fas fa-campground", name: "Tent", present: actorItems.some(n => n?.includes("tent")), tooltip: "Tent: personal shelter, cancels or reduces weather penalties" }
+                { id: "bedroll", icon: "fas fa-bed", name: game.i18n.localize("ionrift-respite.restPrepare.gear.bedroll"), present: actorItems.some(n => n?.includes("bedroll")), tooltip: game.i18n.localize("ionrift-respite.restPrepare.gear.bedrollTooltip") },
+                { id: "messkit", icon: "fas fa-utensils", name: game.i18n.localize("ionrift-respite.restPrepare.gear.messKit"), present: actorItems.some(n => n?.includes("mess kit") || (n?.includes("cook") && n?.includes("utensil"))), tooltip: game.i18n.localize("ionrift-respite.restPrepare.gear.messKitTooltip") },
+                { id: "tent", icon: "fas fa-campground", name: game.i18n.localize("ionrift-respite.restPrepare.gear.tent"), present: actorItems.some(n => n?.includes("tent")), tooltip: game.i18n.localize("ionrift-respite.restPrepare.gear.tentTooltip") }
             ];
 
             return {
@@ -520,8 +520,8 @@ export class RestPrepareContext {
                     }));
                 gatherTiles.push({
                     id: "gather_skip",
-                    name: "Skip",
-                    hint: "Remain at camp. No forage or hunt.",
+                    name: game.i18n.localize("ionrift-respite.restPrepare.skip"),
+                    hint: game.i18n.localize("ionrift-respite.restPrepare.skipHint"),
                     available: true,
                     selected: !!gatherSkipped,
                     fadedHint: "",
@@ -529,7 +529,7 @@ export class RestPrepareContext {
                 });
                 return [{
                     id: "gather_provisions",
-                    label: "Gather Provisions",
+                    label: game.i18n.localize("ionrift-respite.restPrepare.gatherProvisions"),
                     icon: "fas fa-seedling",
                     tiles: gatherTiles
                 }];
@@ -598,7 +598,7 @@ export class RestPrepareContext {
             if (expanded.isIdentify || expanded.activityId === "act_identify" || expanded.activityId === "identify") {
                 return {
                     id: expanded.activityId,
-                    name: "Examine & Identify",
+                    name: game.i18n.localize("ionrift-respite.restPrepare.examineIdentify"),
                     icon: "fas fa-search",
                     actorName: expandActor.name,
                     actorPortrait: expandActor.img ?? expandActor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
@@ -612,7 +612,7 @@ export class RestPrepareContext {
                 const craftResult = app._craftingResults?.get(characterId) ?? app._totmCraftResult ?? null;
                 const hasCrafted = !!craftResult || !!app._totmCraftHasCrafted || (app._grantLedger?.hasCraftingForActor(characterId, professionId) ?? false);
                 const mfCookbookAvailable = professionId === "cooking" && !hasCrafted && MonstrousFeastBridge.ownsCooking();
-                const professionLabel = CRAFT_PROFESSION_LABELS[professionId] ?? (professionId === "cooking" ? "Cooking" : professionId);
+                const professionLabel = CRAFT_PROFESSION_LABELS[professionId] ?? (professionId === "cooking" ? game.i18n.localize("ionrift-respite.restPrepare.cooking") : professionId);
 
                 const craftActivity = app._activityResolver?.activities?.get(expanded.activityId)
                     ?? { armorSleepWaiver: false };
@@ -976,13 +976,13 @@ export class RestPrepareContext {
 
             const hpRestored = recovery.hpRestored ?? 0;
             const hdRestored = recovery.hdRestored ?? 0;
-            const hpLabel = hpAtMax ? "Max HP" : (hpRestored > 0 ? `+${hpRestored} HP` : "0 HP");
-            const hdLabel = hdAtMax ? "Max HD" : (hdRestored > 0 ? `+${hdRestored} HD` : "0 HD");
+            const hpLabel = hpAtMax ? game.i18n.localize("ionrift-respite.restPrepare.recovery.maxHp") : (hpRestored > 0 ? `+${hpRestored} HP` : "0 HP");
+            const hdLabel = hdAtMax ? game.i18n.localize("ionrift-respite.restPrepare.recovery.maxHd") : (hdRestored > 0 ? `+${hdRestored} HD` : "0 HD");
             const hasBedroll = !!recovery.gearBonuses?.hd;
 
             // Activity
             const actSub = (o.outcomes ?? []).find(s => s.source === "activity");
-            let activityLabel = "Rested";
+            let activityLabel = game.i18n.localize("ionrift-respite.restPrepare.recovery.rested");
             let activityIcon = "fas fa-bed";
             let activitySuccess = true;
             if (actSub?.activityId) {
@@ -1093,13 +1093,13 @@ export class RestPrepareContext {
             const hasTinder = campScanData?.canLightFire ?? false;
             const tierDisabledReason = (canPick, cost) => {
                 if (canPick) return "";
-                if (!hasTinder) return "Someone needs a tinderbox or flint and steel.";
-                return `Need at least ${cost} firewood in the party.`;
+                if (!hasTinder) return game.i18n.localize("ionrift-respite.restPrepare.fire.needTinder");
+                return game.i18n.format("ionrift-respite.restPrepare.fire.needFirewood", { cost });
             };
             campFirePickerLevels = [
                 {
                     id: "embers",
-                    label: "Embers",
+                    label: game.i18n.localize("ionrift-respite.restPrepare.fire.embers"),
                     costLabel: CampGearScanner.firewoodCostLabel("embers"),
                     disabled: !fs.canPickEmbers,
                     disabledReason: tierDisabledReason(fs.canPickEmbers, fs.costEmbers ?? 1),
@@ -1107,7 +1107,7 @@ export class RestPrepareContext {
                 },
                 {
                     id: "campfire",
-                    label: "Campfire",
+                    label: game.i18n.localize("ionrift-respite.restPrepare.fire.campfire"),
                     costLabel: CampGearScanner.firewoodCostLabel("campfire"),
                     disabled: !fs.canPickCampfire,
                     disabledReason: tierDisabledReason(fs.canPickCampfire, fs.costCampfire ?? 2),
@@ -1115,7 +1115,7 @@ export class RestPrepareContext {
                 },
                 {
                     id: "bonfire",
-                    label: "Bonfire",
+                    label: game.i18n.localize("ionrift-respite.restPrepare.fire.bonfire"),
                     costLabel: CampGearScanner.firewoodCostLabel("bonfire"),
                     disabled: !fs.canPickBonfire,
                     disabledReason: tierDisabledReason(fs.canPickBonfire, fs.costBonfire ?? 3),
@@ -1261,19 +1261,19 @@ export class RestPrepareContext {
                 return `<strong>${title}</strong><ul style='margin:4px 0 0 16px;padding:0;'>${filtered.map(l => `<li>${l}</li>`).join("")}</ul>`;
             };
             campPersonalSelected.bedrollTooltip = campPersonalSelected.hasBedroll
-                ? bulletTip(campPersonalSelected.bedrollWaived ? "Bedroll (Waived)" : "Bedroll", ["+1 personal comfort", "Protects Hit Dice", campPersonalSelected.bedrollWaived ? "Factor waived by GM" : "Clears the exhaustion save"])
-                : bulletTip("No bedroll", ["Resting at the camp's comfort"]);
+                ? bulletTip(campPersonalSelected.bedrollWaived ? game.i18n.localize("ionrift-respite.restPrepare.bedrollWaived") : game.i18n.localize("ionrift-respite.restPrepare.bedroll"), [game.i18n.localize("ionrift-respite.restPrepare.plusOneComfort"), game.i18n.localize("ionrift-respite.restPrepare.protectsHd"), campPersonalSelected.bedrollWaived ? game.i18n.localize("ionrift-respite.restPrepare.waivedByGm") : game.i18n.localize("ionrift-respite.restPrepare.clearsSave")])
+                : bulletTip(game.i18n.localize("ionrift-respite.restPrepare.noBedroll"), [game.i18n.localize("ionrift-respite.restPrepare.restingAtCampComfort")]);
             campPersonalSelected.tentTooltip = campPersonalSelected.hasTent
-                ? bulletTip(campPersonalSelected.tentWaived ? "Tent (Waived)" : "Tent", ["Shields weather penalties", "Lowers encounter risk", ...(campPersonalSelected.tentWaived ? ["Factor waived by GM"] : [])])
-                : bulletTip("No tent", ["Exposed to the weather"]);
+                ? bulletTip(campPersonalSelected.tentWaived ? game.i18n.localize("ionrift-respite.restPrepare.tentWaived") : game.i18n.localize("ionrift-respite.restPrepare.tent"), [game.i18n.localize("ionrift-respite.restPrepare.shieldsWeather"), game.i18n.localize("ionrift-respite.restPrepare.lowersEncounterRisk"), ...(campPersonalSelected.tentWaived ? [game.i18n.localize("ionrift-respite.restPrepare.waivedByGm")] : [])])
+                : bulletTip(game.i18n.localize("ionrift-respite.restPrepare.noTent"), [game.i18n.localize("ionrift-respite.restPrepare.exposedWeather")]);
             campPersonalSelected.messKitTooltip = campPersonalSelected.hasMessKit
-                ? bulletTip(campPersonalSelected.messKitWaived ? "Mess kit (Waived)" : "Mess kit", ["Advantage on exhaustion saves", ...(campPersonalSelected.messKitWaived ? ["Factor waived by GM"] : [])])
-                : "No mess kit. Exhaustion saves are normal.";
-            campPersonalSelected.recoveryTooltip = bulletTip("Recovery", [
+                ? bulletTip(campPersonalSelected.messKitWaived ? game.i18n.localize("ionrift-respite.restPrepare.messKitWaived") : game.i18n.localize("ionrift-respite.restPrepare.messKit"), [game.i18n.localize("ionrift-respite.restPrepare.advantageSaves"), ...(campPersonalSelected.messKitWaived ? [game.i18n.localize("ionrift-respite.restPrepare.waivedByGm")] : [])])
+                : game.i18n.localize("ionrift-respite.restPrepare.noMessKit");
+            campPersonalSelected.recoveryTooltip = bulletTip(game.i18n.localize("ionrift-respite.restPrepare.recoveryTitle"), [
                 campPersonalSelected.recovery?.hdLabel,
                 campPersonalSelected.recovery?.exhaustionDC
-                    ? `Constitution save DC ${campPersonalSelected.recovery.exhaustionDC}, or exhaustion`
-                    : "No exhaustion risk"
+                    ? game.i18n.format("ionrift-respite.restPrepare.conSaveDc", { dc: campPersonalSelected.recovery.exhaustionDC })
+                    : game.i18n.localize("ionrift-respite.restPrepare.noExhaustionRisk")
             ]);
         }
         const campfirePlaced = ["camp", "activity", "meal"].includes(app._phase) && hasCampfirePlaced();
@@ -1283,17 +1283,17 @@ export class RestPrepareContext {
             const placed = campfirePlaced;
             if (app._isTotM) {
                 const hint = placed
-                    ? "On the map for this rest."
-                    : "Optional. Drag onto the map.";
+                    ? game.i18n.localize("ionrift-respite.restPrepare.fire.totmOnMap")
+                    : game.i18n.localize("ionrift-respite.restPrepare.fire.totmOptionalDrag");
                 const shortLabel = placed
-                    ? (app._isGM ? "Remove fire" : "On map")
-                    : "Place on map";
+                    ? (app._isGM ? game.i18n.localize("ionrift-respite.restPrepare.fire.removeFire") : game.i18n.localize("ionrift-respite.restPrepare.fire.onMap"))
+                    : game.i18n.localize("ionrift-respite.restPrepare.fire.placeOnMap");
                 const tooltip = placed && app._isGM
-                    ? "Click to take the campfire off the map."
-                    : "Drag onto the map. One campfire. Click the button again to take it off.";
+                    ? game.i18n.localize("ionrift-respite.restPrepare.fire.clickTakeOff")
+                    : game.i18n.localize("ionrift-respite.restPrepare.fire.dragOntoMap");
                 const ariaLabel = placed && app._isGM
-                    ? "Remove campfire from the map"
-                    : "Drag campfire onto the map";
+                    ? game.i18n.localize("ionrift-respite.restPrepare.fire.removeCampfire")
+                    : game.i18n.localize("ionrift-respite.restPrepare.fire.dragCampfire");
                 return {
                     show: true,
                     placed,
@@ -1310,17 +1310,17 @@ export class RestPrepareContext {
             const fireIsLit = (app._fireLevel ?? "unlit") !== "unlit";
             if (fireIsLit) return { show: false };
             const hint = placed
-                ? "Station markers move with the campfire."
-                : "Click for crosshair placement, or drag onto the map. Workstations appear around the pit.";
+                ? game.i18n.localize("ionrift-respite.restPrepare.fire.markersMove")
+                : game.i18n.localize("ionrift-respite.restPrepare.fire.clickCrosshair");
             const shortLabel = placed
-                ? (app._isGM ? "Move fire" : "On map")
-                : "Place fire";
+                ? (app._isGM ? game.i18n.localize("ionrift-respite.restPrepare.fire.moveFire") : game.i18n.localize("ionrift-respite.restPrepare.fire.onMap"))
+                : game.i18n.localize("ionrift-respite.restPrepare.fire.placeFire");
             const tooltip = placed && app._isGM
-                ? "Click to pick a new map spot. Station markers move with the campfire."
+                ? game.i18n.localize("ionrift-respite.restPrepare.fire.clickNewSpot")
                 : hint;
             const ariaLabel = placed && app._isGM
-                ? "Pick up campfire to place elsewhere"
-                : (app._isGM ? "Place campfire on the map (click or drag)" : "Campfire");
+                ? game.i18n.localize("ionrift-respite.restPrepare.fire.pickupCampfire")
+                : (app._isGM ? game.i18n.localize("ionrift-respite.restPrepare.fire.placeCampfireMap") : game.i18n.localize("ionrift-respite.restPrepare.fire.campfire"));
             return {
                 show: true,
                 placed,
@@ -1391,11 +1391,11 @@ export class RestPrepareContext {
         const _headerPhase = (app._phase === "meal" || app._phase === "camp") ? "activity"
             : (app._phase === "resolve" ? "dawn" : app._phase);
         const _phaseStepDefs = [
-            { key: "setup", label: "Setup", include: true },
-            { key: "activity", label: "Camp", include: true },
-            { key: "supper", label: "Meal", include: app._phase === "supper" },
-            { key: "events", label: "Night", include: _includeEventsStep },
-            { key: "dawn", label: "Dawn", include: _includeEventsStep }
+            { key: "setup", label: game.i18n.localize("ionrift-respite.restPrepare.phase.setup"), include: true },
+            { key: "activity", label: game.i18n.localize("ionrift-respite.restPrepare.phase.camp"), include: true },
+            { key: "supper", label: game.i18n.localize("ionrift-respite.restPrepare.phase.meal"), include: app._phase === "supper" },
+            { key: "events", label: game.i18n.localize("ionrift-respite.restPrepare.phase.night"), include: _includeEventsStep },
+            { key: "dawn", label: game.i18n.localize("ionrift-respite.restPrepare.phase.dawn"), include: _includeEventsStep }
         ].filter(s => s.include);
         const _currentStepIndex = _phaseStepDefs.findIndex(s => s.key === _headerPhase);
         const phaseSteps = _phaseStepDefs.map((s, i) => ({
@@ -1410,9 +1410,9 @@ export class RestPrepareContext {
         // never promises a Rations stage that this configuration skips.
         const _activityNextStep = showMealStep ? "meal" : (_includeEventsStep ? "events" : "resolve");
         const activityProceed = ({
-            meal:    { label: "Proceed to Sustenance", icon: "fas fa-arrow-right" },
-            events:  { label: "Proceed to Events", icon: "fas fa-moon" },
-            resolve: { label: "Break Camp", icon: "fas fa-campground" }
+            meal:    { label: game.i18n.localize("ionrift-respite.restPrepare.proceed.sustenance"), icon: "fas fa-arrow-right" },
+            events:  { label: game.i18n.localize("ionrift-respite.restPrepare.proceed.events"), icon: "fas fa-moon" },
+            resolve: { label: game.i18n.localize("ionrift-respite.restPrepare.proceed.breakCamp"), icon: "fas fa-campground" }
         })[_activityNextStep];
 
         // Whether meal context data should be built this render pass.
@@ -1437,7 +1437,7 @@ export class RestPrepareContext {
         const activityProceedView = ((app._restVariant ?? "normal") !== "gritty"
             && ["activity", "meal"].includes(app._phase)
             && _activityNextStep !== "resolve")
-            ? { label: "Proceed to Night", icon: "fas fa-moon" }
+            ? { label: game.i18n.localize("ionrift-respite.restPrepare.proceed.night"), icon: "fas fa-moon" }
             : activityProceed;
 
         // Setup-screen summary of the settings that reshape this rest, so global
@@ -1453,17 +1453,17 @@ export class RestPrepareContext {
                 const professionsActive = professions && !isTavernSetup;
                 const mealsActive = meals && !isTavernSetup;
                 const comfortBypassTooltip = isTavernSetup
-                    ? "Comfort bypassed: tavern rest is fully safe with automatic recovery."
-                    : "Comfort bypassed: safe rest spot negates comfort penalties, fire, and exhaustion saves.";
+                    ? game.i18n.localize("ionrift-respite.restPrepare.config.comfortBypassTavern")
+                    : game.i18n.localize("ionrift-respite.restPrepare.config.comfortBypassSafe");
                 const variant = app._restVariant ?? "normal";
                 const isGritty = variant === "gritty";
                 const badges = [
-                    { on: comfortActive, icon: "fas fa-temperature-half", label: "Comfort", tooltip: setupSafeHaven ? comfortBypassTooltip : comfort ? "Comfort tiers, fire, and exhaustion saves are on. Change under Recovery Rules." : "Comfort off: no fire phase and no terrain exhaustion saves. Change under Recovery Rules." },
-                    { on: professionsActive, icon: "fas fa-hammer", label: "Professions", tooltip: isTavernSetup ? "Professions not offered at a tavern; personal activities only." : professions ? "Crafting professions and the travel phase are on. Change under Travel & Activities." : "Professions off: the travel phase is skipped. Change under Travel & Activities." },
-                    { on: mealsActive, icon: "fas fa-drumstick-bite", label: "Meals", tooltip: isTavernSetup ? "Meals provided by the establishment; no ration tracking at a tavern." : meals ? "Food and water tracking is on; the Meal phase runs." : "Meal tracking off: no rations or dehydration saves. Change in module settings." }
+                    { on: comfortActive, icon: "fas fa-temperature-half", label: game.i18n.localize("ionrift-respite.restPrepare.config.comfort"), tooltip: setupSafeHaven ? comfortBypassTooltip : comfort ? game.i18n.localize("ionrift-respite.restPrepare.config.comfortOnTooltip") : game.i18n.localize("ionrift-respite.restPrepare.config.comfortOffTooltip") },
+                    { on: professionsActive, icon: "fas fa-hammer", label: game.i18n.localize("ionrift-respite.restPrepare.config.professions"), tooltip: isTavernSetup ? game.i18n.localize("ionrift-respite.restPrepare.config.professionsTavernTooltip") : professions ? game.i18n.localize("ionrift-respite.restPrepare.config.professionsOnTooltip") : game.i18n.localize("ionrift-respite.restPrepare.config.professionsOffTooltip") },
+                    { on: mealsActive, icon: "fas fa-drumstick-bite", label: game.i18n.localize("ionrift-respite.restPrepare.config.meals"), tooltip: isTavernSetup ? game.i18n.localize("ionrift-respite.restPrepare.config.mealsTavernTooltip") : meals ? game.i18n.localize("ionrift-respite.restPrepare.config.mealsOnTooltip") : game.i18n.localize("ionrift-respite.restPrepare.config.mealsOffTooltip") }
                 ];
                 if (isGritty) {
-                    badges.unshift({ on: true, icon: "fas fa-skull-crossbones", label: "Gritty", tooltip: "Gritty Realism variant detected from dnd5e system settings. Long rest covers 7 days; short rests take 8 hours." });
+                    badges.unshift({ on: true, icon: "fas fa-skull-crossbones", label: game.i18n.localize("ionrift-respite.restPrepare.config.gritty"), tooltip: game.i18n.localize("ionrift-respite.restPrepare.config.grittyTooltip") });
                 }
                 return badges;
             })()
@@ -1578,28 +1578,28 @@ export class RestPrepareContext {
                 const comfort = (d.comfort ?? "sheltered").charAt(0).toUpperCase() + (d.comfort ?? "sheltered").slice(1);
                 const travel = setupSafeHaven
                     ? (isTavernSetup
-                        ? "Tavern rest: no travel activities."
-                        : "Travel activities are skipped for a safe rest spot.")
-                    : (d.travelAvailable ? "Gathering available (forage, hunt)." : "No gathering activities.");
-                return `Implied comfort: ${comfort}. ${travel}`;
+                        ? game.i18n.localize("ionrift-respite.restPrepare.setup.tavernNoTravel")
+                        : game.i18n.localize("ionrift-respite.restPrepare.setup.safeSpotSkipTravel"))
+                    : (d.travelAvailable ? game.i18n.localize("ionrift-respite.restPrepare.setup.gatheringAvailable") : game.i18n.localize("ionrift-respite.restPrepare.setup.noGathering"));
+                return game.i18n.format("ionrift-respite.restPrepare.setup.impliedComfort", { comfort, travel });
             })(),
             setupStatusLine: (() => {
                 const t = app._selectedTerrain ?? "forest";
                 const d = TerrainRegistry.getDefaults(t);
                 const comfort = (d.comfort ?? "sheltered").charAt(0).toUpperCase() + (d.comfort ?? "sheltered").slice(1);
-                const parts = [`${comfort} camp`];
+                const parts = [game.i18n.format("ionrift-respite.restPrepare.setup.statusComfortCamp", { comfort })];
                 const w = app._resolveSetupWeather(t);
                 const wData = WEATHER_TABLE[w];
                 if (wData && (wData.comfortPenalty > 0 || wData.encounterDC !== 0)) {
                     const fx = [];
-                    if (wData.comfortPenalty > 0) fx.push(`comfort −${wData.comfortPenalty}`);
-                    if (wData.encounterDC > 0) fx.push(`encounter DC +${wData.encounterDC}`);
-                    if (wData.encounterDC < 0) fx.push(`encounter DC ${wData.encounterDC}`);
+                    if (wData.comfortPenalty > 0) fx.push(game.i18n.format("ionrift-respite.restPrepare.setup.statusComfortPenalty", { penalty: wData.comfortPenalty }));
+                    if (wData.encounterDC > 0) fx.push(game.i18n.format("ionrift-respite.restPrepare.setup.statusEncounterPlus", { dc: wData.encounterDC }));
+                    if (wData.encounterDC < 0) fx.push(game.i18n.format("ionrift-respite.restPrepare.setup.statusEncounterMinus", { dc: wData.encounterDC }));
                     parts.push(fx.join(", "));
                 }
-                if (!setupSafeHaven && d.travelAvailable) parts.push("travel available");
-                if (tavernForcesTotm) parts.push("one-window flow for tavern");
-                if (grittyForcesTotm) parts.push("one-window flow for 7-day downtime");
+                if (!setupSafeHaven && d.travelAvailable) parts.push(game.i18n.localize("ionrift-respite.restPrepare.setup.statusTravelAvailable"));
+                if (tavernForcesTotm) parts.push(game.i18n.localize("ionrift-respite.restPrepare.setup.statusOneWindowTavern"));
+                if (grittyForcesTotm) parts.push(game.i18n.localize("ionrift-respite.restPrepare.setup.statusOneWindowDowntime"));
                 return parts.join(" · ");
             })(),
             weatherOptions: (() => {
@@ -1615,9 +1615,9 @@ export class RestPrepareContext {
                     .map(w => {
                         const isDefault = w.value === defaultKey;
                         const isLast = lastWeather && w.value === lastWeather;
-                        if (isDefault && isLast) return { ...w, label: `${w.label} (Default, last used)` };
-                        if (isDefault) return { ...w, label: `${w.label} (Default)` };
-                        if (isLast) return { ...w, label: `${w.label} (last used)` };
+                        if (isDefault && isLast) return { ...w, label: game.i18n.format("ionrift-respite.restPrepare.weather.defaultLastUsed", { label: w.label }) };
+                        if (isDefault) return { ...w, label: game.i18n.format("ionrift-respite.restPrepare.weather.default", { label: w.label }) };
+                        if (isLast) return { ...w, label: game.i18n.format("ionrift-respite.restPrepare.weather.lastUsed", { label: w.label }) };
                         return w;
                     });
             })(),
@@ -1625,27 +1625,27 @@ export class RestPrepareContext {
             selectedWeather: app._selectedWeather ?? app._resolveSetupWeather(app._selectedTerrain ?? "forest"),
             comfortOptions: (() => {
                 const opts = [
-                    { value: "safe", label: "Safe", hint: "Full HP. HD: half level recovered. No exhaustion risk. Taverns, strongholds, warded sanctuaries." },
-                    { value: "sheltered", label: "Sheltered", hint: "Full HP. HD: half level recovered. No exhaustion risk. Caves, solid ruins, decent cover." },
-                    { value: "rough", label: "Rough", hint: "Full HP. HD: half level minus 1 recovered. CON DC 10 or +1 exhaustion. Open wilderness, exposed camps." },
-                    { value: "hostile", label: "Hostile", hint: "3/4 HP. HD: half level minus 2 recovered. CON DC 15 or +1 exhaustion. Enemy territory, cursed ground." }
+                    { value: "safe", label: game.i18n.localize("ionrift-respite.restPrepare.comfort.safe.label"), hint: game.i18n.localize("ionrift-respite.restPrepare.comfort.safe.hint") },
+                    { value: "sheltered", label: game.i18n.localize("ionrift-respite.restPrepare.comfort.sheltered.label"), hint: game.i18n.localize("ionrift-respite.restPrepare.comfort.sheltered.hint") },
+                    { value: "rough", label: game.i18n.localize("ionrift-respite.restPrepare.comfort.rough.label"), hint: game.i18n.localize("ionrift-respite.restPrepare.comfort.rough.hint") },
+                    { value: "hostile", label: game.i18n.localize("ionrift-respite.restPrepare.comfort.hostile.label"), hint: game.i18n.localize("ionrift-respite.restPrepare.comfort.hostile.hint") }
                 ];
                 const match = opts.find(o => o.value === defaultComfort);
-                if (match) match.label += " (terrain default)";
+                if (match) match.label += " " + game.i18n.localize("ionrift-respite.restPrepare.comfort.terrainDefaultSuffix");
                 return opts;
             })(),
             comfortReason: TerrainRegistry.get(app._selectedTerrain ?? "forest")?.comfortReason ?? "",
             restModeOptions: (() => {
                 if (isGrittyLong) {
                     return [
-                        { value: "theater", label: "One window", selected: true },
-                        { value: "stations", label: "Camp stations (unavailable for 7-day downtime)", selected: false, disabled: true }
+                        { value: "theater", label: game.i18n.localize("ionrift-respite.restPrepare.mode.oneWindow"), selected: true },
+                        { value: "stations", label: game.i18n.localize("ionrift-respite.restPrepare.mode.stationsUnavailable"), selected: false, disabled: true }
                     ];
                 }
                 const current = app._isTotM ? "theater" : "stations";
                 return [
-                    { value: "theater", label: "One window", selected: current === "theater" },
-                    { value: "stations", label: "Camp stations", selected: current === "stations" }
+                    { value: "theater", label: game.i18n.localize("ionrift-respite.restPrepare.mode.oneWindow"), selected: current === "theater" },
+                    { value: "stations", label: game.i18n.localize("ionrift-respite.restPrepare.mode.stations"), selected: current === "stations" }
                 ];
             })(),
             setupStep: app._setupStep ?? 1,
@@ -1657,7 +1657,7 @@ export class RestPrepareContext {
             selectedTerrainLabel: app._terrainLabel ?? "Forest",
             supportsShortRest: game.ionrift?.respite?.adapter?.supportsShortRest ?? true,
             selectedRestType: app._selectedRestType ?? "long",
-            selectedRestTypeLabel: app._selectedRestType === "short" ? "Short Rest" : "Long Rest",
+            selectedRestTypeLabel: app._selectedRestType === "short" ? game.i18n.localize("ionrift-respite.restPrepare.restType.short") : game.i18n.localize("ionrift-respite.restPrepare.restType.long"),
             isShortRest: (app._selectedRestType ?? "long") === "short",
             showEnvironment: (app._selectedRestType ?? "long") !== "short" || (app._restVariant ?? "normal") === "gritty",
             showWeather: (app._selectedRestType ?? "long") !== "short" || (app._restVariant ?? "normal") === "gritty",
@@ -1908,7 +1908,7 @@ export class RestPrepareContext {
             disasterChoice: app._disasterChoice ? (() => {
                 const dc = app._disasterChoice;
                 const normalsLabel = (dc.normals?.length ?? 0) > 1
-                    ? "Two Complications" : "One Complication";
+                    ? game.i18n.localize("ionrift-respite.restPrepare.disaster.twoComplications") : game.i18n.localize("ionrift-respite.restPrepare.disaster.oneComplication");
                 let n = 1;
                 const treeNum = dc.tree ? n++ : 0;
                 const encounterNum = dc.encounter ? n++ : 0;
@@ -1982,9 +1982,9 @@ export class RestPrepareContext {
                 const treeDcAdj = ts.treeDcAdj ?? 0;
                 if (treeDcAdj !== 0) {
                     const mag = Math.abs(treeDcAdj);
-                    const tier = treeDcAdj > 0 ? "higher" : "lower";
-                    const who = (ts.options?.length === 2) ? "Both choices" : "Every choice";
-                    treeDcAdjNote = `${who} are ${mag} DC ${tier}`;
+                    const tier = treeDcAdj > 0 ? game.i18n.localize("ionrift-respite.restPrepare.tree.higher") : game.i18n.localize("ionrift-respite.restPrepare.tree.lower");
+                    const who = (ts.options?.length === 2) ? game.i18n.localize("ionrift-respite.restPrepare.tree.bothChoices") : game.i18n.localize("ionrift-respite.restPrepare.tree.everyChoice");
+                    treeDcAdjNote = game.i18n.format("ionrift-respite.restPrepare.tree.dcAdjNote", { who, mag, tier });
                 }
                 const hasLockedLosses = (finalEffects ?? []).some(eff => {
                     if (!eff._locked) return false;
@@ -2227,16 +2227,16 @@ export class RestPrepareContext {
                 const terrainObj = TerrainRegistry.get(app._engine.terrainTag);
                 const terrainLabel = terrainObj?.label ?? app._engine.terrainTag ?? "Terrain";
                 const chips = [];
-                if (weather !== 0) chips.push({ label: bd.weatherName ?? "Weather", value: fmt(weather), icon: WEATHER_TABLE[bd.weatherName]?.icon ?? "fas fa-cloud-sun-rain", tooltip: "Weather shifts the night check. Rough weather makes a camp event more likely. The value is this factor's effect on the DC." });
-                if (shelter !== 0) chips.push({ label: "Shelter", value: fmt(-shelter), icon: "fas fa-campground", tooltip: "A tent or shelter spell hides the camp and lowers the encounter DC, so a night event is less likely." });
-                if (fire !== 0) chips.push({ label: app._fireLevel ?? "Fire", value: fmt(-fire), icon: "fas fa-fire", tooltip: "A lit fire is a beacon. A larger fire raises the encounter DC and draws attention." });
-                if (travelMishap !== 0) chips.push({ label: "Travel", value: fmt(-travelMishap), icon: "fas fa-route", tooltip: "A travel mishap shifted the night check." });
+                if (weather !== 0) chips.push({ label: bd.weatherName ?? game.i18n.localize("ionrift-respite.restPrepare.encounter.weather"), value: fmt(weather), icon: WEATHER_TABLE[bd.weatherName]?.icon ?? "fas fa-cloud-sun-rain", tooltip: game.i18n.localize("ionrift-respite.restPrepare.encounter.weatherTooltip") });
+                if (shelter !== 0) chips.push({ label: game.i18n.localize("ionrift-respite.restPrepare.encounter.shelter"), value: fmt(-shelter), icon: "fas fa-campground", tooltip: game.i18n.localize("ionrift-respite.restPrepare.encounter.shelterTooltip") });
+                if (fire !== 0) chips.push({ label: app._fireLevel ?? game.i18n.localize("ionrift-respite.restPrepare.encounter.fire"), value: fmt(-fire), icon: "fas fa-fire", tooltip: game.i18n.localize("ionrift-respite.restPrepare.encounter.fireTooltip") });
+                if (travelMishap !== 0) chips.push({ label: game.i18n.localize("ionrift-respite.restPrepare.encounter.travel"), value: fmt(-travelMishap), icon: "fas fa-route", tooltip: game.i18n.localize("ionrift-respite.restPrepare.encounter.travelTooltip") });
                 const defensesAttempted = app._pendingCampRolls?.some(p => p.activityId === "act_defenses");
                 const defensesChosen = [...(app._characterChoices?.values() ?? [])].includes("act_defenses");
                 let defensesFailed = false;
                 let defensesPending = false;
                 if (totalDefenses !== 0) {
-                    chips.push({ label: "Defenses", value: `-${totalDefenses}`, icon: "fas fa-shield-alt", tooltip: `${totalDefenses / 2} defender(s) passed. Each lowers the threshold by 2.` });
+                    chips.push({ label: game.i18n.localize("ionrift-respite.restPrepare.encounter.defenses"), value: `-${totalDefenses}`, icon: "fas fa-shield-alt", tooltip: game.i18n.format("ionrift-respite.restPrepare.encounter.defensesPassedTooltip", { count: totalDefenses / 2 }) });
                 } else if (defensesAttempted || defensesChosen) {
                     let earlyDefenseCount = 0;
                     for (const [, er] of (app._earlyResults ?? [])) {
@@ -2245,12 +2245,12 @@ export class RestPrepareContext {
                     defensesPending = true;
                     defensesFailed = earlyDefenseCount > 0 || defensesAttempted;
                     if (defensesFailed) {
-                        chips.push({ label: "Defenses", value: "0", icon: "fas fa-shield-alt", warn: true, tooltip: "Defenses were attempted but failed. No reduction applied." });
+                        chips.push({ label: game.i18n.localize("ionrift-respite.restPrepare.encounter.defenses"), value: "0", icon: "fas fa-shield-alt", warn: true, tooltip: game.i18n.localize("ionrift-respite.restPrepare.encounter.defensesFailedTooltip") });
                     } else {
-                        chips.push({ label: "Defenses", value: "pending", icon: "fas fa-shield-alt", tooltip: "Defenders assigned. Reduction applies after a successful roll." });
+                        chips.push({ label: game.i18n.localize("ionrift-respite.restPrepare.encounter.defenses"), value: "pending", icon: "fas fa-shield-alt", tooltip: game.i18n.localize("ionrift-respite.restPrepare.encounter.defensesPendingTooltip") });
                     }
                 }
-                if (gmAdj !== 0) chips.push({ label: "GM", value: fmt(gmAdj), icon: "fas fa-gavel", tooltip: "Manual GM adjustment to the encounter DC, set with the plus and minus buttons." });
+                if (gmAdj !== 0) chips.push({ label: "GM", value: fmt(gmAdj), icon: "fas fa-gavel", tooltip: game.i18n.localize("ionrift-respite.restPrepare.encounter.gmAdjTooltip") });
 
                 const playerFactors = app._buildEncounterPlayerFactors({
                     terrainLabel,
@@ -2360,8 +2360,8 @@ export class RestPrepareContext {
                 const foodNeed = card.foodRequired ?? foodSlots.length;
                 const foodFilled = card.foodFilledCount ?? foodSlots.filter(slot => !slot.isEmpty).length;
                 const foodBudgetText = foodNeed <= 0
-                    ? "Not needed"
-                    : (card.foodSufficient ? "Fed" : (foodNeed > 1 ? `${foodFilled}/${foodNeed}` : "Hungry"));
+                    ? game.i18n.localize("ionrift-respite.restPrepare.sustenance.notNeeded")
+                    : (card.foodSufficient ? game.i18n.localize("ionrift-respite.restPrepare.sustenance.fed") : (foodNeed > 1 ? `${foodFilled}/${foodNeed}` : game.i18n.localize("ionrift-respite.restPrepare.sustenance.hungry")));
                 const waterFilled = card.waterFilledCount ?? 0;
                 // Compact water slots so filled slots always pack from the bottom up (no holes in the stack)
                 const filledSlots = (card.waterSlots ?? []).filter(s => s && s.filled && s.selected && s.selected !== "skip");
@@ -2421,8 +2421,8 @@ export class RestPrepareContext {
                     water: {
                         budget: {
                             text: waterNeed <= 0
-                                ? "Not needed"
-                                : (card.waterSufficient ? "Hydrated" : `${Math.max(0, waterNeed - waterFilled)} short`),
+                                ? game.i18n.localize("ionrift-respite.restPrepare.sustenance.notNeeded")
+                                : (card.waterSufficient ? game.i18n.localize("ionrift-respite.restPrepare.sustenance.hydrated") : game.i18n.format("ionrift-respite.restPrepare.sustenance.shortPints", { count: Math.max(0, waterNeed - waterFilled) })),
                             isDone: waterNeed <= 0 || Boolean(card.waterSufficient)
                         },
                         days: [{
@@ -2519,7 +2519,7 @@ function buildGatherPanel(app, workflowStep) {
     const act = (!isSkip && choice) ? app._activityResolver?.activities?.get(choice) : null;
     const locked = !!result || skipped || pending?.phase === "findings";
     return {
-        name: isSkip ? "Skip" : (act?.name ?? (isHunt ? "Hunt" : "Forage")),
+        name: isSkip ? game.i18n.localize("ionrift-respite.restPrepare.gather.skip") : (act?.name ?? (isHunt ? game.i18n.localize("ionrift-respite.restPrepare.gather.hunt") : game.i18n.localize("ionrift-respite.restPrepare.gather.forage"))),
         icon: isSkip ? "fas fa-campground" : (act?.icon ?? (isHunt ? "fas fa-paw" : "fas fa-leaf")),
         actorName: actor.name,
         actorPortrait: actor.img ?? actor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
@@ -2535,8 +2535,8 @@ function buildGatherPanel(app, workflowStep) {
             })
             : [],
         detail: result
-            ? (result.haul || "Nothing found")
-            : (skipped ? "Remain at camp. No forage or hunt." : "")
+            ? (result.haul || game.i18n.localize("ionrift-respite.restPrepare.gather.nothingFound"))
+            : (skipped ? game.i18n.localize("ionrift-respite.restPrepare.gather.remainAtCamp") : "")
     };
 }
 
@@ -2632,13 +2632,13 @@ function buildMealCommit(app) {
     const resolveItemName = (id) => {
         if (!id) return "";
         if (id.startsWith?.("__")) {
-            return id === "__feast" ? "Feast" : id.replace(/^__/, "");
+            return id === "__feast" ? game.i18n.localize("ionrift-respite.restPrepare.sustenance.feast") : id.replace(/^__/, "");
         }
         const item = actor.items.get(id);
         if (item?.name) return item.name;
         const opt = (card?.foodOptions ?? []).find(o => o.value === id)
             ?? (card?.waterOptions ?? []).find(o => o.value === id);
-        return opt?.name ?? "Ration";
+        return opt?.name ?? game.i18n.localize("ionrift-respite.restPrepare.sustenance.ration");
     };
 
     const defaultFoodImg = "icons/consumables/food/bread-loaf-round-white.webp";
@@ -2769,30 +2769,30 @@ function buildMealCommit(app) {
     const effectiveWater = waterItemIds.length + bonusWater;
     const isHydrated = effectiveWater >= totalWpd;
 
-    let title = totalDays > 1 ? "Rest Rations" : "Night's Rations";
+    let title = totalDays > 1 ? game.i18n.localize("ionrift-respite.restPrepare.sustenance.restRations") : game.i18n.localize("ionrift-respite.restPrepare.sustenance.nightsRations");
     if (!isFed && !isHydrated) {
-        title = "Fasting";
+        title = game.i18n.localize("ionrift-respite.restPrepare.sustenance.fasting");
     } else if (!isFed) {
-        title = "Water Only";
+        title = game.i18n.localize("ionrift-respite.restPrepare.sustenance.waterOnly");
     } else if (!isHydrated) {
-        title = "Food Only";
+        title = game.i18n.localize("ionrift-respite.restPrepare.sustenance.foodOnly");
     }
 
     const detail = (isFed && isHydrated)
-        ? (sendoff.hasBuff ? "Sated · No exhaustion risk · Send-off buff active" : "Sated · No exhaustion risk")
+        ? (sendoff.hasBuff ? game.i18n.localize("ionrift-respite.restPrepare.sustenance.satedBuff") : game.i18n.localize("ionrift-respite.restPrepare.sustenance.sated"))
         : (!isFed && !isHydrated)
-            ? "Starving and dehydrated · Starvation & Dehydration saves required"
+            ? game.i18n.localize("ionrift-respite.restPrepare.sustenance.starvingDehydrated")
             : !isFed
-                ? "Fasting · Exhaustion save required if already starving"
-                : "Water deficit · CON save against dehydration required";
+                ? game.i18n.localize("ionrift-respite.restPrepare.sustenance.fastingSave")
+                : game.i18n.localize("ionrift-respite.restPrepare.sustenance.waterDeficit");
 
     return {
-        kicker: "SUSTENANCE",
+        kicker: game.i18n.localize("ionrift-respite.restPrepare.sustenance.kicker"),
         title,
         detail,
         isFed,
         isHydrated,
-        waterShortLabel: `${Math.max(0, totalWpd - effectiveWater)} short`,
+        waterShortLabel: game.i18n.format("ionrift-respite.restPrepare.sustenance.shortPints", { count: Math.max(0, totalWpd - effectiveWater) }),
         items,
         primaryImg,
         sendoff,

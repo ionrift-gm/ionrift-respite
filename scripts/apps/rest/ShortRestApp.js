@@ -54,10 +54,10 @@ import { BaseShortRestApp } from "./BaseShortRestApp.js";
 
 /** All shelter options for short rest. "none" is always shown. */
 const SHORT_REST_SHELTERS = [
-    { id: "none",      name: "Open Air",   icon: "fas fa-wind",       hint: "No shelter. Standard short rest." },
-    { id: "rope_trick", name: "Rope Trick", icon: "fas fa-hat-wizard", hint: "Hidden extradimensional space. Safe short rest.",
+    { id: "none",      get name() { return game.i18n.localize("ionrift-respite.shortRest.shelter.openAir.name"); },   icon: "fas fa-wind",       get hint() { return game.i18n.localize("ionrift-respite.shortRest.shelter.openAir.hint"); } },
+    { id: "rope_trick", get name() { return game.i18n.localize("ionrift-respite.shortRest.shelter.ropeTrick.name"); }, icon: "fas fa-hat-wizard", get hint() { return game.i18n.localize("ionrift-respite.shortRest.shelter.ropeTrick.hint"); },
       altNames: ["rope trick"] },
-    { id: "tiny_hut",  name: "Tiny Hut",   icon: "fas fa-igloo",      hint: "Impenetrable force dome. Safe rest.",
+    { id: "tiny_hut",  get name() { return game.i18n.localize("ionrift-respite.shortRest.shelter.tinyHut.name"); },   icon: "fas fa-igloo",      get hint() { return game.i18n.localize("ionrift-respite.shortRest.shelter.tinyHut.hint"); },
       altNames: ["leomund's tiny hut", "tiny hut"] },
 ];
 
@@ -68,7 +68,7 @@ export class ShortRestApp extends BaseShortRestApp {
         classes: ["ionrift-window", "glass-ui", "short-rest-app"],
         tag: "div",
         window: {
-            title: "Short Rest",
+            title: "ionrift-respite.shortRest.windowTitle",
             icon: "fas fa-mug-hot",
             resizable: true,
         },
@@ -284,10 +284,10 @@ export class ShortRestApp extends BaseShortRestApp {
             this._workbenchFocusActorId = null;
             hideAfkPanelAfterRest();
             if (!this._isGM && options.abandoned) {
-                ui.notifications.info("The GM has abandoned the short rest.");
+                ui.notifications.info(game.i18n.localize("ionrift-respite.shortRest.notify.gmAbandoned"));
             }
             if (!this._isGM && options.resolved) {
-                ui.notifications.info("Short rest complete. Class features recovered.");
+                ui.notifications.info(game.i18n.localize("ionrift-respite.shortRest.notify.completeClassFeatures"));
             }
         } else if (this._isGM) {
             // GM dismissed the window but the rest persists.
@@ -807,7 +807,7 @@ export class ShortRestApp extends BaseShortRestApp {
                 showArm: true,
                 armed: Boolean(this._patrolCheckEnabled),
                 armAction: "togglePatrolCheck",
-                tooltip: "Check the box to roll 1d20 against this DC when the short rest completes. A 1, or a roll at least 5 under the DC, stops the rest. Any other roll under the DC still completes it. The result stays with the GM."
+                tooltip: game.i18n.localize("ionrift-respite.shortRest.encounterDcStepper.tooltip")
             },
             completionSummaryForUser,
             completionSummaryEmpty,
@@ -1183,7 +1183,7 @@ export class ShortRestApp extends BaseShortRestApp {
         const c = ShortRestApp.#escapeChat(chefName);
         const r = ShortRestApp.#escapeChat(recipientName);
         const f = ShortRestApp.#escapeChat(formula);
-        return `<div class="respite-chef-meal respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-utensils"></i> Replenishing Meal</div><p><strong>${r}</strong> gains <strong>+${total} HP</strong> <span class="respite-song-meta">(${f})</span> from <em>${c}</em>'s short-rest cooking (with Hit Dice).</p></div>`;
+        return `<div class="respite-chef-meal respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-utensils"></i> ${game.i18n.localize("ionrift-respite.shortRest.chat.replenishingMeal")}</div><p>${game.i18n.format("ionrift-respite.shortRest.chat.chefMealGain", { recipient: r, total, formula: f, chef: c })}</p></div>`;
     }
 
     /**
@@ -1210,7 +1210,7 @@ export class ShortRestApp extends BaseShortRestApp {
         const b = ShortRestApp.#escapeChat(bardName);
         const r = ShortRestApp.#escapeChat(recipientName);
         const f = ShortRestApp.#escapeChat(formula);
-        return `<div class="respite-song-of-rest respite-song-of-rest-card respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-music"></i> Song of Rest</div><p><strong>${r}</strong> gains <strong>+${total} HP</strong> <span class="respite-song-meta">(${f})</span> from <em>${b}</em>’s performance (applied with this character’s first Hit Die this rest).</p></div>`;
+        return `<div class="respite-song-of-rest respite-song-of-rest-card respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-music"></i> ${game.i18n.localize("ionrift-respite.shortRest.chat.songOfRest")}</div><p>${game.i18n.format("ionrift-respite.shortRest.chat.songGain", { recipient: r, total, formula: f, bard: b })}</p></div>`;
     }
 
     /**
@@ -1231,9 +1231,8 @@ export class ShortRestApp extends BaseShortRestApp {
             ? `<p class="respite-song-meta">${ann}</p>`
             : "";
         return `<div class="respite-hit-die-correction respite-chat-parchment">` +
-            `<div class="respite-song-title"><i class="fas fa-heart-pulse"></i> Healing surge</div>` +
-            `<p><strong>${n}</strong> The system card showed <strong>+${rollTotal}</strong> HP from this Hit Die. ` +
-            `Respite aligned short rest healing to <strong>+${adjustedTotal}</strong> HP.</p>${meta}</div>`;
+            `<div class="respite-song-title"><i class="fas fa-heart-pulse"></i> ${game.i18n.localize("ionrift-respite.shortRest.chat.healingSurge")}</div>` +
+            `<p>${game.i18n.format("ionrift-respite.shortRest.chat.hitDieCorrection", { name: n, rollTotal, adjustedTotal })}</p>${meta}</div>`;
     }
 
     
@@ -1242,7 +1241,7 @@ export class ShortRestApp extends BaseShortRestApp {
         const rows = entries.map(e =>
             `<li><strong>${ShortRestApp.#escapeChat(e.name)}</strong>: ${ShortRestApp.#escapeChat(e.formula)}, <strong>+${e.total} HP</strong></li>`
         ).join("");
-        return `<div class="respite-song-of-rest respite-song-of-rest-summary respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-music"></i> Song of Rest: ${b}</div><p class="respite-song-lead">Each ally who spent at least one Hit Die during this short rest gains extra healing (one die each):</p><ul class="respite-song-list">${rows}</ul></div>`;
+        return `<div class="respite-song-of-rest respite-song-of-rest-summary respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-music"></i> ${game.i18n.format("ionrift-respite.shortRest.chat.songEndTitle", { bard: b })}</div><p class="respite-song-lead">${game.i18n.localize("ionrift-respite.shortRest.chat.songEndLead")}</p><ul class="respite-song-list">${rows}</ul></div>`;
     }
 
     static #onSwitchTab(event, target) {
@@ -1522,10 +1521,10 @@ export class ShortRestApp extends BaseShortRestApp {
         if (waitingNames.length > 0) {
             const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
             const proceed = await confirmFn({
-                title: "Characters Still Resting",
-                content: `<p>The following characters have not marked themselves finished:</p><ul>${waitingNames.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>Complete the short rest for the party anyway?</p>`,
-                yesLabel: "Complete Anyway",
-                noLabel: "Cancel",
+                title: game.i18n.localize("ionrift-respite.shortRest.confirmResting.title"),
+                content: `<p>${game.i18n.localize("ionrift-respite.shortRest.confirmResting.lead")}</p><ul>${waitingNames.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>${game.i18n.localize("ionrift-respite.shortRest.confirmResting.prompt")}</p>`,
+                yesLabel: game.i18n.localize("ionrift-respite.shortRest.confirmResting.completeAnyway"),
+                noLabel: game.i18n.localize("ionrift-respite.shortRest.confirmResting.cancel"),
                 yesIcon: "fas fa-forward",
                 noIcon: "fas fa-times",
                 defaultYes: false,
@@ -1545,10 +1544,10 @@ export class ShortRestApp extends BaseShortRestApp {
         if (unconfirmed.length > 0) {
             const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
             const proceed = await confirmFn({
-                title: "Unconfirmed Spell Recovery",
-                content: `<p>The following characters have spell recovery selections that haven't been confirmed:</p><ul>${unconfirmed.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>Their selections will still be applied.</p>`,
-                yesLabel: "Apply Anyway",
-                noLabel: "Cancel",
+                title: game.i18n.localize("ionrift-respite.shortRest.confirmSpellRecovery.title"),
+                content: `<p>${game.i18n.localize("ionrift-respite.shortRest.confirmSpellRecovery.lead")}</p><ul>${unconfirmed.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>${game.i18n.localize("ionrift-respite.shortRest.confirmSpellRecovery.note")}</p>`,
+                yesLabel: game.i18n.localize("ionrift-respite.shortRest.confirmSpellRecovery.applyAnyway"),
+                noLabel: game.i18n.localize("ionrift-respite.shortRest.confirmSpellRecovery.cancel"),
                 yesIcon: "fas fa-check",
                 noIcon: "fas fa-times",
                 defaultYes: false,
@@ -1568,13 +1567,13 @@ export class ShortRestApp extends BaseShortRestApp {
             const isAmber = !isRed && rollTotal < dc;
 
             if (isRed) {
-                ui.notifications.warn(`Encounter DC ${dc}. Roll ${rollTotal}. Encounter. Rest interrupted.`);
+                ui.notifications.warn(game.i18n.format("ionrift-respite.shortRest.notify.encounterInterrupted", { dc, roll: rollTotal }));
                 return;
             }
             if (isAmber) {
-                ui.notifications.info(`Encounter DC ${dc}. Roll ${rollTotal}. Below DC. Rest completes.`);
+                ui.notifications.info(game.i18n.format("ionrift-respite.shortRest.notify.encounterBelowDc", { dc, roll: rollTotal }));
             } else {
-                ui.notifications.info(`Encounter DC ${dc}. Roll ${rollTotal}. Clear.`);
+                ui.notifications.info(game.i18n.format("ionrift-respite.shortRest.notify.encounterClear", { dc, roll: rollTotal }));
             }
         }
 
@@ -1638,7 +1637,7 @@ export class ShortRestApp extends BaseShortRestApp {
                 const slotDesc = result.slotsRecovered.map(s => `${s.count}× Level ${s.level}`).join(", ");
                 try {
                     await ChatMessage.create({
-                        content: `<div class="respite-spell-recovery respite-chat-parchment"><i class="fas fa-hat-wizard"></i> <strong>${actor.name}</strong> uses <em>${featureLabel}</em>: recovered ${slotDesc} (${result.totalLevels}/${maxBudget} levels used).</div>`,
+                        content: `<div class="respite-spell-recovery respite-chat-parchment"><i class="fas fa-hat-wizard"></i> ${game.i18n.format("ionrift-respite.shortRest.chat.spellRecovery", { actor: actor.name, feature: featureLabel, slots: slotDesc, used: result.totalLevels, budget: maxBudget })}</div>`,
                         speaker: ChatMessage.getSpeaker({ actor }),
                         whisper: game.users.filter(u => u.isGM).map(u => u.id),
                     });
@@ -1705,7 +1704,7 @@ export class ShortRestApp extends BaseShortRestApp {
 
             await this._clearShortRestState();
             emitRestSessionResolved("shortrest");
-            ui.notifications.info("Short rest complete. Class features recovered.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.shortRest.notify.completeClassFeatures"));
             this._completionPhase = false;
             this._completionSummaryLines = null;
             this._isTerminating = true;
@@ -1725,10 +1724,10 @@ export class ShortRestApp extends BaseShortRestApp {
         if (!this._isGM) return;
 
         const proceed = await confirmAbandonRest({
-            title: "Abandon Short Rest?",
-            message: "Abandon this short rest? HP gained from Hit Dice already spent will remain, but class feature recovery will not be applied.",
-            confirmLabel: "Abandon",
-            cancelLabel: "Continue Resting"
+            title: game.i18n.localize("ionrift-respite.shortRest.abandon.title"),
+            message: game.i18n.localize("ionrift-respite.shortRest.abandon.message"),
+            confirmLabel: game.i18n.localize("ionrift-respite.shortRest.abandon.confirm"),
+            cancelLabel: game.i18n.localize("ionrift-respite.shortRest.abandon.cancel")
         });
         if (!proceed) return;
 
@@ -1737,7 +1736,7 @@ export class ShortRestApp extends BaseShortRestApp {
 
         await this._clearShortRestState();
         emitRestSessionAbandoned("shortrest");
-        ui.notifications.info("Short rest abandoned.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.shortRest.notify.abandoned"));
         this._isTerminating = true;
         // Clear Detect Magic glow state before closing so it doesn't persist
         // after an abandoned short rest.

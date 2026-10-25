@@ -11,21 +11,21 @@ import { MODULE_ID } from "../../data/moduleId.js";
 const RESTRICTION_TOGGLES = [
     {
         key: "interceptRests",
-        label: "Intercept Player Rests",
+        get label() { return game.i18n.localize("ionrift-respite.playerRestrictions.interceptRests.label"); },
         icon: "fas fa-hand-paper",
-        hint: "Block the default Short/Long Rest buttons for players. Rests must go through the GM-managed Respite flow."
+        get hint() { return game.i18n.localize("ionrift-respite.playerRestrictions.interceptRests.hint"); }
     },
     {
         key: "lockPlayerQuantity",
-        label: "Lock Player Quantity Controls",
+        get label() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockPlayerQuantity.label"); },
         icon: "fas fa-lock",
-        hint: "Prevents players from adjusting item quantities on their character sheet. The GM can still modify quantities."
+        get hint() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockPlayerQuantity.hint"); }
     },
     {
         key: "lockAttuneOutsideRest",
-        label: "Lock Attunement to Rest",
+        get label() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.label"); },
         icon: "fas fa-gem",
-        hint: "Players can only attune or de-attune items during an active rest. Outside of rest, the attunement toggle is disabled. RAW: attunement requires a short rest."
+        get hint() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.hint"); }
     }
 ];
 
@@ -34,7 +34,7 @@ export class PlayerRestrictionsApp extends foundry.applications.api.ApplicationV
     static DEFAULT_OPTIONS = {
         id: "respite-player-restrictions",
         window: {
-            title: "Player Restrictions",
+            title: "ionrift-respite.playerRestrictions.windowTitle",
             icon: "fas fa-user-lock",
             resizable: false
         },
@@ -58,7 +58,7 @@ export class PlayerRestrictionsApp extends foundry.applications.api.ApplicationV
         el.classList.add("respite-settings-config");
 
         let html = `
-        <p class="settings-config-lead">Control what players can do outside the GM rest flow.</p>
+        <p class="settings-config-lead">${game.i18n.localize("ionrift-respite.playerRestrictions.lead")}</p>
         <div class="settings-config-list">`;
 
         for (const toggle of context.toggles) {
@@ -83,7 +83,7 @@ export class PlayerRestrictionsApp extends foundry.applications.api.ApplicationV
         html += `</div>
         <div class="settings-config-actions">
             <button type="button" class="settings-config-save-btn">
-                <i class="fas fa-save"></i> Save
+                <i class="fas fa-save"></i> ${game.i18n.localize("ionrift-respite.playerRestrictions.save")}
             </button>
         </div>`;
 
@@ -106,7 +106,7 @@ export class PlayerRestrictionsApp extends foundry.applications.api.ApplicationV
         for (const cb of checkboxes) {
             await game.settings.set(MODULE_ID, cb.dataset.key, cb.checked);
         }
-        ui.notifications.info("Player restriction settings saved.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.playerRestrictions.savedNotice"));
         this.close();
     }
 }
