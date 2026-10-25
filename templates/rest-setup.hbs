@@ -914,15 +914,15 @@
          truth until those controls fold into the dock. --}}
     {{#if showTotmCampfirePanel}}
     {{#unless showFireRail}}
-    <aside class="totm-campfire-side-panel" aria-label="Campfire minigame">
+    <aside class="totm-campfire-side-panel" aria-label="{{localize "ionrift-respite.restSetup.activity.campfireMinigameAria"}}">
         <div class="totm-campfire-side-header">
             <div class="totm-campfire-side-title">
                 <i class="fas fa-fire" aria-hidden="true"></i>
-                <span>Campfire</span>
+                <span>{{localize "ionrift-respite.restSetup.camp.campfireTitle"}}</span>
                 {{#if campFireIsLit}}
                 <span class="totm-camp-fire-status lit"><i class="fas fa-circle" aria-hidden="true"></i> {{campFireLabel}}</span>
                 {{else if campColdCampDecided}}
-                <span class="totm-camp-fire-status cold"><i class="fas fa-moon" aria-hidden="true"></i> Cold</span>
+                <span class="totm-camp-fire-status cold"><i class="fas fa-moon" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.activity.coldStatus"}}</span>
                 {{else}}
                 <span class="totm-camp-fire-status unlit"><i class="fas fa-circle" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.camp.unlit"}}</span>
                 {{/if}}
@@ -938,8 +938,8 @@
         <div class="totm-fire-cold-commit">
             <button type="button" class="totm-fire-cold-commit-btn"
                     data-action="selectCampColdCamp"
-                    data-tooltip="Commit to a cold camp tonight. No fire, no cooking.">
-                <i class="fas fa-moon" aria-hidden="true"></i> Commit cold camp
+                    data-tooltip="{{localize "ionrift-respite.restSetup.activity.commitColdTooltip"}}">
+                <i class="fas fa-moon" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.activity.commitCold"}}
             </button>
         </div>
         {{/unless}}
@@ -959,11 +959,11 @@
         <div class="respite-activities activity-phase-player-overview-wrap">
             <div class="player-overview-heading">
                 <i class="fas fa-users" aria-hidden="true"></i>
-                <span>Party progress</span>
+                <span>{{localize "ionrift-respite.restSetup.playerOverview.heading"}}</span>
             </div>
-            <p class="player-overview-lead">{{#if activityPhasePlayerOverview.simpleStations}}Wander the camp. Everyone is on Other tonight.{{else}}Use camp map stations to choose activities{{#if activityPhasePlayerOverview.trackFood}} and meal rations{{/if}}.{{/if}}</p>
+            <p class="player-overview-lead">{{#if activityPhasePlayerOverview.simpleStations}}{{localize "ionrift-respite.restSetup.playerOverview.leadSimple"}}{{else}}{{#if activityPhasePlayerOverview.trackFood}}{{localize "ionrift-respite.restSetup.playerOverview.leadActivitiesAndRations"}}{{else}}{{localize "ionrift-respite.restSetup.playerOverview.leadActivities"}}{{/if}}{{/if}}</p>
             <div class="player-overview-stat">
-                <span class="player-overview-label">Party members with an activity</span>
+                <span class="player-overview-label">{{localize "ionrift-respite.restSetup.playerOverview.withActivity"}}</span>
                 <span class="player-overview-value">{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}}</span>
             </div>
             <div class="player-overview-progress-track" role="progressbar"
@@ -974,7 +974,7 @@
             </div>
             {{#if activityPhasePlayerOverview.trackFood}}
             <div class="player-overview-stat">
-                <span class="player-overview-label">Party members with rations</span>
+                <span class="player-overview-label">{{localize "ionrift-respite.restSetup.playerOverview.withRations"}}</span>
                 <span class="player-overview-value">{{activityPhasePlayerOverview.mealRationsSubmitted}} / {{activityPhasePlayerOverview.totalCharacters}}</span>
             </div>
             <div class="player-overview-progress-track player-overview-progress-track--meal" role="progressbar"
@@ -993,13 +993,13 @@
                 </button>
             </div>
             {{else}}
-            <p class="player-overview-note"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Everyone has an activity. Waiting on the GM to advance.</p>
+            <p class="player-overview-note"><i class="fas fa-hourglass-half" aria-hidden="true"></i> {{localize "ionrift-respite.restSetup.playerOverview.waitingOnGm"}}</p>
             {{/if}}
             {{else if isGM}}
             <div class="respite-action-bar">
                 {{> campfireDragHandle}}
                 <button type="button" class="btn-primary disabled" disabled
-                        data-tooltip="{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned. All must be assigned to proceed.">
+                        data-tooltip="{{localize "ionrift-respite.restSetup.playerOverview.lockedTooltip" resolved=activityPhasePlayerOverview.resolvedCount total=activityPhasePlayerOverview.totalCharacters}}">
                     <i class="fas fa-lock"></i> {{activityProceed.label}}
                 </button>
             </div>
@@ -1033,11 +1033,11 @@
             {{#if isGM}}
             <button type="button" class="btn-primary" data-action="continueToNight"
                 {{#if mealBuffPending}}disabled{{/if}}
-                data-tooltip="{{#if mealBuffPending}}Apply each meal and drink first{{else}}On to the night{{/if}}">
-                <i class="fas fa-moon"></i> On to the night
+                data-tooltip="{{#if mealBuffPending}}{{localize "ionrift-respite.restSetup.supper.applyFirst"}}{{else}}{{localize "ionrift-respite.restSetup.supper.onToNight"}}{{/if}}">
+                <i class="fas fa-moon"></i> {{localize "ionrift-respite.restSetup.supper.onToNight"}}
             </button>
             {{else}}
-            <span class="phase-waiting-label"><i class="fas fa-utensils"></i> Waiting for the meal</span>
+            <span class="phase-waiting-label"><i class="fas fa-utensils"></i> {{localize "ionrift-respite.restSetup.supper.waitingForMeal"}}</span>
             {{/if}}
         </div>
     </div>
@@ -1049,7 +1049,7 @@
         {{#if (and eventsCommitPending (not eventsRolled))}}
         <div class="events-commit-shield" role="status" aria-live="polite">
             <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
-            <span>{{#if eventsModeIsPick}}Opening event pool...{{else}}Rolling night check...{{/if}}</span>
+            <span>{{#if eventsModeIsPick}}{{localize "ionrift-respite.restSetup.events.openingPool"}}{{else}}{{localize "ionrift-respite.restSetup.events.rollingCheck"}}{{/if}}</span>
         </div>
         {{/if}}
     <div class="respite-events">
@@ -1060,49 +1060,49 @@
         {{!-- Disaster Choice: nat 1 GM pick --}}
         {{#if disasterChoice}}
         <div class="respite-event-card encounter disaster-choice-card">
-            <div class="event-name"><i class="fas fa-skull"></i> Natural 1: disaster pool</div>
+            <div class="event-name"><i class="fas fa-skull"></i> {{localize "ionrift-respite.restSetup.disaster.title"}}</div>
             <div class="event-description">
-                A terrible omen. Choose how the night unfolds.
+                {{localize "ionrift-respite.restSetup.disaster.omen"}}
             </div>
             {{#if isGM}}
-            <p class="disaster-guidance">Pick one outcome. A disaster event is a branching scene of skill checks, a combat encounter is as implied, and the lighter option runs one or more ordinary (non-combat) events. Dismiss if the night should simply pass.</p>
+            <p class="disaster-guidance">{{localize "ionrift-respite.restSetup.disaster.guidance"}}</p>
             <div class="disaster-options count-{{disasterChoice.optionCount}}">
                 {{#if disasterChoice.tree}}
                 <div class="disaster-option-card tree">
-                    <span class="disaster-option-label">Option {{disasterChoice.treeNum}}</span>
+                    <span class="disaster-option-label">{{localize "ionrift-respite.restSetup.disaster.optionNumber" number=disasterChoice.treeNum}}</span>
                     <i class="fas fa-skull disaster-option-icon"></i>
-                    <strong class="disaster-option-title">Disaster Event</strong>
+                    <strong class="disaster-option-title">{{localize "ionrift-respite.restSetup.disaster.disasterEvent"}}</strong>
                     <span class="disaster-option-preview">{{disasterChoice.tree.name}}</span>
-                    <button type="button" class="disaster-option-select" data-action="disasterChoice" data-pick="tree" data-tooltip="Run a branching disaster scene: a sequence of skill checks with consequences.">Select</button>
+                    <button type="button" class="disaster-option-select" data-action="disasterChoice" data-pick="tree" data-tooltip="{{localize "ionrift-respite.restSetup.disaster.treeTooltip"}}">{{localize "ionrift-respite.restSetup.disaster.select"}}</button>
                 </div>
                 {{/if}}
                 {{#if disasterChoice.encounter}}
                 <div class="disaster-option-card encounter">
-                    <span class="disaster-option-label">Option {{disasterChoice.encounterNum}}</span>
+                    <span class="disaster-option-label">{{localize "ionrift-respite.restSetup.disaster.optionNumber" number=disasterChoice.encounterNum}}</span>
                     <i class="fas fa-swords disaster-option-icon"></i>
-                    <strong class="disaster-option-title">Combat Encounter</strong>
+                    <strong class="disaster-option-title">{{localize "ionrift-respite.restSetup.disaster.combatEncounter"}}</strong>
                     <span class="disaster-option-preview">{{disasterChoice.encounter.name}}</span>
-                    <button type="button" class="disaster-option-select" data-action="disasterChoice" data-pick="encounter" data-tooltip="Drop a combat encounter into the camp.">Select</button>
+                    <button type="button" class="disaster-option-select" data-action="disasterChoice" data-pick="encounter" data-tooltip="{{localize "ionrift-respite.restSetup.disaster.encounterTooltip"}}">{{localize "ionrift-respite.restSetup.disaster.select"}}</button>
                 </div>
                 {{/if}}
                 {{#if disasterChoice.normals.length}}
                 <div class="disaster-option-card normals">
-                    <span class="disaster-option-label">Option {{disasterChoice.normalsNum}}</span>
+                    <span class="disaster-option-label">{{localize "ionrift-respite.restSetup.disaster.optionNumber" number=disasterChoice.normalsNum}}</span>
                     <i class="fas fa-exclamation-triangle disaster-option-icon"></i>
                     <strong class="disaster-option-title">{{disasterChoice.normalsLabel}}</strong>
                     <span class="disaster-option-preview">
                         {{#each disasterChoice.normals}}{{name}}{{#unless @last}}, {{/unless}}{{/each}}
                     </span>
-                    <button type="button" class="disaster-option-select" data-action="disasterChoice" data-pick="normals" data-tooltip="Run one or more ordinary camp events instead of a full disaster.">Select</button>
+                    <button type="button" class="disaster-option-select" data-action="disasterChoice" data-pick="normals" data-tooltip="{{localize "ionrift-respite.restSetup.disaster.normalsTooltip"}}">{{localize "ionrift-respite.restSetup.disaster.select"}}</button>
                 </div>
                 {{/if}}
             </div>
             <div class="disaster-dismiss">
-                <button type="button" class="btn-override-link" data-action="disasterChoice" data-pick="dismiss" data-tooltip="Skip the disaster: the night passes with no event.">Dismiss and continue</button>
+                <button type="button" class="btn-override-link" data-action="disasterChoice" data-pick="dismiss" data-tooltip="{{localize "ionrift-respite.restSetup.disaster.dismissTooltip"}}">{{localize "ionrift-respite.restSetup.disaster.dismiss"}}</button>
             </div>
             {{else}}
             <div class="event-check-waiting">
-                <i class="fas fa-skull"></i> Something terrible stirs. The GM is deciding...
+                <i class="fas fa-skull"></i> {{localize "ionrift-respite.restSetup.disaster.gmDeciding"}}
             </div>
             {{/if}}
         </div>
@@ -1125,7 +1125,7 @@
                     <i class="fas fa-arrow-right"></i>
                     <strong>{{choiceLabel}}</strong>
                     <span class="tree-result {{#if result.success}}success{{else}}failure{{/if}}">
-                        {{#if result.success}}Passed{{else}}Failed{{/if}}
+                        {{#if result.success}}{{localize "ionrift-respite.restSetup.tree.passed"}}{{else}}{{localize "ionrift-respite.restSetup.tree.failed"}}{{/if}}
                         ({{result.passCount}}/{{result.rolls.length}})
                     </span>
                 </div>
@@ -1159,7 +1159,7 @@
                     {{#if activeTreeState.readAloud}}
                     <span>{{activeTreeState.readAloud}}</span>
                     {{else}}
-                    <em>Set the scene, then present the options below.</em>
+                    <em>{{localize "ionrift-respite.restSetup.tree.setScene"}}</em>
                     {{/if}}
                 </div>
                 {{#if activeTreeState.showDecisionPrompt}}
@@ -1175,8 +1175,8 @@
                 {{/if}}
                 {{#if activeTreeState.gmGuidance}}
                 <details class="tree-gm-steer-expand">
-                    <summary data-tooltip="Expand for pacing, option notes, and stall rules">
-                        <i class="fas fa-chess-rook"></i> GM steer
+                    <summary data-tooltip="{{localize "ionrift-respite.restSetup.tree.gmSteerTooltip"}}">
+                        <i class="fas fa-chess-rook"></i> {{localize "ionrift-respite.restSetup.tree.gmSteer"}}
                     </summary>
                     <div class="tree-gm-steer-body">{{activeTreeState.gmGuidance}}</div>
                 </details>
@@ -1189,22 +1189,22 @@
                 {{!-- === PHASE 2: Request sent, awaiting results === --}}
                 <div class="tree-roll-header">
                     <i class="fas fa-dice-d20"></i>
-                    Awaiting Player Rolls: {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
+                    {{localize "ionrift-respite.restSetup.tree.awaitingRolls" skill=activeTreeState.pendingSkillName dc=activeTreeState.pendingDC}}
                 </div>
                 <div class="tree-roll-dispatched-note">
-                    <i class="fas fa-paper-plane"></i> Roll request dispatched. Players will see their roll button now.
+                    <i class="fas fa-paper-plane"></i> {{localize "ionrift-respite.restSetup.tree.requestDispatched"}}
                 </div>
                 {{else}}
                 {{!-- === PHASE 1: Configure modifiers before sending === --}}
                 <div class="tree-roll-header tree-roll-header--configure">
                     <i class="fas fa-sliders-h"></i>
-                    Configure Roll Modifiers: {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
+                    {{localize "ionrift-respite.restSetup.tree.configureModifiers" skill=activeTreeState.pendingSkillName dc=activeTreeState.pendingDC}}
                     {{#if activeTreeState.pendingCheckContext}}
                     <span class="choice-check-hint" data-tooltip="{{activeTreeState.pendingCheckContext}}"><i class="fas fa-circle-info"></i></span>
                     {{/if}}
                 </div>
                 <div class="tree-roll-configure-note">
-                    <i class="fas fa-info-circle"></i> Set modifiers per character, then send the roll request to players.
+                    <i class="fas fa-info-circle"></i> {{localize "ionrift-respite.restSetup.tree.configureNote"}}
                 </div>
                 {{/if}}
                 {{!-- Spell rulings advisory --}}
@@ -1235,7 +1235,7 @@
                             class="check-avatar{{#if rollModeAdvantage}} adv{{/if}}{{#if rollModeDisadvantage}} dis{{/if}}{{#if rollModeForcePass}} forced-pass{{/if}}{{#if rollModeForceFail}} forced-fail{{/if}}"
                             data-action="cycleTreeRollMode"
                             data-character-id="{{id}}"
-                            data-tooltip="{{name}} &middot; {{#if rollModeForcePass}}Auto-pass{{else if rollModeForceFail}}Auto-fail{{else if rollModeAdvantage}}Advantage{{else if rollModeDisadvantage}}Disadvantage{{else}}Normal{{/if}} &middot; click to cycle">
+                            data-tooltip="{{name}} &middot; {{#if rollModeForcePass}}{{localize "ionrift-respite.restSetup.rollMode.autoPass"}}{{else if rollModeForceFail}}{{localize "ionrift-respite.restSetup.rollMode.autoFail"}}{{else if rollModeAdvantage}}{{localize "ionrift-respite.restSetup.rollMode.advantage"}}{{else if rollModeDisadvantage}}{{localize "ionrift-respite.restSetup.rollMode.disadvantage"}}{{else}}{{localize "ionrift-respite.restSetup.rollMode.normal"}}{{/if}} &middot; {{localize "ionrift-respite.restSetup.rollMode.clickToCycle"}}">
                             <img src="{{img}}" alt="{{name}}" />
                             {{#if rollModeAdvantage}}<span class="check-avatar-mode adv"><i class="fas fa-angle-up"></i></span>{{/if}}
                             {{#if rollModeDisadvantage}}<span class="check-avatar-mode dis"><i class="fas fa-angle-down"></i></span>{{/if}}
@@ -1243,7 +1243,7 @@
                             {{#if rollModeForceFail}}<span class="check-avatar-mode force-fail"><i class="fas fa-times"></i></span>{{/if}}
                         </button>
                         {{#if @root.activeTreeState.rollRequestSent}}
-                        <button type="button" class="btn-roll-for-player tree-roll-for-player" data-action="rollTreeForPlayer" data-character-id="{{id}}" data-tooltip="Roll on their behalf">
+                        <button type="button" class="btn-roll-for-player tree-roll-for-player" data-action="rollTreeForPlayer" data-character-id="{{id}}" data-tooltip="{{localize "ionrift-respite.restSetup.tree.rollForPlayer"}}">
                             <i class="fas fa-dice"></i>
                         </button>
                         {{/if}}
@@ -1253,12 +1253,12 @@
                 {{/if}}
                 <div class="tree-roll-actions">
                     {{#if activeTreeState.rollRequestSent}}
-                    <button type="button" class="btn-resend-roll" data-action="resendTreeRollRequest" data-tooltip="Re-send the roll request to players">
-                        <i class="fas fa-paper-plane"></i> Resend
+                    <button type="button" class="btn-resend-roll" data-action="resendTreeRollRequest" data-tooltip="{{localize "ionrift-respite.restSetup.tree.resendTooltip"}}">
+                        <i class="fas fa-paper-plane"></i> {{localize "ionrift-respite.restSetup.tree.resend"}}
                     </button>
                     {{else}}
-                    <button type="button" class="btn-send-roll-request" data-action="sendTreeRollRequest" data-tooltip="Dispatch roll request to all players with current modifiers">
-                        <i class="fas fa-paper-plane"></i> Send Roll Request
+                    <button type="button" class="btn-send-roll-request" data-action="sendTreeRollRequest" data-tooltip="{{localize "ionrift-respite.restSetup.tree.sendTooltip"}}">
+                        <i class="fas fa-paper-plane"></i> {{localize "ionrift-respite.restSetup.tree.sendRequest"}}
                     </button>
                     {{/if}}
                 </div>
@@ -1268,13 +1268,13 @@
             {{!-- Centralized Disaster Severity Adjudication Bar --}}
             <div class="disaster-adjudication-bar">
                 <div class="adjudication-meta">
-                    <span class="adjudication-title"><i class="fas fa-sliders-h"></i> Disaster Difficulty</span>
-                    <span class="adjudication-hint">Adjusts base difficulty across all options</span>
+                    <span class="adjudication-title"><i class="fas fa-sliders-h"></i> {{localize "ionrift-respite.restSetup.tree.disasterDifficulty"}}</span>
+                    <span class="adjudication-hint">{{localize "ionrift-respite.restSetup.tree.difficultyHint"}}</span>
                 </div>
                 <div class="adjudication-stepper">
-                    <button type="button" class="btn-step" data-action="treeDcAdjDown" data-tooltip="Lower the DC on all choices">&minus;</button>
-                    <span class="adjudication-dc-chip">{{#if (eq activeTreeState.treeDcAdj 0)}}Standard DC{{else if (gt activeTreeState.treeDcAdj 0)}}+{{activeTreeState.treeDcAdj}} DC{{else}}{{activeTreeState.treeDcAdj}} DC{{/if}}</span>
-                    <button type="button" class="btn-step" data-action="treeDcAdjUp" data-tooltip="Raise the DC on all choices">+</button>
+                    <button type="button" class="btn-step" data-action="treeDcAdjDown" data-tooltip="{{localize "ionrift-respite.restSetup.tree.lowerAllDc"}}">&minus;</button>
+                    <span class="adjudication-dc-chip">{{#if (eq activeTreeState.treeDcAdj 0)}}{{localize "ionrift-respite.restSetup.tree.standardDc"}}{{else if (gt activeTreeState.treeDcAdj 0)}}{{localize "ionrift-respite.restSetup.tree.dcPlus" adj=activeTreeState.treeDcAdj}}{{else}}{{localize "ionrift-respite.restSetup.tree.dcMinus" adj=activeTreeState.treeDcAdj}}{{/if}}</span>
+                    <button type="button" class="btn-step" data-action="treeDcAdjUp" data-tooltip="{{localize "ionrift-respite.restSetup.tree.raiseAllDc"}}">+</button>
                 </div>
             </div>
 
@@ -1282,14 +1282,14 @@
                 {{#each activeTreeState.options}}
                 <div class="tree-choice-card disaster-option-card tree">
                     <div class="tree-choice-top">
-                        <span class="disaster-option-label">Option {{optionNum}}</span>
+                        <span class="disaster-option-label">{{localize "ionrift-respite.restSetup.disaster.optionNumber" number=optionNum}}</span>
                         <strong class="disaster-option-title">{{label}}</strong>
                         {{#if description}}<div class="choice-description">{{description}}</div>{{/if}}
                         {{#if spellRulings}}<div class="choice-spell-rulings"><i class="fas fa-hat-wizard"></i>{{spellRulings}}</div>{{/if}}
                     </div>
                     <div class="tree-choice-bottom">
                         <div class="choice-check">
-                            <span class="skill-best-of">Best of</span>
+                            <span class="skill-best-of">{{localize "ionrift-respite.restSetup.tree.bestOf"}}</span>
                             {{#each check.skills}}
                             {{#if @index}}<span class="skill-sep">/</span>{{/if}}
                             <span class="skill-tag">{{this}}</span>
@@ -1300,12 +1300,12 @@
                         </div>
                         <div class="choice-dc-module">
                             <div class="event-dc-badge circular tree-choice-dc-badge">
-                                <span class="dc-label">DC</span>
+                                <span class="dc-label">{{localize "ionrift-respite.restSetup.events.dcLabel"}}</span>
                                 <span class="dc-value">{{check.dc}}</span>
                             </div>
                         </div>
-                        <button type="button" class="disaster-option-select btn-ionrift-choice" data-action="resolveTreeChoice" data-choice-id="{{id}}" data-tooltip="Commit to this approach, then configure and roll the check.">
-                            Select <i class="fas fa-chevron-right"></i>
+                        <button type="button" class="disaster-option-select btn-ionrift-choice" data-action="resolveTreeChoice" data-choice-id="{{id}}" data-tooltip="{{localize "ionrift-respite.restSetup.tree.commitTooltip"}}">
+                            {{localize "ionrift-respite.restSetup.disaster.select"}} <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>
                 </div>
@@ -1320,13 +1320,13 @@
             {{#if activeTreeState.hasStallPenalty}}
             <div class="tree-stall-area">
                 <button type="button" class="btn-stall-penalty" data-action="applyStallPenalty"
-                    data-tooltip="Apply when players stall or bargain for a third option. DCs +{{activeTreeState.stallPenalty.dcBump}}, supplies lost to the delay. Can be applied multiple times.">
-                    <i class="fas fa-hourglass-half"></i> Players Stalling
+                    data-tooltip="{{localize "ionrift-respite.restSetup.tree.stallTooltip" bump=activeTreeState.stallPenalty.dcBump}}">
+                    <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.restSetup.tree.playersStalling"}}
                 </button>
-                <span class="stall-hint-text">Third option bid &middot; negotiating between choices &middot; repeating answered questions</span>
+                <span class="stall-hint-text">{{{localize "ionrift-respite.restSetup.tree.stallHint"}}}</span>
                 {{#if activeTreeState.stallCount}}
                 <span class="stall-applied-count">
-                    <i class="fas fa-exclamation-triangle"></i> Applied {{activeTreeState.stallCount}}x. DCs +{{activeTreeState.totalStallBump}}, supplies lost{{#if activeTreeState.stallConsequence}} &middot; {{activeTreeState.stallConsequence}}{{/if}}
+                    <i class="fas fa-exclamation-triangle"></i> {{localize "ionrift-respite.restSetup.tree.stallApplied" count=activeTreeState.stallCount bump=activeTreeState.totalStallBump}}{{#if activeTreeState.stallConsequence}} &middot; {{activeTreeState.stallConsequence}}{{/if}}
                 </span>
                 {{/if}}
             </div>
@@ -1338,36 +1338,36 @@
             {{#if activeTreeState.resolved}}
             <div class="tree-resolved">
                 <div class="tree-outcome-header">
-                    <i class="fas fa-flag-checkered"></i> Outcome
+                    <i class="fas fa-flag-checkered"></i> {{localize "ionrift-respite.restSetup.tree.outcome"}}
                 </div>
                 <div class="tree-final-narrative">{{activeTreeState.finalNarrative}}</div>
                 {{#if activeTreeState.finalEffects.length}}
                 <div class="tree-effects event-effects">
-                    <div class="tree-effects-header">Consequences</div>
+                    <div class="tree-effects-header">{{localize "ionrift-respite.restSetup.tree.consequences"}}</div>
                     {{#each activeTreeState.finalEffects}}
                     <div class="event-effect{{#if _locked}} locked{{/if}}">
                         <div class="effect-head">
                             <span class="effect-label">
                             {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}}
-                            {{else if (eq type "condition")}}<span class="effect-condition-severe"><i class="fas fa-skull-crossbones"></i> {{condition}}{{#if level}} (level {{level}}){{/if}}{{#if scope}} <span class="effect-scope">({{scope}})</span>{{/if}}</span>
-                            {{else if (eq type "supply_loss")}}<i class="fas fa-box-open"></i> {{#if description}}{{description}}{{else}}Supplies swept away{{/if}}
-                            {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{#if narrative}}{{narrative}}{{else}}Gear lost in the chaos{{/if}}
-                            {{else if (eq type "consume_gold")}}<i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}Coin swept away{{/if}}
+                            {{else if (eq type "condition")}}<span class="effect-condition-severe"><i class="fas fa-skull-crossbones"></i> {{condition}}{{#if level}} {{localize "ionrift-respite.restSetup.consequence.conditionLevel" level=level}}{{/if}}{{#if scope}} <span class="effect-scope">({{scope}})</span>{{/if}}</span>
+                            {{else if (eq type "supply_loss")}}<i class="fas fa-box-open"></i> {{#if description}}{{description}}{{else}}{{localize "ionrift-respite.restSetup.consequence.suppliesSwept"}}{{/if}}
+                            {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{#if narrative}}{{narrative}}{{else}}{{localize "ionrift-respite.restSetup.consequence.gearLost"}}{{/if}}
+                            {{else if (eq type "consume_gold")}}<i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}{{localize "ionrift-respite.restSetup.consequence.coinSwept"}}{{/if}}
                             {{else}}<i class="fas fa-bolt"></i> {{description}}
                             {{/if}}
                             </span>
                             {{#if (eq type "damage")}}
-                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Re-roll target and damage"><i class="fas fa-rotate"></i></button>
-                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Roll the target and damage now and lock it in. The hit lands after the rest, so the night's recovery can't heal it away."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollDamage"}}"><i class="fas fa-rotate"></i></button>
+                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="{{{localize "ionrift-respite.restSetup.consequence.lockDamage"}}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                             {{else if (eq type "supply_loss")}}
-                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Re-roll how much is swept away"><i class="fas fa-rotate"></i></button>
-                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Roll how much is swept away now and lock it in. It leaves the packs when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollSwept"}}"><i class="fas fa-rotate"></i></button>
+                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.lockSwept"}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                             {{else if (eq type "item_at_risk")}}
-                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Re-roll which gear is lost"><i class="fas fa-rotate"></i></button>
-                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Roll which gear is lost now and lock it in. It leaves the packs when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollGear"}}"><i class="fas fa-rotate"></i></button>
+                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.lockGear"}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                             {{else if (eq type "consume_gold")}}
-                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the coin lost"><i class="fas fa-rotate"></i></button>
-                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Roll how much coin is lost now and lock it in. It leaves the purses when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollCoinLost"}}"><i class="fas fa-rotate"></i></button>
+                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.lockCoinLost"}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                             {{/if}}
                         </div>
                         {{#if _locked}}
@@ -1380,12 +1380,12 @@
                                     <img class="loss-actor-avatar" src="{{img}}" alt="{{name}}"/>
                                     {{/with}}
                                     <span class="loss-actor-name">{{name}}</span>
-                                    <span class="loss-metric damage">&minus;{{amount}} HP</span>
+                                    <span class="loss-metric damage">{{{localize "ionrift-respite.restSetup.consequence.hpLoss" amount=amount}}}</span>
                                 </div>
                                 {{/each}}
                             </div>
                             <div class="consequence-footer-bar">
-                                <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Lands after rest</span>
+                                <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.landsAfterRest"}}</span>
                             </div>
 
                             {{else if (eq type "supply_loss")}}
@@ -1401,11 +1401,11 @@
                                 </div>
                                 {{/each}}
                                 {{#unless _lockedSupply.breakdown.length}}
-                                <span class="loss-empty-note">No provisions found in packs</span>
+                                <span class="loss-empty-note">{{localize "ionrift-respite.restSetup.consequence.noProvisions"}}</span>
                                 {{/unless}}
                             </div>
                             <div class="consequence-footer-bar">
-                                <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves packs at Dawn</span>
+                                <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPacksAtDawn"}}</span>
                             </div>
 
                             {{else if (eq type "item_at_risk")}}
@@ -1422,11 +1422,11 @@
                                 </div>
                                 {{/each}}
                                 {{#unless _lockedItems.length}}
-                                <span class="loss-empty-note">No gear vulnerable to loss</span>
+                                <span class="loss-empty-note">{{localize "ionrift-respite.restSetup.consequence.noGear"}}</span>
                                 {{/unless}}
                             </div>
                             <div class="consequence-footer-bar">
-                                <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves packs at Dawn</span>
+                                <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPacksAtDawn"}}</span>
                             </div>
 
                             {{else if (eq type "consume_gold")}}
@@ -1437,15 +1437,15 @@
                                     <img class="loss-actor-avatar" src="{{img}}" alt="{{../actorName}}"/>
                                     {{/with}}
                                     <span class="loss-actor-name">{{actorName}}</span>
-                                    <span class="loss-metric gold">&minus;{{lossGp}} gp</span>
+                                    <span class="loss-metric gold">{{{localize "ionrift-respite.restSetup.consequence.gpLoss" amount=lossGp}}}</span>
                                 </div>
                                 {{/each}}
                                 {{#unless _lockedGold.breakdown.length}}
-                                <span class="loss-empty-note">No coin in purses</span>
+                                <span class="loss-empty-note">{{localize "ionrift-respite.restSetup.consequence.noCoin"}}</span>
                                 {{/unless}}
                             </div>
                             <div class="consequence-footer-bar">
-                                <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves purses at Dawn</span>
+                                <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPursesAtDawn"}}</span>
                             </div>
                             {{/if}}
                         </div>
@@ -1456,7 +1456,7 @@
                 {{/if}}
                 <div class="tree-narration-hint {{#if @root.allConsequencesResolved}}ready{{/if}}">
                     <i class="fas {{#if @root.allConsequencesResolved}}fa-theater-masks{{else}}fa-dice-d20{{/if}}"></i>
-                    <span>{{#if @root.allConsequencesResolved}}Consequences locked. Describe the outcome to your players before proceeding to Dawn.{{else}}Roll and lock each consequence above before proceeding.{{/if}}</span>
+                    <span>{{#if @root.allConsequencesResolved}}{{localize "ionrift-respite.restSetup.tree.consequencesLocked"}}{{else}}{{localize "ionrift-respite.restSetup.tree.lockEachFirst"}}{{/if}}</span>
                 </div>
             </div>
             {{/if}}
@@ -1469,9 +1469,9 @@
                 <div class="player-step-consequence-head">
                     <span class="step-choice-title">
                         <i class="fas fa-hourglass-half"></i>
-                        Party Stalled{{#if (gt activeTreeState.stallCount 1)}} (x{{activeTreeState.stallCount}}){{/if}}
+                        {{#if (gt activeTreeState.stallCount 1)}}{{localize "ionrift-respite.restSetup.tree.partyStalledCount" count=activeTreeState.stallCount}}{{else}}{{localize "ionrift-respite.restSetup.tree.partyStalled"}}{{/if}}
                     </span>
-                    <span class="step-verdict-badge fail">Delay Penalty</span>
+                    <span class="step-verdict-badge fail">{{localize "ionrift-respite.restSetup.tree.delayPenalty"}}</span>
                 </div>
                 <div class="player-step-consequence-text">{{activeTreeState.stallConsequence}}</div>
                 {{#if activeTreeState.stallConsequenceTags.length}}
@@ -1492,7 +1492,7 @@
                         {{choiceLabel}}
                     </span>
                     <span class="step-verdict-badge {{#if result.success}}pass{{else}}fail{{/if}}">
-                        {{#if result.success}}Passed{{else}}Failed{{/if}} ({{result.passCount}}/{{result.rolls.length}})
+                        {{#if result.success}}{{localize "ionrift-respite.restSetup.tree.passed"}}{{else}}{{localize "ionrift-respite.restSetup.tree.failed"}}{{/if}} ({{result.passCount}}/{{result.rolls.length}})
                     </span>
                 </div>
                 {{#if consequence}}
@@ -1513,7 +1513,7 @@
             <div class="player-outcome-card">
                 <div class="player-loss-header">
                     <i class="fas fa-boxes-packing"></i>
-                    <span>Supplies &amp; Gear Removed</span>
+                    <span>{{{localize "ionrift-respite.restSetup.tree.suppliesRemoved"}}}</span>
                 </div>
                 <div class="consequence-breakdown-matrix">
                     {{#each activeTreeState.finalEffects}}
@@ -1525,7 +1525,7 @@
                         <img class="loss-actor-avatar" src="{{img}}" alt="{{name}}"/>
                         {{/with}}
                         <span class="loss-actor-name">{{name}}</span>
-                        <span class="loss-metric damage">&minus;{{amount}} HP</span>
+                        <span class="loss-metric damage">{{{localize "ionrift-respite.restSetup.consequence.hpLoss" amount=amount}}}</span>
                     </div>
                     {{/each}}
 
@@ -1561,7 +1561,7 @@
                         <img class="loss-actor-avatar" src="{{img}}" alt="{{../actorName}}"/>
                         {{/with}}
                         <span class="loss-actor-name">{{actorName}}</span>
-                        <span class="loss-metric gold">&minus;{{lossGp}} gp</span>
+                        <span class="loss-metric gold">{{{localize "ionrift-respite.restSetup.consequence.gpLoss" amount=lossGp}}}</span>
                     </div>
                     {{/each}}
 
@@ -1591,14 +1591,14 @@
                     {{/each}}
                 </div>
                 <div class="consequence-footer-bar">
-                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves packs at Dawn</span>
+                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPacksAtDawn"}}</span>
                 </div>
             </div>
             {{else}}
             {{#unless activeTreeState.history.length}}
             <div class="player-event-narrating-card">
                 <i class="fas fa-theater-masks player-narrating-icon"></i>
-                <span class="player-narrating-text">The GM is narrating...</span>
+                <span class="player-narrating-text">{{localize "ionrift-respite.restSetup.tree.gmNarrating"}}</span>
             </div>
             {{/unless}}
             {{/if}}
@@ -1610,12 +1610,12 @@
             {{else if activeTreeState.lastStepOutcome}}
             <div class="player-step-next-beat">
                 <i class="fas fa-theater-masks player-narrating-icon"></i>
-                <span class="player-narrating-text">The GM is framing the next decision...</span>
+                <span class="player-narrating-text">{{localize "ionrift-respite.restSetup.tree.gmFraming"}}</span>
             </div>
             {{else}}
             <div class="player-event-narrating-card">
                 <i class="fas fa-theater-masks player-narrating-icon"></i>
-                <span class="player-narrating-text">The GM is narrating...</span>
+                <span class="player-narrating-text">{{localize "ionrift-respite.restSetup.tree.gmNarrating"}}</span>
             </div>
             {{/if}}
             {{/if}}
@@ -1635,11 +1635,11 @@
                     {{else if (eq category "discovery")}}<i class="fas fa-search"></i>
                     {{else}}<i class="fas fa-moon"></i>
                     {{/if}}
-                    {{#if name}}{{name}}{{else}}{{#if (eq category "encounter")}}Something stirs...{{else if (eq category "complication")}}A complication arises...{{else if (eq category "discovery")}}Something catches your eye...{{else}}The night passes...{{/if}}{{/if}}
+                    {{#if name}}{{name}}{{else}}{{#if (eq category "encounter")}}{{localize "ionrift-respite.restSetup.events.fallbackEncounter"}}{{else if (eq category "complication")}}{{localize "ionrift-respite.restSetup.events.fallbackComplication"}}{{else if (eq category "discovery")}}{{localize "ionrift-respite.restSetup.events.fallbackDiscovery"}}{{else}}{{localize "ionrift-respite.restSetup.events.fallbackQuiet"}}{{/if}}{{/if}}
                 </div>
                 {{#if resolvedOutcome}}
                 <span class="event-verdict-inline {{#if (eq resolvedOutcome "triumph")}}pass{{else if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "mixed")}}partial{{else}}fail{{/if}}">
-                    {{#if (eq resolvedOutcome "triumph")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "success")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "mixed")}}<i class="fas fa-exclamation-triangle"></i> Partial{{else}}<i class="fas fa-times"></i> Failed{{/if}}
+                    {{#if (eq resolvedOutcome "triumph")}}<i class="fas fa-check"></i> {{localize "ionrift-respite.restSetup.events.verdictPassed"}}{{else if (eq resolvedOutcome "success")}}<i class="fas fa-check"></i> {{localize "ionrift-respite.restSetup.events.verdictPassed"}}{{else if (eq resolvedOutcome "mixed")}}<i class="fas fa-exclamation-triangle"></i> {{localize "ionrift-respite.restSetup.events.verdictPartial"}}{{else}}<i class="fas fa-times"></i> {{localize "ionrift-respite.restSetup.events.verdictFailed"}}{{/if}}
                 </span>
                 {{/if}}
             </div>
@@ -1654,16 +1654,16 @@
                 {{!-- RESOLVED (GM View) --}}
                 <div class="event-check-header">
                     <div class="event-dc-badge">
-                        <span class="dc-label">DC</span>
+                        <span class="dc-label">{{localize "ionrift-respite.restSetup.events.dcLabel"}}</span>
                         <span class="dc-value">{{mechanical.dc}}</span>
                     </div>
                     <div class="event-check-info">
                         <strong class="check-skill-name">{{skillName}}</strong>
                         <span class="event-check-target">
-                            {{#if (eq mechanical.targets "watch")}}On-duty characters{{else if (eq mechanical.targets "all")}}Entire party{{else}}On-duty characters{{/if}}
-                            &middot; Group Check (averaged)
+                            {{#if (eq mechanical.targets "watch")}}{{localize "ionrift-respite.restSetup.events.onDuty"}}{{else if (eq mechanical.targets "all")}}{{localize "ionrift-respite.restSetup.events.entireParty"}}{{else}}{{localize "ionrift-respite.restSetup.events.onDuty"}}{{/if}}
+                            &middot; {{localize "ionrift-respite.restSetup.events.groupCheckAveraged"}}
                         </span>
-                        <span class="event-check-direction">All rolls averaged against DC</span>
+                        <span class="event-check-direction">{{localize "ionrift-respite.restSetup.events.allRollsAveraged"}}</span>
                     </div>
                 </div>
 
@@ -1674,19 +1674,19 @@
                     <div class="event-roll-line {{#if passed}}pass{{else}}fail{{/if}}">
                         {{#if img}}<img class="roll-actor-token" src="{{img}}" alt="{{name}}">{{/if}}
                         <span class="roll-char-name">{{name}}</span>
-                        <span class="roll-total">rolled <strong>{{total}}</strong></span>
+                        <span class="roll-total">{{{localize "ionrift-respite.restSetup.events.rolledTotal" total=total}}}</span>
                         {{#unless ../isGroupAveraged}}
                         <span class="roll-badge {{#if passed}}pass{{else}}fail{{/if}}">
-                            {{#if passed}}<i class="fas fa-check"></i> Pass{{else}}<i class="fas fa-times"></i> Fail{{/if}}
+                            {{#if passed}}<i class="fas fa-check"></i> {{localize "ionrift-respite.restSetup.events.pass"}}{{else}}<i class="fas fa-times"></i> {{localize "ionrift-respite.restSetup.events.fail"}}{{/if}}
                         </span>
                         {{/unless}}
                     </div>
                     {{/each}}
                     {{#if groupAverage}}
                     <div class="event-roll-average">
-                        <span class="avg-label">Group Average:</span>
+                        <span class="avg-label">{{localize "ionrift-respite.restSetup.events.groupAverage"}}</span>
                         <strong>{{groupAverage}}</strong>
-                        <span class="avg-vs">vs DC</span>
+                        <span class="avg-vs">{{localize "ionrift-respite.restSetup.events.vsDc"}}</span>
                         <strong>{{mechanical.dc}}</strong>
                     </div>
                     {{/if}}
@@ -1696,17 +1696,17 @@
                 {{!-- Consolidated resolution block: verdict, narrative, and GM-only consequences in one card --}}
                 {{#if (eq resolvedOutcome "triumph")}}
                 <div class="event-resolution pass">
-                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> Check Passed</div>
+                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.events.checkPassed"}}</div>
                     <div class="event-resolution-narrative">{{mechanical.onTriumph.narrative}}</div>
                 </div>
                 {{else if (eq resolvedOutcome "success")}}
                 <div class="event-resolution pass">
-                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> Check Passed</div>
+                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.events.checkPassed"}}</div>
                     <div class="event-resolution-narrative">{{mechanical.onSuccess.narrative}}</div>
                 </div>
                 {{else if (eq resolvedOutcome "mixed")}}
                 <div class="event-resolution partial">
-                    <div class="event-resolution-verdict"><i class="fas fa-exclamation-triangle"></i> Partial Success</div>
+                    <div class="event-resolution-verdict"><i class="fas fa-exclamation-triangle"></i> {{localize "ionrift-respite.restSetup.events.partialSuccess"}}</div>
                     <div class="event-resolution-narrative">{{mechanical.onMixed.narrative}}</div>
                     {{#if mechanical.onMixed.effects.length}}
                     <div class="event-effects">
@@ -1715,25 +1715,25 @@
                             <div class="effect-head">
                                 <span class="effect-label">
                                 {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}}
-                                {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
+                                {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> {{#if hpMultiplier includeZero=true}}{{localize "ionrift-respite.restSetup.consequence.recoveryMultiplier" multiplier=hpMultiplier}}{{else}}{{localize "ionrift-respite.restSetup.consequence.recoveryMultiplier" multiplier=""}}{{/if}}
                                 {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
-                                {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{resource}}
-                                {{else if (eq type "consume_gold")}}<i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}Coin lifted from the packs{{/if}}
+                                {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> {{#if resource}}{{localize "ionrift-respite.restSetup.consequence.loseResource" resource=resource}}{{else}}{{localize "ionrift-respite.restSetup.consequence.loseResource" resource=""}}{{/if}}
+                                {{else if (eq type "consume_gold")}}<i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}{{localize "ionrift-respite.restSetup.consequence.coinLifted"}}{{/if}}
                                 {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
                                 {{/if}}
                                 </span>
                                 {{#if (eq type "damage")}}
-                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll target and damage"><i class="fas fa-rotate"></i></button>
-                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll the target and damage now and lock it in. The hit lands after the rest, so the night's recovery can't heal it away."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollDamage"}}"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{{localize "ionrift-respite.restSetup.consequence.lockDamage"}}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                                 {{else if (eq type "consume_resource")}}
-                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the amount lost"><i class="fas fa-rotate"></i></button>
-                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll how much is lost now and lock it in. It's applied when the rest resolves, not before, so the GM sees exactly what goes."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollAmount"}}"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{{localize "ionrift-respite.restSetup.consequence.lockAmount"}}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                                 {{else if (eq type "item_at_risk")}}
-                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll which items are taken"><i class="fas fa-rotate"></i></button>
-                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll which items go missing now and lock it in. They leave the packs when the rest resolves, so the GM sees exactly what was taken."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollItems"}}"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.lockItems"}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                                 {{else if (eq type "consume_gold")}}
-                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the coin taken"><i class="fas fa-rotate"></i></button>
-                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll how much coin is lifted now and lock it in. It leaves the purses when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollCoinTaken"}}"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.lockCoinTaken"}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                                 {{/if}}
                             </div>
                             {{#if _locked}}
@@ -1746,12 +1746,12 @@
                                         <img class="loss-actor-avatar" src="{{img}}" alt="{{name}}"/>
                                         {{/with}}
                                         <span class="loss-actor-name">{{name}}</span>
-                                        <span class="loss-metric damage">&minus;{{amount}} HP</span>
+                                        <span class="loss-metric damage">{{{localize "ionrift-respite.restSetup.consequence.hpLoss" amount=amount}}}</span>
                                     </div>
                                     {{/each}}
                                 </div>
                                 <div class="consequence-footer-bar">
-                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Lands after rest</span>
+                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.landsAfterRest"}}</span>
                                 </div>
 
                                 {{else if (eq type "consume_resource")}}
@@ -1778,12 +1778,12 @@
                                     {{/each}}
                                     {{#unless _lockedLoss.breakdown.length}}
                                     {{#unless _lockedLoss.gear.length}}
-                                    <span class="loss-empty-note">No provisions found in packs</span>
+                                    <span class="loss-empty-note">{{localize "ionrift-respite.restSetup.consequence.noProvisions"}}</span>
                                     {{/unless}}
                                     {{/unless}}
                                 </div>
                                 <div class="consequence-footer-bar">
-                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves packs at Dawn</span>
+                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPacksAtDawn"}}</span>
                                 </div>
 
                                 {{else if (eq type "item_at_risk")}}
@@ -1800,11 +1800,11 @@
                                     </div>
                                     {{/each}}
                                     {{#unless _lockedItems.length}}
-                                    <span class="loss-empty-note">No gear vulnerable to loss</span>
+                                    <span class="loss-empty-note">{{localize "ionrift-respite.restSetup.consequence.noGear"}}</span>
                                     {{/unless}}
                                 </div>
                                 <div class="consequence-footer-bar">
-                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves packs at Dawn</span>
+                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPacksAtDawn"}}</span>
                                 </div>
 
                                 {{else if (eq type "consume_gold")}}
@@ -1815,15 +1815,15 @@
                                         <img class="loss-actor-avatar" src="{{img}}" alt="{{../actorName}}"/>
                                         {{/with}}
                                         <span class="loss-actor-name">{{actorName}}</span>
-                                        <span class="loss-metric gold">&minus;{{lossGp}} gp</span>
+                                        <span class="loss-metric gold">{{{localize "ionrift-respite.restSetup.consequence.gpLoss" amount=lossGp}}}</span>
                                     </div>
                                     {{/each}}
                                     {{#unless _lockedGold.breakdown.length}}
-                                    <span class="loss-empty-note">No coin in purses</span>
+                                    <span class="loss-empty-note">{{localize "ionrift-respite.restSetup.consequence.noCoin"}}</span>
                                     {{/unless}}
                                 </div>
                                 <div class="consequence-footer-bar">
-                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves purses at Dawn</span>
+                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPursesAtDawn"}}</span>
                                 </div>
                                 {{/if}}
                             </div>
@@ -1835,7 +1835,7 @@
                 </div>
                 {{else}}
                 <div class="event-resolution fail">
-                    <div class="event-resolution-verdict"><i class="fas fa-skull-crossbones"></i> Check Failed</div>
+                    <div class="event-resolution-verdict"><i class="fas fa-skull-crossbones"></i> {{localize "ionrift-respite.restSetup.events.checkFailed"}}</div>
                     <div class="event-resolution-narrative">{{mechanical.onFailure.narrative}}</div>
                     {{#if mechanical.onFailure.effects.length}}
                     <div class="event-effects">
@@ -1844,26 +1844,26 @@
                             <div class="effect-head">
                                 <span class="effect-label">
                                 {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}}
-                                {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
+                                {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> {{#if hpMultiplier includeZero=true}}{{localize "ionrift-respite.restSetup.consequence.recoveryMultiplier" multiplier=hpMultiplier}}{{else}}{{localize "ionrift-respite.restSetup.consequence.recoveryMultiplier" multiplier=""}}{{/if}}
                                 {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
                                 {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
                                 {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> {{description}}
-                                {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{resource}}
-                                {{else if (eq type "consume_gold")}}<i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}Coin lifted from the packs{{/if}}
+                                {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> {{#if resource}}{{localize "ionrift-respite.restSetup.consequence.loseResource" resource=resource}}{{else}}{{localize "ionrift-respite.restSetup.consequence.loseResource" resource=""}}{{/if}}
+                                {{else if (eq type "consume_gold")}}<i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}{{localize "ionrift-respite.restSetup.consequence.coinLifted"}}{{/if}}
                                 {{/if}}
                                 </span>
                                 {{#if (eq type "damage")}}
-                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll target and damage"><i class="fas fa-rotate"></i></button>
-                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll the target and damage now and lock it in. The hit lands after the rest, so the night's recovery can't heal it away."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollDamage"}}"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{{localize "ionrift-respite.restSetup.consequence.lockDamage"}}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                                 {{else if (eq type "consume_resource")}}
-                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the amount lost"><i class="fas fa-rotate"></i></button>
-                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll how much is lost now and lock it in. It's applied when the rest resolves, not before, so the GM sees exactly what goes."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollAmount"}}"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{{localize "ionrift-respite.restSetup.consequence.lockAmount"}}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                                 {{else if (eq type "item_at_risk")}}
-                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll which items are taken"><i class="fas fa-rotate"></i></button>
-                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll which items go missing now and lock it in. They leave the packs when the rest resolves, so the GM sees exactly what was taken."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollItems"}}"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.lockItems"}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                                 {{else if (eq type "consume_gold")}}
-                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the coin taken"><i class="fas fa-rotate"></i></button>
-                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll how much coin is lifted now and lock it in. It leaves the purses when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.rerollCoinTaken"}}"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="{{localize "ionrift-respite.restSetup.consequence.lockCoinTaken"}}"><i class="fas fa-dice-d20"></i> {{{localize "ionrift-respite.restSetup.consequence.rollAndLock"}}}</button>{{/if}}
                                 {{/if}}
                             </div>
                             {{#if _locked}}
@@ -1876,12 +1876,12 @@
                                         <img class="loss-actor-avatar" src="{{img}}" alt="{{name}}"/>
                                         {{/with}}
                                         <span class="loss-actor-name">{{name}}</span>
-                                        <span class="loss-metric damage">&minus;{{amount}} HP</span>
+                                        <span class="loss-metric damage">{{{localize "ionrift-respite.restSetup.consequence.hpLoss" amount=amount}}}</span>
                                     </div>
                                     {{/each}}
                                 </div>
                                 <div class="consequence-footer-bar">
-                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Lands after rest</span>
+                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.landsAfterRest"}}</span>
                                 </div>
 
                                 {{else if (eq type "consume_resource")}}
@@ -1908,12 +1908,12 @@
                                     {{/each}}
                                     {{#unless _lockedLoss.breakdown.length}}
                                     {{#unless _lockedLoss.gear.length}}
-                                    <span class="loss-empty-note">No provisions found in packs</span>
+                                    <span class="loss-empty-note">{{localize "ionrift-respite.restSetup.consequence.noProvisions"}}</span>
                                     {{/unless}}
                                     {{/unless}}
                                 </div>
                                 <div class="consequence-footer-bar">
-                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves packs at Dawn</span>
+                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPacksAtDawn"}}</span>
                                 </div>
 
                                 {{else if (eq type "item_at_risk")}}
@@ -1930,11 +1930,11 @@
                                     </div>
                                     {{/each}}
                                     {{#unless _lockedItems.length}}
-                                    <span class="loss-empty-note">No gear vulnerable to loss</span>
+                                    <span class="loss-empty-note">{{localize "ionrift-respite.restSetup.consequence.noGear"}}</span>
                                     {{/unless}}
                                 </div>
                                 <div class="consequence-footer-bar">
-                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves packs at Dawn</span>
+                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPacksAtDawn"}}</span>
                                 </div>
 
                                 {{else if (eq type "consume_gold")}}
@@ -1945,15 +1945,15 @@
                                         <img class="loss-actor-avatar" src="{{img}}" alt="{{../actorName}}"/>
                                         {{/with}}
                                         <span class="loss-actor-name">{{actorName}}</span>
-                                        <span class="loss-metric gold">&minus;{{lossGp}} gp</span>
+                                        <span class="loss-metric gold">{{{localize "ionrift-respite.restSetup.consequence.gpLoss" amount=lossGp}}}</span>
                                     </div>
                                     {{/each}}
                                     {{#unless _lockedGold.breakdown.length}}
-                                    <span class="loss-empty-note">No coin in purses</span>
+                                    <span class="loss-empty-note">{{localize "ionrift-respite.restSetup.consequence.noCoin"}}</span>
                                     {{/unless}}
                                 </div>
                                 <div class="consequence-footer-bar">
-                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> Leaves purses at Dawn</span>
+                                    <span class="consequence-timing-pill"><i class="fas fa-hourglass-end"></i> {{localize "ionrift-respite.restSetup.consequence.leavesPursesAtDawn"}}</span>
                                 </div>
                                 {{/if}}
                             </div>
@@ -1973,8 +1973,8 @@
                 {{> rollRequest rollRequest=gmRollRequest}}
                 {{/if}}
                 <div class="event-override-links">
-                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success" data-tooltip="Skip the roll and set this check as a success.">Force Pass</button>
-                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure" data-tooltip="Skip the roll and set this check as a failure.">Force Fail</button>
+                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success" data-tooltip="{{localize "ionrift-respite.restSetup.events.forcePassTooltip"}}">{{localize "ionrift-respite.restSetup.events.forcePass"}}</button>
+                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure" data-tooltip="{{localize "ionrift-respite.restSetup.events.forceFailTooltip"}}">{{localize "ionrift-respite.restSetup.events.forceFail"}}</button>
                 </div>
 
                 {{else}}
@@ -1982,7 +1982,7 @@
                 <div class="event-narration-advisory lead">
                     <div class="narration-read-aloud">
                         <i class="fas fa-theater-masks"></i>
-                        {{#if readAloud}}<span>{{readAloud}}</span>{{else}}<em>Set the scene for the party, then resolve below.</em>{{/if}}
+                        {{#if readAloud}}<span>{{readAloud}}</span>{{else}}<em>{{localize "ionrift-respite.restSetup.events.setSceneResolve"}}</em>{{/if}}
                     </div>
                     {{#if gmGuidance}}
                     <div class="narration-gm-context">
@@ -1995,15 +1995,15 @@
                 <div class="event-check-module">
                     <div class="check-module-skill">{{skillName}}</div>
                     <div class="check-module-dc-row">
-                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="-1" data-tooltip="Lower the DC"><i class="fas fa-minus"></i></button>
+                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="-1" data-tooltip="{{localize "ionrift-respite.restSetup.events.lowerDc"}}"><i class="fas fa-minus"></i></button>
                         <div class="event-dc-badge circular">
-                            <span class="dc-label">DC</span>
+                            <span class="dc-label">{{localize "ionrift-respite.restSetup.events.dcLabel"}}</span>
                             <span class="dc-value">{{mechanical.dc}}</span>
                         </div>
-                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="1" data-tooltip="Raise the DC"><i class="fas fa-plus"></i></button>
+                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="1" data-tooltip="{{localize "ionrift-respite.restSetup.events.raiseDc"}}"><i class="fas fa-plus"></i></button>
                     </div>
                     <div class="check-module-target">
-                        {{#if (eq mechanical.targets "watch")}}Watch only{{else if (eq mechanical.targets "all")}}Entire party{{else}}Watch{{/if}} &middot; Group Check (averaged)
+                        {{#if (eq mechanical.targets "watch")}}{{localize "ionrift-respite.restSetup.events.watchOnly"}}{{else if (eq mechanical.targets "all")}}{{localize "ionrift-respite.restSetup.events.entireParty"}}{{else}}{{localize "ionrift-respite.restSetup.events.watch"}}{{/if}} &middot; {{localize "ionrift-respite.restSetup.events.groupCheckAveraged"}}
                     </div>
                     {{#if targetActors.length}}
                     <div class="check-module-avatars">
@@ -2013,7 +2013,7 @@
                             data-action="cycleEventRollMode"
                             data-event-index="{{@../index}}"
                             data-character-id="{{id}}"
-                            data-tooltip="{{name}} &middot; {{#if rollModeAdvantage}}Advantage{{else if rollModeDisadvantage}}Disadvantage{{else}}Normal{{/if}} (click to change)">
+                            data-tooltip="{{name}} &middot; {{#if rollModeAdvantage}}{{localize "ionrift-respite.restSetup.rollMode.advantage"}}{{else if rollModeDisadvantage}}{{localize "ionrift-respite.restSetup.rollMode.disadvantage"}}{{else}}{{localize "ionrift-respite.restSetup.rollMode.normal"}}{{/if}} {{localize "ionrift-respite.restSetup.rollMode.clickToChange"}}">
                             <img src="{{img}}" alt="{{name}}" />
                             {{#if rollModeAdvantage}}<span class="check-avatar-mode adv"><i class="fas fa-angle-up"></i></span>{{/if}}
                             {{#if rollModeDisadvantage}}<span class="check-avatar-mode dis"><i class="fas fa-angle-down"></i></span>{{/if}}
@@ -2029,23 +2029,23 @@
                 {{/if}}
                 <div class="event-gm-hint">
                     <i class="fas fa-info-circle"></i>
-                    Averaged rolls trend toward ~10. DCs above 13 are harder, below 8 are easier than individual checks.
+                    {{localize "ionrift-respite.restSetup.events.averagedHint"}}
                 </div>
                 <details class="event-outcome-toggle">
                     <summary>
-                        <i class="fas fa-eye"></i> Preview Outcomes
+                        <i class="fas fa-eye"></i> {{localize "ionrift-respite.restSetup.events.previewOutcomes"}}
                         <i class="fas fa-chevron-right outcome-toggle-chevron"></i>
                     </summary>
                     <div class="event-outcome-preview two-col">
                         <div class="outcome-preview-col pass">
-                            <div class="outcome-preview-head"><i class="fas fa-check-circle"></i> Pass</div>
+                            <div class="outcome-preview-head"><i class="fas fa-check-circle"></i> {{localize "ionrift-respite.restSetup.events.pass"}}</div>
                             <div class="outcome-preview-text">{{mechanical.onSuccess.narrative}}</div>
                             {{#each mechanical.onSuccess.effects}}{{#if description}}
                             <div class="outcome-preview-effect pass"><i class="fas fa-circle"></i> {{description}}</div>
                             {{/if}}{{/each}}
                         </div>
                         <div class="outcome-preview-col fail">
-                            <div class="outcome-preview-head"><i class="fas fa-times-circle"></i> Fail</div>
+                            <div class="outcome-preview-head"><i class="fas fa-times-circle"></i> {{localize "ionrift-respite.restSetup.events.fail"}}</div>
                             <div class="outcome-preview-text">{{mechanical.onFailure.narrative}}</div>
                             {{#each mechanical.onFailure.effects}}{{#if description}}
                             <div class="outcome-preview-effect fail"><i class="fas fa-circle"></i> {{description}}</div>
@@ -2056,16 +2056,16 @@
 
                 <div class="event-adjudicate-buttons">
                     <button type="button" class="btn-resolve-check" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="auto"
-                        {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled data-tooltip="Resolve the current event first"{{/unless}}{{/if}}>
-                        <i class="fas fa-dice-d20"></i> Request Rolls
+                        {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled data-tooltip="{{localize "ionrift-respite.restSetup.events.resolveCurrentFirst"}}"{{/unless}}{{/if}}>
+                        <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.restSetup.events.requestRolls"}}
                     </button>
                     <div class="event-override-links">
                         <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success"
-                            data-tooltip="Skip the roll and set this check as a success."
-                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>Force Pass</button>
+                            data-tooltip="{{localize "ionrift-respite.restSetup.events.forcePassTooltip"}}"
+                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>{{localize "ionrift-respite.restSetup.events.forcePass"}}</button>
                         <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure"
-                            data-tooltip="Skip the roll and set this check as a failure."
-                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>Force Fail</button>
+                            data-tooltip="{{localize "ionrift-respite.restSetup.events.forceFailTooltip"}}"
+                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>{{localize "ionrift-respite.restSetup.events.forceFail"}}</button>
                     </div>
                 </div>
                 {{/if}}
@@ -2078,24 +2078,24 @@
             {{#each mechanical.onFailure.effects}}
             {{#if encounterHints}}
             <div class="event-encounter-hints">
-                <div class="encounter-hint-title"><i class="fas fa-dragon"></i> Encounter Setup</div>
+                <div class="encounter-hint-title"><i class="fas fa-dragon"></i> {{localize "ionrift-respite.restSetup.encounterHints.title"}}</div>
                 {{#if encounterHints.creatureSuggestions}}
-                <div class="encounter-hint"><strong>Creatures:</strong> {{join encounterHints.creatureSuggestions ", "}}</div>
+                <div class="encounter-hint"><strong>{{localize "ionrift-respite.restSetup.encounterHints.creatures"}}</strong> {{join encounterHints.creatureSuggestions ", "}}</div>
                 {{/if}}
                 {{#if encounterHints.groupSize}}
-                <div class="encounter-hint"><strong>Group:</strong> {{encounterHints.groupSize}}</div>
+                <div class="encounter-hint"><strong>{{localize "ionrift-respite.restSetup.encounterHints.group"}}</strong> {{encounterHints.groupSize}}</div>
                 {{/if}}
                 {{#if encounterHints.environment}}
-                <div class="encounter-hint"><strong>Environment:</strong> {{encounterHints.environment}}</div>
+                <div class="encounter-hint"><strong>{{localize "ionrift-respite.restSetup.encounterHints.environment"}}</strong> {{encounterHints.environment}}</div>
                 {{/if}}
                 {{#if encounterHints.tactics}}
-                <div class="encounter-hint"><strong>Tactics:</strong> {{encounterHints.tactics}}</div>
+                <div class="encounter-hint"><strong>{{localize "ionrift-respite.restSetup.encounterHints.tactics"}}</strong> {{encounterHints.tactics}}</div>
                 {{/if}}
                 {{#if encounterHints.awareness}}
-                <div class="encounter-hint"><strong>Awareness:</strong> {{encounterHints.awareness}}</div>
+                <div class="encounter-hint"><strong>{{localize "ionrift-respite.restSetup.encounterHints.awareness"}}</strong> {{encounterHints.awareness}}</div>
                 {{/if}}
                 {{#if encounterHints.loot}}
-                <div class="encounter-hint"><strong>Loot:</strong> {{encounterHints.loot}}</div>
+                <div class="encounter-hint"><strong>{{localize "ionrift-respite.restSetup.encounterHints.loot"}}</strong> {{encounterHints.loot}}</div>
                 {{/if}}
             </div>
             {{/if}}
@@ -2107,7 +2107,7 @@
             <div class="tree-history-summary">
                 {{#each treeHistory}}
                 <span class="tree-step"><i class="fas fa-chevron-right"></i> {{choiceLabel}}: {{#if
-                    result.success}}Passed{{else}}Failed{{/if}}</span>
+                    result.success}}{{localize "ionrift-respite.restSetup.tree.passed"}}{{else}}{{localize "ionrift-respite.restSetup.tree.failed"}}{{/if}}</span>
                 {{/each}}
             </div>
             {{/if}}
@@ -2123,10 +2123,10 @@
                     {{else if (eq category "discovery")}}<i class="fas fa-search"></i>
                     {{else}}<i class="fas fa-moon"></i>
                     {{/if}}
-                    {{#if name}}{{name}}{{else}}{{#if (eq category "encounter")}}Something stirs...{{else if (eq category "complication")}}A complication arises...{{else if (eq category "discovery")}}Something catches your eye...{{else}}The night passes...{{/if}}{{/if}}
+                    {{#if name}}{{name}}{{else}}{{#if (eq category "encounter")}}{{localize "ionrift-respite.restSetup.events.fallbackEncounter"}}{{else if (eq category "complication")}}{{localize "ionrift-respite.restSetup.events.fallbackComplication"}}{{else if (eq category "discovery")}}{{localize "ionrift-respite.restSetup.events.fallbackDiscovery"}}{{else}}{{localize "ionrift-respite.restSetup.events.fallbackQuiet"}}{{/if}}{{/if}}
                 </div>
                 <span class="event-verdict-inline {{#if (eq resolvedOutcome "triumph")}}pass{{else if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "mixed")}}partial{{else}}fail{{/if}}">
-                    {{#if (eq resolvedOutcome "triumph")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "success")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "mixed")}}<i class="fas fa-exclamation-triangle"></i> Partial{{else}}<i class="fas fa-times"></i> Failed{{/if}}
+                    {{#if (eq resolvedOutcome "triumph")}}<i class="fas fa-check"></i> {{localize "ionrift-respite.restSetup.events.verdictPassed"}}{{else if (eq resolvedOutcome "success")}}<i class="fas fa-check"></i> {{localize "ionrift-respite.restSetup.events.verdictPassed"}}{{else if (eq resolvedOutcome "mixed")}}<i class="fas fa-exclamation-triangle"></i> {{localize "ionrift-respite.restSetup.events.verdictPartial"}}{{else}}<i class="fas fa-times"></i> {{localize "ionrift-respite.restSetup.events.verdictFailed"}}{{/if}}
                 </span>
             </div>
             {{#if mechanical}}
@@ -2138,10 +2138,10 @@
                     <div class="event-roll-line {{#if passed}}pass{{else}}fail{{/if}}">
                         {{#if img}}<img class="roll-actor-token" src="{{img}}" alt="{{name}}">{{/if}}
                         <span class="roll-char-name">{{name}}</span>
-                        <span class="roll-total">rolled <strong>{{total}}</strong></span>
+                        <span class="roll-total">{{{localize "ionrift-respite.restSetup.events.rolledTotal" total=total}}}</span>
                         {{#unless ../isGroupAveraged}}
                         <span class="roll-badge {{#if passed}}pass{{else}}fail{{/if}}">
-                            {{#if passed}}<i class="fas fa-check"></i> Pass{{else}}<i class="fas fa-times"></i> Fail{{/if}}
+                            {{#if passed}}<i class="fas fa-check"></i> {{localize "ionrift-respite.restSetup.events.pass"}}{{else}}<i class="fas fa-times"></i> {{localize "ionrift-respite.restSetup.events.fail"}}{{/if}}
                         </span>
                         {{/unless}}
                     </div>
@@ -2151,22 +2151,22 @@
 
                 {{#if (eq resolvedOutcome "triumph")}}
                 <div class="event-resolution pass">
-                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> Check Passed</div>
+                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.events.checkPassed"}}</div>
                     <div class="event-resolution-narrative">The party takes the challenge head on.</div>
                 </div>
                 {{else if (eq resolvedOutcome "success")}}
                 <div class="event-resolution pass">
-                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> Check Passed</div>
+                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.restSetup.events.checkPassed"}}</div>
                     <div class="event-resolution-narrative">The party weathers the challenge.</div>
                 </div>
                 {{else if (eq resolvedOutcome "mixed")}}
                 <div class="event-resolution partial">
-                    <div class="event-resolution-verdict"><i class="fas fa-exclamation-triangle"></i> Partial Success</div>
+                    <div class="event-resolution-verdict"><i class="fas fa-exclamation-triangle"></i> {{localize "ionrift-respite.restSetup.events.partialSuccess"}}</div>
                     <div class="event-resolution-narrative">Things could have gone better.</div>
                 </div>
                 {{else}}
                 <div class="event-resolution fail">
-                    <div class="event-resolution-verdict"><i class="fas fa-skull-crossbones"></i> Check Failed</div>
+                    <div class="event-resolution-verdict"><i class="fas fa-skull-crossbones"></i> {{localize "ionrift-respite.restSetup.events.checkFailed"}}</div>
                     <div class="event-resolution-narrative">The situation takes a turn for the worse.</div>
                 </div>
                 {{/if}}
@@ -2195,19 +2195,19 @@
             {{else}}
             <div class="player-event-narrating-card">
                 <i class="fas fa-theater-masks player-narrating-icon"></i>
-                <span class="player-narrating-text">The GM is narrating...</span>
+                <span class="player-narrating-text">{{localize "ionrift-respite.restSetup.tree.gmNarrating"}}</span>
             </div>
             {{/if}}
             {{else}}
             <div class="player-event-narrating-card">
                 <i class="fas fa-theater-masks player-narrating-icon"></i>
-                <span class="player-narrating-text">The GM is narrating...</span>
+                <span class="player-narrating-text">{{localize "ionrift-respite.restSetup.tree.gmNarrating"}}</span>
             </div>
             {{/if}}
             {{else}}
             <div class="player-event-narrating-card">
                 <i class="fas fa-theater-masks player-narrating-icon"></i>
-                <span class="player-narrating-text">The GM is narrating...</span>
+                <span class="player-narrating-text">{{localize "ionrift-respite.restSetup.tree.gmNarrating"}}</span>
             </div>
             {{/if}}
         </div>
