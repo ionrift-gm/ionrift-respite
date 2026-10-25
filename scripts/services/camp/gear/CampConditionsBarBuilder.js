@@ -40,7 +40,7 @@ export function buildCampConditionsBar({
     const terrainIcon = terrain?.icon ?? "fas fa-mountain";
     const terrainTooltip = terrain?.comfortReason
         ? `${terrainLabel}: ${terrain.comfortReason}`
-        : (safeRestSpot ? "Settlement haven chosen during setup." : "Environment chosen during setup.");
+        : (safeRestSpot ? game.i18n.localize("ionrift-respite.campConditions.havenChosen") : game.i18n.localize("ionrift-respite.campConditions.environmentChosen"));
 
     const wx = WEATHER_TABLE[weatherKey] ?? WEATHER_TABLE.clear;
 
@@ -51,8 +51,8 @@ export function buildCampConditionsBar({
             terrainIcon,
             terrainTooltip,
             campComfort: "safe",
-            campComfortLabel: "Safe",
-            campComfortTooltip: "<div class='ledger-tip'><div class='tooltip-title'>Safe rest spot</div><ul><li>Full HP and Hit Dice</li><li>No night encounters</li><li>No exhaustion risk</li></ul></div>",
+            campComfortLabel: game.i18n.localize("ionrift-respite.campConditions.safeLabel"),
+            campComfortTooltip: game.i18n.localize("ionrift-respite.campConditions.safeTooltip"),
             weatherLabel: wx.label,
             weatherKey,
             weatherIcon: "fas fa-sun",
@@ -88,11 +88,11 @@ export function buildCampConditionsBar({
 
     let weatherShieldNote = null;
     if (hasHut) {
-        weatherShieldNote = "Shelter spell cancels weather penalties";
+        weatherShieldNote = game.i18n.localize("ionrift-respite.campConditions.weatherShield.shelterSpell");
     } else if (hasTent && wx.tentCancels && (wx.comfortPenalty > 0 || wx.encounterDC !== 0)) {
-        weatherShieldNote = "Tent cancels these weather effects";
+        weatherShieldNote = game.i18n.localize("ionrift-respite.campConditions.weatherShield.tentCancels");
     } else if (hasTent && wx.tentReduces && wx.comfortPenalty > 0) {
-        weatherShieldNote = "Tent reduces weather comfort penalty by 1";
+        weatherShieldNote = game.i18n.localize("ionrift-respite.campConditions.weatherShield.tentReduces");
         if (wx.comfortPenalty > 1 && isComfortEnabled()) {
             campComfort = boostComfort(campComfort, -(wx.comfortPenalty - 1));
         }
@@ -103,28 +103,28 @@ export function buildCampConditionsBar({
     const campComfortLabel = CampGearScanner.getRules(campComfort).label;
 
     const impactParts = [];
-    if (wx.comfortPenalty > 0) impactParts.push(`Comfort -${wx.comfortPenalty}`);
-    if (wx.encounterDC > 0) impactParts.push(`Night +${wx.encounterDC}`);
-    if (wx.encounterDC < 0) impactParts.push(`Night ${wx.encounterDC}`);
+    if (wx.comfortPenalty > 0) impactParts.push(game.i18n.format("ionrift-respite.campConditions.impact.comfort", { penalty: wx.comfortPenalty }));
+    if (wx.encounterDC > 0) impactParts.push(game.i18n.format("ionrift-respite.campConditions.impact.nightPlus", { dc: wx.encounterDC }));
+    if (wx.encounterDC < 0) impactParts.push(game.i18n.format("ionrift-respite.campConditions.impact.night", { dc: wx.encounterDC }));
 
     const baseComfortLabel = CampGearScanner.getRules(terrain?.comfort ?? "rough").label;
-    const factorParts = [`Base: ${terrainLabel} (${baseComfortLabel})`];
-    if (fireDelta === -1) factorParts.push(effectiveFire === "cold_camp" ? "Cold camp (-1)" : "No fire (-1)");
-    else if (fireDelta === 1) factorParts.push("Bonfire (+1)");
+    const factorParts = [game.i18n.format("ionrift-respite.campConditions.factor.base", { terrain: terrainLabel, comfort: baseComfortLabel })];
+    if (fireDelta === -1) factorParts.push(effectiveFire === "cold_camp" ? game.i18n.localize("ionrift-respite.campConditions.factor.coldCamp") : game.i18n.localize("ionrift-respite.campConditions.factor.noFire"));
+    else if (fireDelta === 1) factorParts.push(game.i18n.localize("ionrift-respite.campConditions.factor.bonfire"));
 
     if (hasHut) {
-        factorParts.push("Shelter spell (Sheltered)");
+        factorParts.push(game.i18n.localize("ionrift-respite.campConditions.factor.shelterSpell"));
     } else if (wx.comfortPenalty > 0) {
-        if (hasTent && wx.tentCancels) factorParts.push(`${wx.label} (-${wx.comfortPenalty}, cancelled by tent)`);
-        else if (hasTent && wx.tentReduces) factorParts.push(`${wx.label} (-${wx.comfortPenalty}, reduced by tent)`);
-        else factorParts.push(`${wx.label} (-${wx.comfortPenalty})`);
+        if (hasTent && wx.tentCancels) factorParts.push(game.i18n.format("ionrift-respite.campConditions.factor.weatherCancelled", { weather: wx.label, penalty: wx.comfortPenalty }));
+        else if (hasTent && wx.tentReduces) factorParts.push(game.i18n.format("ionrift-respite.campConditions.factor.weatherReduced", { weather: wx.label, penalty: wx.comfortPenalty }));
+        else factorParts.push(game.i18n.format("ionrift-respite.campConditions.factor.weather", { weather: wx.label, penalty: wx.comfortPenalty }));
     }
     const comfortContext = factorParts.join(" · ");
 
     // Vertical structure: Title, italic environment, bulleted recovery & factors (no em dash)
-    const headerLine = `<strong>Camp Comfort: ${campComfortLabel}</strong>`;
+    const headerLine = game.i18n.format("ionrift-respite.campConditions.tooltip.header", { comfort: campComfortLabel });
     const envLine = terrain?.comfortReason ? `<em>${terrain.comfortReason}</em>` : null;
-    const recoveryLine = `• <strong>Recovery:</strong> ${CampGearScanner.getSummary(campComfort)}`;
+    const recoveryLine = game.i18n.format("ionrift-respite.campConditions.tooltip.recovery", { summary: CampGearScanner.getSummary(campComfort) });
     const factorsLine = factorParts.map(part => `• ${part}`).join("<br>");
 
     let campComfortTooltip = [headerLine, envLine, recoveryLine, factorsLine].filter(Boolean).join("<br>");
@@ -140,14 +140,14 @@ export function buildCampConditionsBar({
             lines.push(recoveryLine);
             lines.push(factorsLine);
             if (shelteredList.length) {
-                lines.push(`• <strong>${shelteredList.length} Sheltered:</strong> ${shelteredList.map(c => c.actorName).join(", ")}`);
+                lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.sheltered", { count: shelteredList.length, names: shelteredList.map(c => c.actorName).join(", ") }));
             }
             if (roughList.length) {
-                lines.push(`• <strong>${roughList.length} Exposed:</strong> ${roughList.map(c => c.actorName).join(", ")}`);
+                lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.exposed", { count: roughList.length, names: roughList.map(c => c.actorName).join(", ") }));
             }
             const gearParts = [];
-            gearParts.push(hasTent ? `${tentCount} Tent pitched` : "No Tent (exposed)");
-            if (messKitCount > 0) gearParts.push(`${messKitCount} Mess Kit (save advantage)`);
+            gearParts.push(hasTent ? game.i18n.format("ionrift-respite.campConditions.tooltip.tentsPitched", { count: tentCount }) : game.i18n.localize("ionrift-respite.campConditions.tooltip.noTentExposed"));
+            if (messKitCount > 0) gearParts.push(game.i18n.format("ionrift-respite.campConditions.tooltip.messKits", { count: messKitCount }));
             for (const part of gearParts) lines.push(`• ${part}`);
 
             campComfortTooltip = lines.join("<br>");
@@ -156,48 +156,49 @@ export function buildCampConditionsBar({
             const targetActorId = viewerActorId ?? owned?.id;
             const viewerCard = campScanData.personalCards.find(c => c.actorId === targetActorId) ?? campScanData.personalCards[0];
             if (viewerCard) {
-                const bedrollNote = viewerCard.hasBedroll ? " (+1 from Bedroll)" : " (No bedroll)";
                 const lines = [
                     headerLine
                 ];
                 if (envLine) lines.push(envLine);
                 lines.push(recoveryLine);
                 lines.push(factorsLine);
-                lines.push(`<strong>Your Rest: ${viewerCard.personalComfortLabel}</strong>${bedrollNote}`);
+                lines.push(viewerCard.hasBedroll
+                    ? game.i18n.format("ionrift-respite.campConditions.tooltip.yourRestBedroll", { comfort: viewerCard.personalComfortLabel })
+                    : game.i18n.format("ionrift-respite.campConditions.tooltip.yourRestNoBedroll", { comfort: viewerCard.personalComfortLabel }));
 
                 const pComfort = viewerCard.personalComfort;
                 if (pComfort === "hostile") {
-                    lines.push(`• <strong>HP:</strong> 75% max HP cap`);
+                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hpCap75"));
                     if (viewerCard.recovery?.isAlreadyFull) {
-                        lines.push(`• <strong>Hit Dice:</strong> Already at max (${viewerCard.recovery.totalHd}/${viewerCard.recovery.totalHd})`);
+                        lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.hdAtMax", { total: viewerCard.recovery.totalHd }));
                     } else {
-                        lines.push(`• <strong>Hit Dice:</strong> -2 HD recovery penalty`);
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hdPenalty2"));
                     }
-                    lines.push(`• <strong>Exhaustion:</strong> CON DC 15 save`);
+                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.exhaustionDc15"));
                 } else if (pComfort === "rough") {
-                    lines.push(`• <strong>HP:</strong> Full recovery`);
+                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hpFull"));
                     if (viewerCard.recovery?.isAlreadyFull) {
-                        lines.push(`• <strong>Hit Dice:</strong> Already at max (${viewerCard.recovery.totalHd}/${viewerCard.recovery.totalHd})`);
+                        lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.hdAtMax", { total: viewerCard.recovery.totalHd }));
                     } else {
-                        lines.push(`• <strong>Hit Dice:</strong> -1 HD recovery penalty`);
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hdPenalty1"));
                     }
-                    lines.push(`• <strong>Exhaustion:</strong> CON DC 10 save`);
+                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.exhaustionDc10"));
                 } else {
-                    lines.push(`• <strong>HP:</strong> Full recovery`);
+                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hpFull"));
                     if (viewerCard.recovery?.isAlreadyFull) {
-                        lines.push(`• <strong>Hit Dice:</strong> Already at max (${viewerCard.recovery.totalHd}/${viewerCard.recovery.totalHd})`);
+                        lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.hdAtMax", { total: viewerCard.recovery.totalHd }));
                     } else {
-                        lines.push(`• <strong>Hit Dice:</strong> Normal recovery`);
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hdNormal"));
                     }
-                    lines.push(`• <strong>Exhaustion:</strong> No exhaustion risk`);
+                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.noExhaustion"));
                 }
 
                 if (viewerCard.hasMessKit && (pComfort === "rough" || pComfort === "hostile")) {
-                    lines.push(`• <strong>Mess Kit:</strong> Advantage on exhaustion save`);
+                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.messKitAdvantage"));
                 }
 
                 if (!viewerCard.hasBedroll && (pComfort === "rough" || pComfort === "hostile")) {
-                    lines.push(`<em>A bedroll would raise your rest to Sheltered.</em>`);
+                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.bedrollWouldRaise"));
                 }
 
                 campComfortTooltip = lines.join("<br>");
@@ -207,14 +208,14 @@ export function buildCampConditionsBar({
 
     const tentStatus = {
         hasTent,
-        label: hasTent ? "Tent" : "No Tent",
+        label: hasTent ? game.i18n.localize("ionrift-respite.campConditions.tent.label") : game.i18n.localize("ionrift-respite.campConditions.tent.none"),
         icon: "fas fa-campground",
         chipClass: hasTent ? "shelter-present" : "shelter-absent",
         tooltip: hasTent
             ? (!enforceTent && !partyHasScannedTent && !activeShelters.includes("tent")
-                ? "Tent factor waived by GM. Camp weather protection active."
-                : (weatherShieldNote ? `Tent: ${weatherShieldNote}. Camp weather protection active.` : "Tent pitched: Shields camp from weather penalties and reduces nocturnal encounter danger."))
-            : "No tent pitched. Camp is exposed to weather penalties and easier for nocturnal threats to locate."
+                ? game.i18n.localize("ionrift-respite.campConditions.tent.waived")
+                : (weatherShieldNote ? game.i18n.format("ionrift-respite.campConditions.tent.withNote", { note: weatherShieldNote }) : game.i18n.localize("ionrift-respite.campConditions.tent.pitched")))
+            : game.i18n.localize("ionrift-respite.campConditions.tent.absent")
     };
 
     return {

@@ -30,12 +30,7 @@ const TABLE_NAME = "Respite: Camp Fuel";
 
 function buildCampFuelTableDescription() {
     const pct = getCampFuelFindPercent();
-    return (
-        `Successful forage: ${pct}% chance to roll this table (Configure Travel & Activities).`
-        + " When rolled, the result is always kindling (faces 1-100 on d100)."
-        + ` Net: about ${pct}% kindling per successful forage when foraging is enabled.`
-        + " Add kindling variants in the Camp Fuel compendium folder to split the 1-100 band."
-    );
+    return game.i18n.format("ionrift-respite.campFuel.tableDescription", { percent: pct });
 }
 /** Kindling occupies the full d100 when the table is rolled. */
 export const CAMP_FUEL_KINDLING_WEIGHT_D100 = 100;
@@ -228,7 +223,7 @@ export class CampFuelTableSync {
         const result = await CampFuelTableSync._syncTable(table, entries);
 
         if (notify && result.entryCount > 0) {
-            ui.notifications.info("Respite: Synced camp fuel roll table.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.campFuel.synced"));
         }
         if (result.entryCount === 0) {
             console.warn(`${MODULE_ID} | Camp fuel table sync produced no rows.`);
@@ -373,7 +368,7 @@ export class CampFuelTableSync {
     static async openSheet() {
         const table = CampFuelTableSync.getTable();
         if (!table) {
-            ui.notifications.warn("Respite: Camp fuel table is not ready yet.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.campFuel.notReady"));
             return false;
         }
         await table.sheet.render({ force: true });

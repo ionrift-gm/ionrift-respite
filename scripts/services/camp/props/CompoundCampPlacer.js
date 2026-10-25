@@ -365,12 +365,12 @@ function isCampFurnitureToken(doc) {
  */
 export function validateCampEquipmentDrop(worldX, worldY, gridW, gridH, pitCenterOverride = null, excludeTokenId = null) {
     const scene = canvas?.scene;
-    if (!scene || !canvas?.grid) return { ok: false, reason: "No active scene." };
+    if (!scene || !canvas?.grid) return { ok: false, reason: game.i18n.localize("ionrift-respite.campPlacer.noActiveScene") };
 
     hydrateCampSessionFromScene();
     const pitCenter = pitCenterOverride ?? pitCenterWorld();
     if (!pitCenter) {
-        return { ok: false, reason: "Place the campfire on the map first." };
+        return { ok: false, reason: game.i18n.localize("ionrift-respite.campPlacer.placeCampfireFirst") };
     }
 
     const { sx, sy } = snappedCenterWorld(worldX, worldY);
@@ -379,7 +379,7 @@ export function validateCampEquipmentDrop(worldX, worldY, gridW, gridH, pitCente
     if (dist > maxDist + 0.01) {
         return {
             ok: false,
-            reason: `Camp equipment must be within ${CAMP_PLACEMENT_RANGE_SQUARES} squares of the campfire.`
+            reason: game.i18n.format("ionrift-respite.campPlacer.outOfRange", { squares: CAMP_PLACEMENT_RANGE_SQUARES })
         };
     }
 
@@ -388,7 +388,7 @@ export function validateCampEquipmentDrop(worldX, worldY, gridW, gridH, pitCente
     const ty = sy - (gs * gridH) / 2;
 
     if (placementOverlapsAnyToken(tx, ty, gridW, gridH, scene, excludeTokenId)) {
-        return { ok: false, reason: "That spot overlaps another token.", tx, ty };
+        return { ok: false, reason: game.i18n.localize("ionrift-respite.campPlacer.overlapsToken"), tx, ty };
     }
 
     return { ok: true, tx, ty, sx, sy };
@@ -402,7 +402,7 @@ export function validateCampEquipmentDrop(worldX, worldY, gridW, gridH, pitCente
  */
 export function validatePlayerGearDrop(worldX, worldY, gearType) {
     const def = PLAYER_GEAR[gearType];
-    if (!def) return { ok: false, reason: "Unknown gear type." };
+    if (!def) return { ok: false, reason: game.i18n.localize("ionrift-respite.campPlacer.unknownGearType") };
     return validateCampEquipmentDrop(worldX, worldY, def.width ?? 1, def.height ?? 1);
 }
 
@@ -415,7 +415,7 @@ export function validatePlayerGearDrop(worldX, worldY, gearType) {
  */
 export function validateStationEquipmentDrop(worldX, worldY, stationKey, pitCenterOverride = null) {
     const def = FURNITURE[stationKey];
-    if (!def) return { ok: false, reason: "Unknown station." };
+    if (!def) return { ok: false, reason: game.i18n.localize("ionrift-respite.campPlacer.unknownStation") };
     return validateCampEquipmentDrop(worldX, worldY, def.width ?? 1, def.height ?? 1, pitCenterOverride);
 }
 
@@ -573,7 +573,7 @@ export function actorHasBrewingTools(actor) {
  */
 export function stationPlacementRequirementHint(stationKey) {
     if (stationKey === "cookingArea") {
-        return "Cook's utensils, alchemist's supplies, brewer's supplies, or herbalism kit in inventory.";
+        return game.i18n.localize("ionrift-respite.campPlacer.cookingRequirement");
     }
     return "";
 }
@@ -589,11 +589,11 @@ export function stationPlacementRequirementHint(stationKey) {
  */
 export async function placeCampfire(worldX, worldY, options = {}) {
     if (!game.user.isGM) {
-        ui.notifications.warn("Only the GM can place the campfire.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campPlacer.gmOnlyCampfire"));
         return null;
     }
     if (_placingCampfire || hasCampfirePlaced()) {
-        ui.notifications.warn("A campfire is already on the map.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campPlacer.campfireAlreadyPlaced"));
         return null;
     }
 
@@ -690,7 +690,7 @@ async function _placeCampfireNow(worldX, worldY, options, scene) {
     await scene.createEmbeddedDocuments("Token", [baseData, flameData]);
 
     Logger.log(`${MODULE_ID} | CompoundCampPlacer: placed campfire at (${cx}, ${cy}), session: ${sessionId}`);
-    ui.notifications.info("Campfire placed on scene.");
+    ui.notifications.info(game.i18n.localize("ionrift-respite.campPlacer.campfirePlacedOnScene"));
 
     return { sessionId, center: { x: cx, y: cy } };
 }
@@ -710,12 +710,12 @@ export async function placeStation(worldX, worldY, stationKey) {
 
     const rawDef = FURNITURE[stationKey];
     if (!rawDef) {
-        ui.notifications.warn("Unknown camp station.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campPlacer.unknownCampStation"));
         return false;
     }
 
     if (isStationDeployed(stationKey)) {
-        ui.notifications.warn("That station is already on the map.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campPlacer.stationAlreadyPlaced"));
         return false;
     }
 
@@ -794,7 +794,7 @@ export async function placePlayerGear(worldX, worldY, gearType, actorId) {
     if (!actor) return false;
 
     if (isGearDeployed(actorId, gearType)) {
-        ui.notifications.warn("That gear is already on the map.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campPlacer.gearAlreadyPlaced"));
         return false;
     }
 

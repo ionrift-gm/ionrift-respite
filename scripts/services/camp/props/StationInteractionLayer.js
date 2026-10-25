@@ -812,7 +812,7 @@ class StationOverlay {
         this._drawBg(this._bg, OV.BORDER_FAR, OV.BG_ALPHA, OV.OUTLINE_FAR);
         this._drawIconRing(this._iconRing, 0, 0, "far");
         if (this._hoverLabel) this._hoverLabel.visible = false;
-        this._farText.text    = `${distFt}ft away`;
+        this._farText.text    = game.i18n.format("ionrift-respite.stationOverlay.distanceAway", { distance: distFt });
         this._farText.visible = true;
 
         clearTimeout(this._farTimeout);
@@ -1454,8 +1454,8 @@ function _spawnStationOverlays({ sceneTokens, terrainTag, emptyFadeMap, campPitM
 
         const displayOverride = campPitModeOnly
             ? (campPitUnlit
-                ? { title: "Light the fire", tagline: "Set up camp and light the fire" }
-                : { title: "Campfire", tagline: (station.tagline ?? "").replace(/,/g, " · ") })
+                ? { title: game.i18n.localize("ionrift-respite.stationOverlay.lightFireTitle"), tagline: game.i18n.localize("ionrift-respite.stationOverlay.lightFireTagline") }
+                : { title: game.i18n.localize("ionrift-respite.stationOverlay.campfireTitle"), tagline: (station.tagline ?? "").replace(/,/g, " · ") })
             : null;
 
         const overlay = new StationOverlay(
@@ -1503,7 +1503,7 @@ function _spawnStationOverlays({ sceneTokens, terrainTag, emptyFadeMap, campPitM
                 });
                 if (!token) continue;
                 const ownerActor = game.actors.get(actorId);
-                const ownerName = ownerActor?.name ?? "Bedroll";
+                const ownerName = ownerActor?.name ?? game.i18n.localize("ionrift-respite.stationOverlay.bedrollFallback");
                 const overlay = new StationOverlay(
                     token,
                     bedrollStation,
@@ -1511,7 +1511,7 @@ function _spawnStationOverlays({ sceneTokens, terrainTag, emptyFadeMap, campPitM
                     _clickCallback,
                     {
                         emptyNoticeFade: !!emptyFadeMap.bedroll,
-                        displayOverride: { title: `${ownerName}'s ${bedrollStation.label}` }
+                        displayOverride: { title: game.i18n.format("ionrift-respite.stationOverlay.ownedStation", { owner: ownerName, station: bedrollStation.label }) }
                     }
                 );
                 _overlays.push(overlay);

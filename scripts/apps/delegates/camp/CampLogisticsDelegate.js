@@ -110,7 +110,7 @@ export class CampLogisticsDelegate {
     async giftWood(qty = 2) {
         const party = getPartyActors();
         if (!party.length) {
-            ui.notifications?.warn("No party members found to receive firewood.");
+            ui.notifications?.warn(game.i18n.localize("ionrift-respite.campLogistics.noPartyForFirewood"));
             return;
         }
 
@@ -131,11 +131,11 @@ export class CampLogisticsDelegate {
                 }
             }]);
 
-            ui.notifications?.info?.(`Added ${qty} firewood to ${recipient.name}'s inventory.`);
+            ui.notifications?.info?.(game.i18n.format("ionrift-respite.campLogistics.firewoodAdded", { count: qty, actor: recipient.name }));
             this._app.render();
         } catch (err) {
             Logger.error(`${MODULE_ID} | Failed to gift firewood:`, err);
-            ui.notifications?.error?.("Failed to add firewood to party inventory.");
+            ui.notifications?.error?.(game.i18n.localize("ionrift-respite.campLogistics.firewoodAddFailed"));
         }
     }
 

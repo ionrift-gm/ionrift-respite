@@ -96,8 +96,38 @@ export class CampGearScanner {
             hpFraction: getHpFraction(tier),
             hdPenalty: getHdPenalty(tier),
             exhaustionDC: getExhaustionDC(tier),
-            label: tier.charAt(0).toUpperCase() + tier.slice(1)
+            label: CampGearScanner._tierLabel(tier)
         };
+    }
+
+    /**
+     * Display label for a comfort tier id.
+     * @param {string} tier
+     * @returns {string}
+     */
+    static _tierLabel(tier) {
+        switch (tier) {
+            case "safe": return game.i18n.localize("ionrift-respite.campGear.tier.safe");
+            case "sheltered": return game.i18n.localize("ionrift-respite.campGear.tier.sheltered");
+            case "rough": return game.i18n.localize("ionrift-respite.campGear.tier.rough");
+            case "hostile": return game.i18n.localize("ionrift-respite.campGear.tier.hostile");
+            default: return tier.charAt(0).toUpperCase() + tier.slice(1);
+        }
+    }
+
+    /**
+     * Display label for a fire level id (unlit | embers | campfire | bonfire).
+     * @param {string} level
+     * @returns {string}
+     */
+    static fireLevelLabel(level) {
+        switch (level) {
+            case "unlit": return game.i18n.localize("ionrift-respite.fireLevel.unlit");
+            case "embers": return game.i18n.localize("ionrift-respite.fireLevel.embers");
+            case "campfire": return game.i18n.localize("ionrift-respite.fireLevel.campfire");
+            case "bonfire": return game.i18n.localize("ionrift-respite.fireLevel.bonfire");
+            default: return level.charAt(0).toUpperCase() + level.slice(1);
+        }
     }
 
     /**
@@ -108,15 +138,15 @@ export class CampGearScanner {
     static getSummary(tier) {
         switch (tier) {
             case "safe":
-                return "Full HP & HD recovery, no exhaustion check";
+                return game.i18n.localize("ionrift-respite.campGear.summary.safe");
             case "sheltered":
-                return "Full HP, normal HD recovery, no exhaustion check";
+                return game.i18n.localize("ionrift-respite.campGear.summary.sheltered");
             case "rough":
-                return "Full HP, -1 HD recovery penalty, DC 10 Con save vs exhaustion";
+                return game.i18n.localize("ionrift-respite.campGear.summary.rough");
             case "hostile":
-                return "75% max HP cap, -2 HD recovery penalty, DC 15 Con save vs exhaustion";
+                return game.i18n.localize("ionrift-respite.campGear.summary.hostile");
             default:
-                return "Normal rest recovery";
+                return game.i18n.localize("ionrift-respite.campGear.summary.default");
         }
     }
 
@@ -130,20 +160,26 @@ export class CampGearScanner {
      * @returns {string}
      */
     static formatHdRecoveryLabel({ currentHd, totalHd, hdRecovered, hdPenalty = 0 }) {
-        if (totalHd <= 0) return "No Hit Dice";
+        if (totalHd <= 0) return game.i18n.localize("ionrift-respite.campGear.hd.none");
         if (currentHd >= totalHd) {
-            return `Already at max Hit Dice (${totalHd}/${totalHd})`;
+            return game.i18n.format("ionrift-respite.campGear.hd.atMax", { total: totalHd });
         }
         if (hdRecovered <= 0) {
-            const penaltyText = hdPenalty > 0 ? ` (comfort −${hdPenalty} · remains ${currentHd}/${totalHd})` : ` (remains ${currentHd}/${totalHd})`;
-            return `No Hit Dice recovered${penaltyText}`;
+            return hdPenalty > 0
+                ? game.i18n.format("ionrift-respite.campGear.hd.noneRecoveredPenalty", { penalty: hdPenalty, current: currentHd, total: totalHd })
+                : game.i18n.format("ionrift-respite.campGear.hd.noneRecovered", { current: currentHd, total: totalHd });
         }
         const needed = totalHd - currentHd;
         const effective = Math.min(hdRecovered, needed);
-        const singPlur = effective === 1 ? "Hit Die" : "Hit Dice";
         const exitHd = currentHd + effective;
-        const penaltyText = hdPenalty > 0 ? ` (comfort −${hdPenalty})` : "";
-        return `Recover ${effective} ${singPlur}, will be ${exitHd}/${totalHd} after rest${penaltyText}`;
+        if (hdPenalty > 0) {
+            return effective === 1
+                ? game.i18n.format("ionrift-respite.campGear.hd.recoverOnePenalty", { count: effective, exit: exitHd, total: totalHd, penalty: hdPenalty })
+                : game.i18n.format("ionrift-respite.campGear.hd.recoverManyPenalty", { count: effective, exit: exitHd, total: totalHd, penalty: hdPenalty });
+        }
+        return effective === 1
+            ? game.i18n.format("ionrift-respite.campGear.hd.recoverOne", { count: effective, exit: exitHd, total: totalHd })
+            : game.i18n.format("ionrift-respite.campGear.hd.recoverMany", { count: effective, exit: exitHd, total: totalHd });
     }
 
     /**
@@ -155,14 +191,14 @@ export class CampGearScanner {
      * @returns {string} e.g. "Full HP · Max HD · DC 10 Save" or "Full HP · −1 HD Pen · DC 10 Save"
      */
     static formatBenefitSummary({ personalComfort, isAlreadyFull, hpFraction = 1.0 }) {
-        const hpText = hpFraction < 1.0 ? `${Math.round(hpFraction * 100)}% HP` : "Full HP";
+        const hpText = hpFraction < 1.0 ? game.i18n.format("ionrift-respite.campGear.benefit.hpPercent", { percent: Math.round(hpFraction * 100) }) : game.i18n.localize("ionrift-respite.campGear.benefit.hpFull");
         const hdText = isAlreadyFull
-            ? "Max HD"
-            : (personalComfort === "rough" ? "−1 HD Pen" : personalComfort === "hostile" ? "−2 HD Pen" : "Normal HD");
+            ? game.i18n.localize("ionrift-respite.campGear.benefit.maxHd")
+            : (personalComfort === "rough" ? game.i18n.localize("ionrift-respite.campGear.benefit.hdPenalty1") : personalComfort === "hostile" ? game.i18n.localize("ionrift-respite.campGear.benefit.hdPenalty2") : game.i18n.localize("ionrift-respite.campGear.benefit.normalHd"));
         const saveText = personalComfort === "rough"
-            ? " · DC 10 Save"
+            ? ` · ${game.i18n.localize("ionrift-respite.campGear.benefit.dc10Save")}`
             : personalComfort === "hostile"
-                ? " · DC 15 Save"
+                ? ` · ${game.i18n.localize("ionrift-respite.campGear.benefit.dc15Save")}`
                 : "";
         return `${hpText} · ${hdText}${saveText}`;
     }
@@ -176,10 +212,10 @@ export class CampGearScanner {
      * @returns {string} e.g. "Full HP · Max HD" or "Full HP · −1 HD Pen"
      */
     static formatPositiveBenefitSummary({ personalComfort, isAlreadyFull, hpFraction = 1.0 }) {
-        const hpText = hpFraction < 1.0 ? `${Math.round(hpFraction * 100)}% HP` : "Full HP";
+        const hpText = hpFraction < 1.0 ? game.i18n.format("ionrift-respite.campGear.benefit.hpPercent", { percent: Math.round(hpFraction * 100) }) : game.i18n.localize("ionrift-respite.campGear.benefit.hpFull");
         const hdText = isAlreadyFull
-            ? "Max HD"
-            : (personalComfort === "rough" ? "−1 HD Pen" : personalComfort === "hostile" ? "−2 HD Pen" : "Normal HD");
+            ? game.i18n.localize("ionrift-respite.campGear.benefit.maxHd")
+            : (personalComfort === "rough" ? game.i18n.localize("ionrift-respite.campGear.benefit.hdPenalty1") : personalComfort === "hostile" ? game.i18n.localize("ionrift-respite.campGear.benefit.hdPenalty2") : game.i18n.localize("ionrift-respite.campGear.benefit.normalHd"));
         return `${hpText} · ${hdText}`;
     }
 
@@ -192,7 +228,7 @@ export class CampGearScanner {
     /** @param {string} level - embers | campfire | bonfire */
     static firewoodCostLabel(level) {
         const n = this.FIREWOOD_COST_BY_LEVEL[level] ?? 0;
-        return `${n} firewood`;
+        return game.i18n.format("ionrift-respite.campGear.firewoodCost", { count: n });
     }
 
     /**
@@ -347,7 +383,7 @@ export class CampGearScanner {
                 const breakdown = [];
                 if (effectiveHasBedroll) {
                     breakdown.push({
-                        label: !enforceBedroll && !m.hasBedroll ? "Bedroll (Waived)" : "Bedroll",
+                        label: !enforceBedroll && !m.hasBedroll ? game.i18n.localize("ionrift-respite.campGear.gear.bedrollWaived") : game.i18n.localize("ionrift-respite.campGear.gear.bedroll"),
                         icon: "fas fa-bed",
                         delta: 1
                     });
@@ -366,7 +402,7 @@ export class CampGearScanner {
                     gearBreakdown: breakdown,
                     recovery: {
                         hpFull: true,
-                        hpLabel: "Regain all HP",
+                        hpLabel: game.i18n.localize("ionrift-respite.campGear.recovery.regainAllHp"),
                         hpSeverity: "",
                         hdLabel: this.formatHdRecoveryLabel({
                             currentHd,
@@ -387,7 +423,7 @@ export class CampGearScanner {
                         exhaustionDC: null,
                         exhaustionSeverity: null,
                         exhaustionAdvantage: false,
-                        exhaustionLabel: "No exhaustion risk"
+                        exhaustionLabel: game.i18n.localize("ionrift-respite.campGear.noExhaustionRisk")
                     }
                 };
             });
@@ -410,8 +446,8 @@ export class CampGearScanner {
                 campComfort,
                 campComfortPreFire: campComfort,
                 campComfortLabel: rules.label,
-                comfortTooltip: "Full HP recovery, no exhaustion risk",
-                campBreakdown: [{ label: terrainLabel || "Safe rest spot", value: "safe", delta: 0 }],
+                comfortTooltip: game.i18n.localize("ionrift-respite.campGear.safeComfortTooltip"),
+                campBreakdown: [{ label: terrainLabel || game.i18n.localize("ionrift-respite.campGear.breakdown.safeRestSpot"), value: "safe", delta: 0 }],
                 comfortReason,
                 terrainLabel,
                 fireEncounterMod: 0,
@@ -463,7 +499,7 @@ export class CampGearScanner {
                     gearBreakdown: [],
                     recovery: {
                         hpFull: true,
-                        hpLabel: "Regain all HP",
+                        hpLabel: game.i18n.localize("ionrift-respite.campGear.recovery.regainAllHp"),
                         hpSeverity: "",
                         hdLabel: this.formatHdRecoveryLabel({
                             currentHd,
@@ -484,7 +520,7 @@ export class CampGearScanner {
                         exhaustionDC: null,
                         exhaustionSeverity: null,
                         exhaustionAdvantage: false,
-                        exhaustionLabel: "No exhaustion risk"
+                        exhaustionLabel: game.i18n.localize("ionrift-respite.campGear.noExhaustionRisk")
                     }
                 };
             });
@@ -492,8 +528,8 @@ export class CampGearScanner {
                 campComfort,
                 campComfortPreFire: campComfort,
                 campComfortLabel: rules.label,
-                comfortTooltip: "Comfort rules disabled, full recovery",
-                campBreakdown: [{ label: terrainLabel || "Base (terrain)", value: "safe", delta: 0 }],
+                comfortTooltip: game.i18n.localize("ionrift-respite.campGear.comfortDisabledTooltip"),
+                campBreakdown: [{ label: terrainLabel || game.i18n.localize("ionrift-respite.campGear.breakdown.baseTerrain"), value: "safe", delta: 0 }],
                 comfortReason,
                 terrainLabel,
                 fireEncounterMod: 0,
@@ -521,7 +557,7 @@ export class CampGearScanner {
         let campComfort = COMFORT_TIERS.includes(terrainComfort) ? terrainComfort : "rough";
 
         const campBreakdown = [
-            { label: terrainLabel || `Base (terrain)`, value: campComfort, delta: 0 }
+            { label: terrainLabel || game.i18n.localize("ionrift-respite.campGear.breakdown.baseTerrain"), value: campComfort, delta: 0 }
         ];
 
         // Shelter spell overrides to sheltered minimum
@@ -541,27 +577,27 @@ export class CampGearScanner {
         const fireIsLit = fireLevel !== "unlit" && fireLevel !== "cold_camp";
 
         if (fireLevel === "cold_camp") {
-            campBreakdown.push({ label: "Cold camp", value: "-1 comfort", delta: -1 });
+            campBreakdown.push({ label: game.i18n.localize("ionrift-respite.campGear.breakdown.coldCamp"), value: "-1 comfort", delta: -1 });
             campComfort = boostComfort(campComfort, -1);
         } else if (fireLevel === "unlit") {
-            campBreakdown.push({ label: "No fire", value: "-1 comfort", delta: 0 });
+            campBreakdown.push({ label: game.i18n.localize("ionrift-respite.campGear.breakdown.noFire"), value: "-1 comfort", delta: 0 });
             campComfort = boostComfort(campComfort, -1);
         } else if (fireLevel === "embers") {
-            campBreakdown.push({ label: "Embers", value: "fire active", delta: 0 });
+            campBreakdown.push({ label: game.i18n.localize("ionrift-respite.campGear.breakdown.embers"), value: "fire active", delta: 0 });
         } else if (fireLevel === "campfire") {
-            campBreakdown.push({ label: "Campfire", value: "fire active", delta: 0 });
+            campBreakdown.push({ label: game.i18n.localize("ionrift-respite.campGear.breakdown.campfire"), value: "fire active", delta: 0 });
         } else if (fireLevel === "bonfire") {
-            campBreakdown.push({ label: "Bonfire", value: "+1", delta: 1 });
+            campBreakdown.push({ label: game.i18n.localize("ionrift-respite.campGear.breakdown.bonfire"), value: "+1", delta: 1 });
             campComfort = boostComfort(campComfort, 1);
         }
 
         const campComfortLabel = this.getRules(campComfort).label;
         const _tr = this.getRules(campComfort);
         const _tipParts = [];
-        _tipParts.push(_tr.hpFraction < 1 ? `${Math.round(_tr.hpFraction * 100)}% HP recovery` : "Full HP recovery");
-        if (_tr.hdPenalty > 0) _tipParts.push(`−${_tr.hdPenalty} HD recovery`);
-        if (_tr.exhaustionDC) _tipParts.push(`CON save DC ${_tr.exhaustionDC} or gain exhaustion`);
-        else _tipParts.push("No exhaustion risk");
+        _tipParts.push(_tr.hpFraction < 1 ? game.i18n.format("ionrift-respite.campGear.tip.hpPercentRecovery", { percent: Math.round(_tr.hpFraction * 100) }) : game.i18n.localize("ionrift-respite.campGear.tip.hpFullRecovery"));
+        if (_tr.hdPenalty > 0) _tipParts.push(game.i18n.format("ionrift-respite.campGear.tip.hdRecovery", { penalty: _tr.hdPenalty }));
+        if (_tr.exhaustionDC) _tipParts.push(game.i18n.format("ionrift-respite.campGear.conSaveOrExhaustion", { dc: _tr.exhaustionDC }));
+        else _tipParts.push(game.i18n.localize("ionrift-respite.campGear.noExhaustionRisk"));
         const comfortTooltip = _tipParts.join(", ");
 
         const personalCards = members.map(m => {
@@ -574,7 +610,7 @@ export class CampGearScanner {
 
             if (effectiveHasBedroll) {
                 breakdown.push({
-                    label: !enforceBedroll && !m.hasBedroll ? "Bedroll (Waived)" : "Bedroll",
+                    label: !enforceBedroll && !m.hasBedroll ? game.i18n.localize("ionrift-respite.campGear.gear.bedrollWaived") : game.i18n.localize("ionrift-respite.campGear.gear.bedroll"),
                     icon: "fas fa-bed",
                     delta: 1
                 });
@@ -614,7 +650,7 @@ export class CampGearScanner {
                 gearBreakdown: breakdown,
                 recovery: {
                     hpFull: rules.hpFraction >= 1.0,
-                    hpLabel: rules.hpFraction >= 1.0 ? "Regain all HP" : `Regain ${Math.round(rules.hpFraction * 100)}% of max HP`,
+                    hpLabel: rules.hpFraction >= 1.0 ? game.i18n.localize("ionrift-respite.campGear.recovery.regainAllHp") : game.i18n.format("ionrift-respite.campGear.recovery.regainPercentHp", { percent: Math.round(rules.hpFraction * 100) }),
                     hpSeverity,
                     hdLabel: this.formatHdRecoveryLabel({
                         currentHd,
@@ -636,13 +672,12 @@ export class CampGearScanner {
                     exhaustionSeverity: rules.exhaustionDC ? (personalComfort === "hostile" ? "danger" : "warning") : null,
                     exhaustionAdvantage: Boolean(rules.exhaustionDC && effectiveHasMessKit),
                     exhaustionLabel: (() => {
-                        if (!rules.exhaustionDC) return "No exhaustion risk";
-                        const reasons = [];
-                        if (!fireIsLit) reasons.push("no campfire");
-                        if (!effectiveHasBedroll) reasons.push("no bedroll");
-                        let context = reasons.length > 0 ? reasons.join(", ") : "harsh terrain";
-                        context = context.charAt(0).toUpperCase() + context.slice(1);
-                        return `${context}. CON save DC ${rules.exhaustionDC} or gain exhaustion`;
+                        if (!rules.exhaustionDC) return game.i18n.localize("ionrift-respite.campGear.noExhaustionRisk");
+                        const dc = rules.exhaustionDC;
+                        if (!fireIsLit && !effectiveHasBedroll) return game.i18n.format("ionrift-respite.campGear.exhaustion.noCampfireNoBedroll", { dc });
+                        if (!fireIsLit) return game.i18n.format("ionrift-respite.campGear.exhaustion.noCampfire", { dc });
+                        if (!effectiveHasBedroll) return game.i18n.format("ionrift-respite.campGear.exhaustion.noBedroll", { dc });
+                        return game.i18n.format("ionrift-respite.campGear.exhaustion.harshTerrain", { dc });
                     })()
                 }
             };
@@ -703,14 +738,14 @@ export class CampGearScanner {
             noFirePreview: fireIsLit ? {
                 comfort: noFireComfort,
                 comfortLabel: noFireRules.label,
-                hpLabel: noFireRules.hpFraction >= 1.0 ? "HP still recovers fully" : `HP: ${Math.round(noFireRules.hpFraction * 100)}% recovery`,
+                hpLabel: noFireRules.hpFraction >= 1.0 ? game.i18n.localize("ionrift-respite.campGear.noFire.hpFull") : game.i18n.format("ionrift-respite.campGear.noFire.hpPercent", { percent: Math.round(noFireRules.hpFraction * 100) }),
                 hdLabel: noFireRules.hdPenalty > 0
-                    ? `HD recovery reduced (half level − ${noFireRules.hdPenalty})`
-                    : "HD recovery unchanged",
+                    ? game.i18n.format("ionrift-respite.campGear.noFire.hdReduced", { penalty: noFireRules.hdPenalty })
+                    : game.i18n.localize("ionrift-respite.campGear.noFire.hdUnchanged"),
                 exhaustionDC: noFireRules.exhaustionDC,
                 exhaustionLabel: noFireRules.exhaustionDC
-                    ? `CON save DC ${noFireRules.exhaustionDC} or gain exhaustion`
-                    : "No exhaustion risk"
+                    ? game.i18n.format("ionrift-respite.campGear.conSaveOrExhaustion", { dc: noFireRules.exhaustionDC })
+                    : game.i18n.localize("ionrift-respite.campGear.noExhaustionRisk")
             } : null
         };
     }

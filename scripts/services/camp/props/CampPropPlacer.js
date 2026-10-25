@@ -290,7 +290,7 @@ async function placePerimeterRing(cx, cy, count = 4, radiusGrids = 3) {
         await createTorchPair(x, y);
     }
 
-    ui.notifications.info(`Placed ${count} perimeter torches.`);
+    ui.notifications.info(game.i18n.format("ionrift-respite.campProps.placedTorches", { count }));
 }
 
 /**
@@ -306,13 +306,13 @@ async function clearAllTorches() {
     });
 
     if (!torchTokens.length) {
-        ui.notifications.warn("No torch tokens found on this scene.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campProps.noTorchTokens"));
         return;
     }
 
     const ids = torchTokens.map(t => t.id);
     await scene.deleteEmbeddedDocuments("Token", ids);
-    ui.notifications.info(`Removed ${torchTokens.length} torch tokens.`);
+    ui.notifications.info(game.i18n.format("ionrift-respite.campProps.removedTorches", { count: torchTokens.length }));
 }
 
 /**
@@ -320,17 +320,17 @@ async function clearAllTorches() {
  */
 export async function placeTorch() {
     if (!game.user.isGM) {
-        ui.notifications.warn("Only the GM can place camp props.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campProps.gmOnly"));
         return;
     }
 
-    ui.notifications.info("Click on the canvas to place a torch. Right-click or Escape to cancel.");
+    ui.notifications.info(game.i18n.localize("ionrift-respite.campProps.clickToPlaceTorch"));
 
     try {
         const position = await _pickCanvasPoint();
         if (position) {
             await createTorchPair(position.x, position.y);
-            ui.notifications.info("Torch placed.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.campProps.torchPlaced"));
         }
     } catch {
         // Cancelled
@@ -345,7 +345,7 @@ export async function placeTorch() {
  */
 export async function placePerimeter({ count = 4, radius = 3 } = {}) {
     if (!game.user.isGM) {
-        ui.notifications.warn("Only the GM can place camp props.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campProps.gmOnly"));
         return;
     }
 
@@ -360,7 +360,7 @@ export async function placePerimeter({ count = 4, radius = 3 } = {}) {
     }
 
     // No selection. Ask GM to click a center point.
-    ui.notifications.info("Select a campfire token first, or click a center point for the perimeter.");
+    ui.notifications.info(game.i18n.localize("ionrift-respite.campProps.selectCenter"));
     try {
         const position = await _pickCanvasPoint();
         if (position) {
@@ -388,7 +388,7 @@ export async function toggleTorches() {
     const { TorchTokenLinker } = await import("./TorchTokenLinker.js");
     const currentlyLit = TorchTokenLinker.areTorchesLit();
     await TorchTokenLinker.setLightState(!currentlyLit);
-    ui.notifications.info(`Perimeter torches ${!currentlyLit ? "lit" : "extinguished"}.`);
+    ui.notifications.info(!currentlyLit ? game.i18n.localize("ionrift-respite.campProps.torchesLit") : game.i18n.localize("ionrift-respite.campProps.torchesExtinguished"));
 }
 
 /**
@@ -396,17 +396,17 @@ export async function toggleTorches() {
  */
 export async function placeCampfire() {
     if (!game.user.isGM) {
-        ui.notifications.warn("Only the GM can place camp props.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campProps.gmOnly"));
         return;
     }
 
-    ui.notifications.info("Click on the canvas to place the campfire. Right-click or Escape to cancel.");
+    ui.notifications.info(game.i18n.localize("ionrift-respite.campProps.clickToPlaceCampfire"));
 
     try {
         const position = await _pickCanvasPoint();
         if (position) {
             await createCampfirePair(position.x, position.y);
-            ui.notifications.info("Campfire placed.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.campProps.campfirePlaced"));
         }
     } catch {
         // Cancelled
@@ -421,11 +421,11 @@ export async function placeCampfire() {
  */
 export async function placeCamp({ torchCount = 4, radius = 3 } = {}) {
     if (!game.user.isGM) {
-        ui.notifications.warn("Only the GM can place camp props.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.campProps.gmOnly"));
         return;
     }
 
-    ui.notifications.info("Click on the canvas to place the camp center. Right-click or Escape to cancel.");
+    ui.notifications.info(game.i18n.localize("ionrift-respite.campProps.clickToPlaceCamp"));
 
     try {
         const position = await _pickCanvasPoint();
@@ -434,7 +434,7 @@ export async function placeCamp({ torchCount = 4, radius = 3 } = {}) {
             if (center) {
                 await placePerimeterRing(center.x, center.y, torchCount, radius);
             }
-            ui.notifications.info(`Camp placed: campfire + ${torchCount} perimeter torches.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.campProps.campPlaced", { count: torchCount }));
         }
     } catch {
         // Cancelled
