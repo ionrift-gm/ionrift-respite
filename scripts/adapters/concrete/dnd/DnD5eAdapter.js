@@ -62,10 +62,19 @@ export class DnD5eAdapter extends SystemAdapter {
         for (const item of actor.items ?? []) {
             const baseItem = item.system?.type?.baseItem;
             if (baseItem) profKeys.add(baseItem);
-            const nameLower = (item.name ?? "").toLowerCase();
-            if (item.type === "tool" && nameLower) {
-                const match = nameLower.match(/^(\w+)/);
-                if (match) profKeys.add(match[1]);
+            const flagKey = item.flags?.["ionrift-respite"]?.toolKey;
+            if (flagKey) profKeys.add(String(flagKey).toLowerCase());
+            if (item.type === "tool") {
+                const ident = (item.system?.identifier ?? item.system?.slug ?? item.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase();
+                if (ident) {
+                    const idMatch = ident.match(/^([a-z0-9]+)/);
+                    if (idMatch) profKeys.add(idMatch[1]);
+                }
+                const nameLower = (item.name ?? "").toLowerCase();
+                if (nameLower) {
+                    const match = nameLower.match(/^(\w+)/);
+                    if (match) profKeys.add(match[1]);
+                }
             }
         }
         return [...profKeys];
@@ -127,24 +136,51 @@ export class DnD5eAdapter extends SystemAdapter {
     hasSpellbook(actor) {
         const classEntries = actor.classes ?? {};
         const classNames = new Set(
-            Object.values(classEntries).map(c => c.name?.toLowerCase().trim())
+            Object.values(classEntries).flatMap(c => [
+                c.name?.toLowerCase().trim(),
+                c.system?.identifier?.toLowerCase().trim(),
+                c.system?.slug?.toLowerCase().trim()
+            ]).filter(Boolean)
         );
-        const isWizard = !!classEntries.wizard || classNames.has("wizard");
+        const isWizard = !!classEntries.wizard || classNames.has("wizard") || (actor.items ?? []).some(c => {
+            if (c.type !== "class") return false;
+            const id = (c.system?.identifier ?? c.system?.slug ?? "").toLowerCase().trim();
+            return id === "wizard" || c.name?.toLowerCase().trim() === "wizard";
+        });
         if (isWizard) return true;
         // Warlock with Pact of the Tome (Book of Shadows) is the only other class
         // that transcribes spells into a book. Other classes carrying a spellbook
         // item (loot, divine casters, etc.) do not qualify.
-        const isWarlock = !!classEntries.warlock || classNames.has("warlock");
+        const isWarlock = !!classEntries.warlock || classNames.has("warlock") || (actor.items ?? []).some(c => {
+            if (c.type !== "class") return false;
+            const id = (c.system?.identifier ?? c.system?.slug ?? "").toLowerCase().trim();
+            return id === "warlock" || c.name?.toLowerCase().trim() === "warlock";
+        });
         if (!isWarlock) return false;
-        return (actor.items ?? []).some(i =>
-            i.name?.toLowerCase().includes("spellbook") ||
-            i.name?.toLowerCase().includes("book of shadows")
-        );
+        return (actor.items ?? []).some(i => {
+            const id = (i.system?.identifier ?? i.system?.slug ?? i.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().replace(/[-_]/g, " ");
+            return i.flags?.["ionrift-respite"]?.isSpellbook === true
+                || id.includes("spellbook")
+                || id.includes("book of shadows")
+                || i.name?.toLowerCase().includes("spellbook")
+                || i.name?.toLowerCase().includes("book of shadows");
+        });
     }
 
     findItemByName(actor, name) {
-        const lower = name.toLowerCase();
-        return (actor.items ?? []).find(i => i.name?.toLowerCase().includes(lower)) ?? null;
+        if (!name) return null;
+        const lower = name.toLowerCase().trim();
+        const normTarget = lower.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
+        return (actor.items ?? []).find(i => {
+            const rf = i.flags?.["ionrift-respite"] ?? {};
+            for (const cand of [rf.itemRef, rf.campGearRole, rf.toolKey, i.system?.identifier, i.system?.slug, i.system?.type?.baseItem]) {
+                if (!cand) continue;
+                const cLow = String(cand).toLowerCase().trim();
+                const cNorm = cLow.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
+                if (cLow === lower || cNorm === normTarget || cNorm.includes(normTarget)) return true;
+            }
+            return i.name?.toLowerCase().includes(lower);
+        }) ?? null;
     }
 
     hasItemByName(actor, name) {
@@ -165,12 +201,17 @@ export class DnD5eAdapter extends SystemAdapter {
         const toolData = actor.system?.tools?.[toolKey];
         if (toolData && (toolData.proficient ?? 0) > 0) return true;
         if (toolData && ((toolData.value ?? 0) > 0 || (toolData.effectValue ?? 0) > 0)) return true;
-        return (actor.items ?? []).some(i =>
-            i.type === "tool" &&
-            (i.system?.type?.value === toolKey ||
-             i.system?.type?.baseItem === toolKey ||
-             i.name?.toLowerCase().includes(toolKey))
-        );
+        const keyLower = toolKey.toLowerCase();
+        return (actor.items ?? []).some(i => {
+            if (i.type !== "tool") return false;
+            const flagKey = (i.flags?.["ionrift-respite"]?.toolKey ?? i.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase();
+            const ident = (i.system?.identifier ?? i.system?.slug ?? "").toLowerCase();
+            return i.system?.type?.value === toolKey
+                || i.system?.type?.baseItem === toolKey
+                || flagKey.includes(keyLower)
+                || ident.includes(keyLower)
+                || i.name?.toLowerCase().includes(keyLower);
+        });
     }
 
     getCurrency(actor) {

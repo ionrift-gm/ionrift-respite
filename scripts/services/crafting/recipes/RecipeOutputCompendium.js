@@ -19,7 +19,8 @@ export const GENERIC_RECIPE_OUTPUT_NAMES = new Set([
  * @param {string} name
  * @returns {boolean}
  */
-export function isGenericRecipeOutputName(name) {
+export function isGenericRecipeOutputName(name, flags = null) {
+    if (flags?.[MODULE_ID]?.isPlaceholderOutput === true || flags?.isPlaceholderOutput === true) return true;
     const normalized = String(name ?? "").trim().toLowerCase();
     return !normalized || GENERIC_RECIPE_OUTPUT_NAMES.has(normalized);
 }
@@ -70,6 +71,21 @@ export function recipeOutputItemRef(recipeId, tier = "standard") {
  * @param {string} professionId
  * @returns {string}
  */
+export function outputFolderKeyForProfession(professionId) {
+    const p = String(professionId ?? "").toLowerCase().trim();
+    const keys = {
+        brewing: "brewing-outputs",
+        tailoring: "tailoring-outputs",
+        leatherworking: "leatherworking-outputs",
+        alchemy: "alchemy-outputs",
+        fletching: "fletching-outputs",
+        tinkering: "tinkering-outputs",
+        smithing: "smithing-outputs",
+        cooking: "cooking-outputs"
+    };
+    return keys[p] ?? "cooking-outputs";
+}
+
 export function outputFolderNameForProfession(professionId) {
     const labels = {
         brewing: "Brewing Outputs",
@@ -389,7 +405,8 @@ export async function syncRecipeOutputsToCompendium(professionId, recipe) {
     if (!pack) return recipe;
 
     const folderName = outputFolderNameForProfession(professionId);
-    const folder = await ProvisionsCustomPack.ensureOutputFolder(pack, folderName);
+    const folderKey = outputFolderKeyForProfession(professionId);
+    const folder = await ProvisionsCustomPack.ensureOutputFolder(pack, folderName, folderKey);
     if (!folder) throw new Error(`Could not resolve "${folderName}" folder in Respite Custom compendium.`);
 
     const updated = foundry.utils.deepClone(recipe);

@@ -24,7 +24,13 @@ export function fletchAmmoSubtype(kind) {
     return AMMO_SUBTYPES[fletchAmmoKind(kind)];
 }
 
+const IDENTIFIER_MAP = {
+    arrows: new Set(["arrow", "arrows"]),
+    bolts: new Set(["bolt", "bolts", "crossbow-bolt", "crossbow-bolts", "crossbow_bolt", "crossbow_bolts"])
+};
+
 function isMagicAmmo(item) {
+    if (item.system?.magical === true || item.flags?.["ionrift-respite"]?.magical === true) return true;
     const props = item.system?.properties;
     if (props?.has?.("mgc")) return true;
     if (Array.isArray(props) && props.includes("mgc")) return true;
@@ -45,7 +51,14 @@ export function findFletchAmmoStack(actor, kind) {
         && !isMagicAmmo(item)
     );
     const subtype = AMMO_SUBTYPES[resolvedKind];
+    const idSet = IDENTIFIER_MAP[resolvedKind];
     return ammo.find(item => item.system?.type?.subtype === subtype)
+        ?? ammo.find(item => {
+            const flagKind = item.flags?.["ionrift-respite"]?.fletchKind ?? item.flags?.["ionrift-respite"]?.ammoKind;
+            if (flagKind === resolvedKind) return true;
+            const ident = (item.system?.identifier ?? item.system?.slug ?? "").toLowerCase().trim();
+            return Boolean(ident && idSet.has(ident));
+        })
         ?? ammo.find(item => !item.system?.type?.subtype && NAME_PATTERNS[resolvedKind].test(item.name ?? ""))
         ?? null;
 }

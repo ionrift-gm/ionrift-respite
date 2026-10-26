@@ -1,4 +1,5 @@
 import { MODULE_ID } from "../../data/moduleId.js";
+import { isHealersKitItem } from "../../data/RestConstants.js";
 import { Logger } from "../../utils/Logger.js";
 import { ItemClassifier } from "../party/ItemClassifier.js";
 import { consumeItem } from "../meal/inventory/MealItemConsumer.js";
@@ -278,9 +279,7 @@ export class DowntimeBatchEngine {
                         const formula = medMod >= 0 ? `1d20 + ${medMod}` : `1d20 - ${Math.abs(medMod)}`;
 
                         // Detect Healer's Kit on the tender
-                        const healerKit = actor.items?.find(i =>
-                            i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit")
-                        );
+                        const healerKit = actor.items?.find(i => isHealersKitItem(i));
                         let kitCharges = healerKit
                             ? (healerKit.system?.uses?.value ?? healerKit.system?.quantity ?? 0)
                             : 0;

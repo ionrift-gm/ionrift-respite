@@ -269,6 +269,9 @@ export class ItemClassifier {
     static isSpoiled(item) {
         if (!item) return false;
         if (item.flags?.[MODULE_ID]?.spoiled === true) return true;
+        if (item.flags?.[MODULE_ID]?.itemRef === "spoiled_food") return true;
+        const ident = item.system?.identifier?.toLowerCase() ?? "";
+        if (ident === "spoiled-food" || ident === "spoiled_food") return true;
         const name = item.name?.toLowerCase().trim() ?? "";
         return name === "spoiled food";
     }
@@ -432,6 +435,17 @@ export class ItemClassifier {
         const explicit = item.flags?.[MODULE_ID]?.drinkType;
         if (explicit && DRINK_TYPES.has(explicit)) return explicit;
 
+        const ref = String(item.flags?.[MODULE_ID]?.itemRef ?? item.system?.identifier ?? "")
+            .toLowerCase()
+            .replace(/[-_]/g, " ")
+            .trim();
+        if (ref) {
+            if (ref.includes("oil")) return "oil";
+            if (ref.includes("ale") || ref.includes("wine") || ref.includes("beer")
+                || ref.includes("mead") || ref.includes("whiskey") || ref.includes("rum")
+                || ref.includes("brandy") || ref.includes("spirits")) return "alcohol";
+        }
+
         const name = item.name?.toLowerCase().trim() ?? "";
         if (name.includes("oil")) return "oil";
         if (name.includes("ale") || name.includes("wine") || name.includes("beer")
@@ -455,6 +469,13 @@ export class ItemClassifier {
 
         const explicit = item.flags?.[MODULE_ID]?.foodTag;
         if (explicit && FOOD_TAGS.has(explicit)) return explicit;
+
+        const ref = this._normalizedItemRef(item);
+        if (ref) {
+            for (const [tag, names] of Object.entries(FOOD_TAG_NAMES)) {
+                if (names.has(ref)) return tag;
+            }
+        }
 
         const name = this.baseItemName(item);
         if (!name) return null;
@@ -659,8 +680,14 @@ export class ItemClassifier {
         const merged = { ...DEFAULT_DIET, ...stored };
         merged.customFoodNames = this._normalizeDietNameList(merged.customFoodNames);
         merged.customWaterNames = this._normalizeDietNameList(merged.customWaterNames);
-        if (merged.label === "Construct") merged.label = "Not Needed";
-        if (merged.label === "Construct (Maintenance)") merged.label = "Maintenance";
+        if (merged.label === "Construct") {
+            merged.label = "Not Needed";
+            if (!merged.presetId) merged.presetId = "construct";
+        }
+        if (merged.label === "Construct (Maintenance)") {
+            merged.label = "Maintenance";
+            if (!merged.presetId) merged.presetId = "maintenance";
+        }
         return merged;
     }
 
@@ -705,7 +732,7 @@ export class ItemClassifier {
             console.warn(`[Respite:ItemClassifier] Unknown diet preset: ${presetId}`);
             return;
         }
-        await this.setDiet(actor, preset);
+        await this.setDiet(actor, { ...preset, presetId });
     }
 
     /**
@@ -788,10 +815,11 @@ export class ItemClassifier {
         if (explicit === "essence") return true;
 
         const name = item.name?.toLowerCase().trim() ?? "";
+        const ref = this._normalizedItemRef(item);
 
         // Without an actor, fall back to the global heuristics (oil, fuel, built-in names).
         if (!actor) {
-            if (ESSENCE_NAMES.has(name)) return true;
+            if ((ref && ESSENCE_NAMES.has(ref)) || ESSENCE_NAMES.has(name)) return true;
             if (this.getDrinkType(item) === "oil") return true;
             if (this.classify(item) === "fuel") return true;
             return false;
@@ -803,7 +831,7 @@ export class ItemClassifier {
         const diet = this.getDiet(actor);
 
         // Per-diet custom food names (most common path for named essence items)
-        if (name && diet.customFoodNames?.some(n => n === name)) return true;
+        if ((ref && diet.customFoodNames?.some(n => n === ref)) || (name && diet.customFoodNames?.some(n => n === name))) return true;
 
         // Oil-type drinks count as essence when the diet includes oil or fuel
         if (this.getDrinkType(item) === "oil") {
@@ -880,7 +908,18 @@ export class ItemClassifier {
         return stripSpoilageCohortSuffix(item?.name ?? "").toLowerCase().trim();
     }
 
+    /** Normalized locale-safe itemRef or system.identifier (snake_case/kebab-case -> spaces). */
+    static _normalizedItemRef(item) {
+        const raw = item?.flags?.[MODULE_ID]?.itemRef ?? item?.system?.identifier ?? item?.system?.slug ?? "";
+        return String(raw).toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    }
+
     static _matchesFoodByName(item) {
+        const ref = this._normalizedItemRef(item);
+        if (ref) {
+            if (FOOD_NAMES.has(ref) || ref.includes("rations") || ref === "ration") return true;
+            if (this.getCustomNames("customFoodNames").has(ref)) return true;
+        }
         const name = this.baseItemName(item);
         if (!name) return false;
         if (FOOD_NAMES.has(name)) return true;
@@ -893,6 +932,11 @@ export class ItemClassifier {
     }
 
     static _matchesWaterByName(item) {
+        const ref = this._normalizedItemRef(item);
+        if (ref) {
+            if (WATER_NAMES.has(ref)) return true;
+            if (this.getCustomNames("customWaterNames").has(ref)) return true;
+        }
         const name = this.baseItemName(item);
         if (!name) return false;
         if (WATER_NAMES.has(name)) return true;
@@ -901,6 +945,8 @@ export class ItemClassifier {
     }
 
     static _matchesFuelByName(item) {
+        const ref = this._normalizedItemRef(item);
+        if (ref && FUEL_NAMES.has(ref)) return true;
         const name = this.baseItemName(item);
         if (!name) return false;
         if (FUEL_NAMES.has(name)) return true;
@@ -908,6 +954,8 @@ export class ItemClassifier {
     }
 
     static _matchesIngredientByName(item) {
+        const ref = this._normalizedItemRef(item);
+        if (ref && INGREDIENT_NAMES.has(ref)) return true;
         const name = this.baseItemName(item);
         if (!name) return false;
         return INGREDIENT_NAMES.has(name);

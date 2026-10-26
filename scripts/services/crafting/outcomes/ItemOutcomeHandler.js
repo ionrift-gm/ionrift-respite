@@ -294,23 +294,37 @@ export class ItemOutcomeHandler {
             || ItemClassifier.getSpoilsAfterHours(itemLike);
     }
 
-    /** Merge target when spoilage name suffixes are enabled (exact name match). */
+    /** Merge target when spoilage name suffixes are enabled (exact name match or itemRef + compatible spoilage). */
     static _findCohortSuffixMergeTarget(actor, grant, grantType) {
         const grantName = grant.name?.toLowerCase().trim();
-        return actor.items.find(
-            i => i.name?.toLowerCase().trim() === grantName && i.type === grantType
-        );
+        const grantRef = grant.flags?.[MODULE_ID]?.itemRef ?? null;
+        return actor.items.find(i => {
+            if (i.type !== grantType) return false;
+            if (i.name?.toLowerCase().trim() === grantName) return true;
+            const existRef = i.flags?.[MODULE_ID]?.itemRef ?? null;
+            if (grantRef && existRef && grantRef === existRef) {
+                if (ItemOutcomeHandler._isPerishableLike(i) || ItemOutcomeHandler._isPerishableLike(grant)) {
+                    return SpoilageClock.areStacksCompatible(i, grant);
+                }
+                return true;
+            }
+            return false;
+        });
     }
 
     /**
-     * Merge target when suffixes are off: base name match, with spoilage compatibility
+     * Merge target when suffixes are off: itemRef or base name match, with spoilage compatibility
      * for perishable rows (matches SpoilageMergeGuard / SpoilageClock).
      */
     static _findMetadataMergeTarget(actor, grant, grantType) {
         const baseName = ItemClassifier.baseItemName(grant);
+        const grantRef = grant.flags?.[MODULE_ID]?.itemRef ?? null;
         return actor.items.find(i => {
             if (i.type !== grantType) return false;
-            if (ItemClassifier.baseItemName(i) !== baseName) return false;
+            const existRef = i.flags?.[MODULE_ID]?.itemRef ?? null;
+            const sameIdentity = (grantRef && existRef && grantRef === existRef)
+                || ItemClassifier.baseItemName(i) === baseName;
+            if (!sameIdentity) return false;
             if (ItemOutcomeHandler._isPerishableLike(i) || ItemOutcomeHandler._isPerishableLike(grant)) {
                 return SpoilageClock.areStacksCompatible(i, grant);
             }
@@ -319,14 +333,15 @@ export class ItemOutcomeHandler {
     }
 
     /**
-     * Aggregates grants by name+type, summing quantities.
+     * Aggregates grants by itemRef (or name)+type, summing quantities.
      * @param {Object[]} grants - [{ name, type, img, quantity, system }]
      * @returns {Object[]} Aggregated grants
      */
     static _aggregateGrants(grants) {
         const map = new Map();
         for (const g of grants) {
-            const key = `${g.name?.toLowerCase().trim()}::${g.type ?? "loot"}`;
+            const refKey = g.flags?.[MODULE_ID]?.itemRef || g.name?.toLowerCase().trim();
+            const key = `${refKey}::${g.type ?? "loot"}`;
             if (map.has(key)) {
                 const cur = map.get(key);
                 cur.quantity += (g.quantity ?? 1);
@@ -372,9 +387,15 @@ export class ItemOutcomeHandler {
             if (worldItem) return worldItem.toObject();
         }
 
-        // 3. World item lookup by name
+        // 3. World item lookup by itemRef flag, system.identifier, or name
+        const namePattern = ref.replace(/_/g, " ").toLowerCase();
+        const slugPattern = ref.replace(/_/g, "-").toLowerCase();
         const byName = game.items.find(
-            i => i.name?.toLowerCase() === ref.replace(/_/g, " ")
+            i => i.flags?.[MODULE_ID]?.itemRef === ref
+                || i.getFlag?.(MODULE_ID, "itemRef") === ref
+                || i.system?.identifier?.toLowerCase() === ref.toLowerCase()
+                || i.system?.identifier?.toLowerCase() === slugPattern
+                || i.name?.toLowerCase() === namePattern
         );
         if (byName) return byName.toObject();
 
@@ -438,9 +459,12 @@ export class ItemOutcomeHandler {
             const pack = game.packs.get(packId);
             if (!pack) continue;
 
-            const index = await pack.getIndex({ fields: ["flags"] });
+            const index = await pack.getIndex({ fields: ["flags", "system.identifier"] });
+            const slugRef = String(itemRef ?? "").replace(/_/g, "-").toLowerCase();
             const entry = index.find(
                 e => e.flags?.[MODULE_ID]?.itemRef === itemRef
+                    || e.system?.identifier?.toLowerCase() === String(itemRef ?? "").toLowerCase()
+                    || e.system?.identifier?.toLowerCase() === slugRef
             );
             if (!entry) continue;
 

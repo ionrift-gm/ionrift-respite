@@ -3,6 +3,7 @@
  */
 
 import { buildCommitOutputPreviewBundle } from "./CraftOutputPreview.js";
+import { matchesRecipeIngredient } from "./CraftingEngine.js";
 import { getChefTreatOutputQuantity } from "../../meal/buffs/ChefFeat.js";
 import { normalizeRecipeOutputImg } from "../recipes/RecipeIcons.js";
 
@@ -55,8 +56,7 @@ export function buildCraftCommitSummary({ recipe, risk, actor, engine, terrainTa
     const outputPreviewBundle = buildCommitOutputPreviewBundle(recipe, effectiveRisk);
 
     const ingredients = (recipe.ingredients ?? []).map(ing => {
-        const invKey = ing.name.toLowerCase().trim();
-        const invEntry = actor.items?.find(i => i.name.toLowerCase().trim() === invKey);
+        const invEntry = actor.items?.find(i => matchesRecipeIngredient(i, ing));
         const fallbackIcon = ing.resourceType === "water"
             ? "icons/magic/water/water-drop-swirl-blue.webp"
             : "icons/consumables/food/bread-loaf-round-white.webp";

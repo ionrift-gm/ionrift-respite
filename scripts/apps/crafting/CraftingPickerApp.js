@@ -1,5 +1,6 @@
 import { CraftingEngine } from "../../services/crafting/engine/CraftingEngine.js";
 import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
+import { matchesRecipeIngredient } from "../../services/crafting/engine/CraftingEngine.js";
 import { buildCraftRecipeListContext } from "../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
 import { getPartyActors } from "../../services/party/partyActors.js";
@@ -159,16 +160,15 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
     _getRelevantIngredients(status) {
         const allRecipes = [...(status.available ?? []), ...(status.partial ?? []), ...(status.locked ?? [])];
-        const ingredientNames = new Set();
+        const allIngs = [];
         for (const recipe of allRecipes) {
             for (const ing of (recipe.ingredients ?? [])) {
-                ingredientNames.add(ing.name.toLowerCase().trim());
+                allIngs.push(ing);
             }
         }
         const results = [];
         for (const item of this._actor.items) {
-            const key = item.name.toLowerCase().trim();
-            if (ingredientNames.has(key)) {
+            if (allIngs.some(ing => matchesRecipeIngredient(item, ing))) {
                 results.push({ name: item.name, img: item.img, quantity: item.system?.quantity ?? 1 });
             }
         }

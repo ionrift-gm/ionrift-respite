@@ -79,8 +79,19 @@ export class OSEAdapter extends SystemAdapter {
     }
 
     findItemByName(actor, name) {
-        const lower = name.toLowerCase();
-        return (actor.items ?? []).find(i => i.name?.toLowerCase().includes(lower)) ?? null;
+        if (!name) return null;
+        const lower = name.toLowerCase().trim();
+        const normTarget = lower.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
+        return (actor.items ?? []).find(i => {
+            const rf = i.flags?.["ionrift-respite"] ?? {};
+            for (const cand of [rf.itemRef, rf.campGearRole, rf.toolKey, i.system?.identifier, i.system?.slug, i.system?.type?.baseItem]) {
+                if (!cand) continue;
+                const cLow = String(cand).toLowerCase().trim();
+                const cNorm = cLow.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
+                if (cLow === lower || cNorm === normTarget || cNorm.includes(normTarget)) return true;
+            }
+            return i.name?.toLowerCase().includes(lower);
+        }) ?? null;
     }
 
     hasItemByName(actor, name) {

@@ -28,6 +28,9 @@ export class ResourceSink {
             // while leaving potions and scrolls out.
             if (type === "consumable") {
                 if (ItemClassifier.classify(item) === "fuel") return true;
+                if (item.flags?.["ionrift-respite"]?.campGearRole) return true;
+                const ref = String(item.flags?.["ionrift-respite"]?.itemRef ?? item.system?.identifier ?? "").toLowerCase().replace(/[-_]/g, " ").trim();
+                if (ref && ResourceSink.CAMP_GEAR_NAMES.has(ref)) return true;
                 const name = item.name?.toLowerCase().trim() ?? "";
                 if (ResourceSink.CAMP_GEAR_NAMES.has(name)) return true;
             }
@@ -60,6 +63,8 @@ export class ResourceSink {
             if (ResourceSink._isFoodOrWater(item)) return false;
             // Only protect profession kits and foci, NOT rations/water
             if (item.flags?.["ionrift-respite"]?.protected) return false;
+            const ref = String(item.flags?.["ionrift-respite"]?.itemRef ?? item.system?.identifier ?? "").toLowerCase().replace(/[-_]/g, " ").trim();
+            if (ref && (ResourceSink.PROFESSION_NAMES.has(ref) || ref.includes("instrument") || ref.includes("artisan") || ResourceSink.RESOURCE_NAMES.supplies.includes(ref))) return false;
             const name = item.name?.toLowerCase().trim() ?? "";
             if (ResourceSink.PROFESSION_NAMES.has(name)) return false;
             if (name.includes("instrument") || name.includes("artisan")) return false;
@@ -690,7 +695,8 @@ export class ResourceSink {
 
                 const flagMatch = item.flags?.["ionrift-respite"]?.resourceType === resourceKey;
                 const candidateNames = this.RESOURCE_NAMES[resourceKey] ?? [resourceKey];
-                const nameMatch = candidateNames.includes(item.name?.toLowerCase().trim());
+                const ref = String(item.flags?.["ionrift-respite"]?.itemRef ?? item.system?.identifier ?? "").toLowerCase().replace(/[-_]/g, " ").trim();
+                const nameMatch = (ref && candidateNames.includes(ref)) || candidateNames.includes(item.name?.toLowerCase().trim());
 
                 let match = flagMatch || nameMatch;
                 if (classifyAsFood) {
@@ -934,6 +940,9 @@ export class ResourceSink {
         if (item.type !== "consumable") return false;
         const subtype = item.system?.type?.value ?? item.system?.consumableType ?? "";
         if (subtype === "ammo" || subtype === "ammunition") return true;
+        if (item.flags?.["ionrift-respite"]?.fletchKind || item.flags?.["ionrift-respite"]?.ammoKind) return true;
+        const ref = String(item.flags?.["ionrift-respite"]?.itemRef ?? item.system?.identifier ?? "").toLowerCase().replace(/[-_]/g, " ").trim();
+        if (ref && /\b(arrow|arrows|bolt|bolts|bullet|bullets|sling bullet|blowgun needle|needles|cartridge|cartridges)\b/.test(ref)) return true;
         const name = item.name?.toLowerCase().trim() ?? "";
         return /\b(arrow|arrows|bolt|bolts|bullet|bullets|sling bullet|blowgun needle|needles|cartridge|cartridges)\b/.test(name);
     }
@@ -941,6 +950,9 @@ export class ResourceSink {
     static _isProtectedItem(item) {
         // Explicit protection flag
         if (item.flags?.["ionrift-respite"]?.protected) return true;
+
+        const ref = String(item.flags?.["ionrift-respite"]?.itemRef ?? item.system?.identifier ?? "").toLowerCase().replace(/[-_]/g, " ").trim();
+        if (ref && (this.PROTECTED_NAMES.has(ref) || ref.includes("instrument") || ref.includes("artisan"))) return true;
 
         // Protected by name (profession kits, foci)
         const name = item.name?.toLowerCase().trim();

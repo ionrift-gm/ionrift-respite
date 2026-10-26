@@ -44,13 +44,20 @@ export class SpellSlotRecovery {
      * @param {RegExp} classNamePattern
      * @returns {number}
      */
-    static #sumClassLevels(actor, classNamePattern) {
+    static #sumClassLevels(actor, classNamePattern, classKey = null) {
         const classes = actor.items?.filter(i => i.type === "class") ?? [];
         let sum = 0;
         for (const cls of classes) {
+            const ident = (cls.system?.identifier ?? cls.system?.slug ?? "").toLowerCase();
+            const src = (cls._stats?.compendiumSource ?? cls.flags?.core?.sourceId ?? "").toLowerCase();
             const name = cls.name?.toLowerCase() ?? "";
-            if (!classNamePattern.test(name)) continue;
+            const matched = (classKey && (ident === classKey || src.endsWith("." + classKey) || src.endsWith("/" + classKey) || src.endsWith("-" + classKey)))
+                || classNamePattern.test(name);
+            if (!matched) continue;
             sum += cls.system?.levels ?? 0;
+        }
+        if (sum === 0 && classKey && actor?.classes?.[classKey]) {
+            sum += actor.classes[classKey]?.system?.levels ?? 0;
         }
         return sum;
     }
@@ -62,14 +69,21 @@ export class SpellSlotRecovery {
     static detect(actor) {
         const maxSlotLevel = Number(game.settings.get(MODULE_ID, "spellRecoveryMaxLevel")) || 5;
 
-        const items = actor.items?.filter(i => i.type === "feat") ?? [];
+        const items = actor.items?.filter(i => i.type === "feat" || i.type === "feature") ?? [];
 
         const arcane = items.find(i => {
+            const recFlag = i.flags?.[MODULE_ID]?.recoveryType ?? i.getFlag?.(MODULE_ID, "recoveryType");
+            const ident = (i.system?.identifier ?? i.system?.slug ?? "").toLowerCase();
+            const src = (i._stats?.compendiumSource ?? i.flags?.core?.sourceId ?? "").toLowerCase();
             const n = i.name?.toLowerCase() ?? "";
-            return n.includes("arcane recovery");
+            return recFlag === "arcane"
+                || ident === "arcane-recovery"
+                || ident === "arcane_recovery"
+                || /(?:^|[./-])arcane[-_]recovery$/.test(src)
+                || n.includes("arcane recovery");
         });
         if (arcane) {
-            const classLevel = SpellSlotRecovery.#sumClassLevels(actor, /\bwizard\b/);
+            const classLevel = SpellSlotRecovery.#sumClassLevels(actor, /\bwizard\b/, "wizard");
             if (classLevel > 0) {
                 const maxBudget = Math.ceil(classLevel / 2);
                 const hasUses = SpellSlotRecovery.#hasUsesRemaining(arcane);
@@ -86,11 +100,18 @@ export class SpellSlotRecovery {
         }
 
         const natural = items.find(i => {
+            const recFlag = i.flags?.[MODULE_ID]?.recoveryType ?? i.getFlag?.(MODULE_ID, "recoveryType");
+            const ident = (i.system?.identifier ?? i.system?.slug ?? "").toLowerCase();
+            const src = (i._stats?.compendiumSource ?? i.flags?.core?.sourceId ?? "").toLowerCase();
             const n = i.name?.toLowerCase() ?? "";
-            return n.includes("natural recovery");
+            return recFlag === "natural"
+                || ident === "natural-recovery"
+                || ident === "natural_recovery"
+                || /(?:^|[./-])natural[-_]recovery$/.test(src)
+                || n.includes("natural recovery");
         });
         if (natural) {
-            const classLevel = SpellSlotRecovery.#sumClassLevels(actor, /\bdruid\b/);
+            const classLevel = SpellSlotRecovery.#sumClassLevels(actor, /\bdruid\b/, "druid");
             if (classLevel > 0) {
                 const maxBudget = Math.ceil(classLevel / 2);
                 const hasUses = SpellSlotRecovery.#hasUsesRemaining(natural);

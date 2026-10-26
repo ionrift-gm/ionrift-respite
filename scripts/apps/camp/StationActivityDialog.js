@@ -31,7 +31,7 @@ import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../../serv
 import { buildCraftRecipeListContext } from "../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { patchCraftingRiskUi } from "../../services/crafting/engine/CraftingRiskUiPatch.js";
 import { emitFeastServeRequest, emitActivityColdCampRequest } from "../../services/socket/SocketController.js";
-import { CampGearScanner } from "../../services/camp/gear/CampGearScanner.js";
+import { CampGearScanner, isTinderboxItem, isActorFirewoodItem } from "../../services/camp/gear/CampGearScanner.js";
 import { isStationLayerActive } from "../../services/camp/props/StationInteractionLayer.js";
 import { guardEmbedItems } from "../../services/crafting/outcomes/MintGuard.js";
 import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
@@ -1186,10 +1186,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         if (newCost > curCost) {
             const allActors = getPartyActors();
-            const hasTinderbox = cur !== "unlit" || allActors.some(a => a.items.some(i => {
-                const n = i.name?.toLowerCase() ?? "";
-                return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
-            }));
+            const hasTinderbox = cur !== "unlit" || allActors.some(a => a.items.some(i => isTinderboxItem(i)));
             if (cur === "unlit" && !hasTinderbox) {
                 await game.ionrift.library.confirm({
                     title: game.i18n.localize("ionrift-respite.stationActivity.cannotLightFireTitle"),
@@ -1205,10 +1202,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             const myActors = allActors.filter(a => a.isOwner);
             const need = newCost - curCost;
             const myFirewood = myActors.reduce((sum, a) => {
-                const it = a.items.find(i => {
-                    const n = i.name?.toLowerCase() ?? "";
-                    return n.includes("firewood") || n === "kindling";
-                });
+                const it = a.items.find(i => isActorFirewoodItem(i));
                 return sum + (it?.system?.quantity ?? 0);
             }, 0);
             if (need > 0 && myFirewood < need) {

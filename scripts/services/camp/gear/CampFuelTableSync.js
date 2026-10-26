@@ -51,10 +51,13 @@ export function isCampFuelKindlingEntry(entry, folderPath = "") {
     const rf = entry.flags?.[MODULE_ID];
     if (rf?.firewoodType === "firewood" || rf?.itemRef === "firewood") return false;
     if (rf?.firewoodType === "kindling" || rf?.itemRef === "kindling") return true;
-    if (rf?.category === "camp_fuel") return true;
+    if (rf?.category === "camp_fuel" || rf?.folderKey === "camp-fuel") return true;
 
     const parts = String(folderPath).split("/").map(s => s.trim()).filter(Boolean);
-    return parts.some(part => part.toLowerCase() === "camp fuel");
+    return parts.some(part => {
+        const low = part.toLowerCase();
+        return low === "camp fuel" || low === "camp-fuel" || low === "camp_fuel";
+    });
 }
 
 /**

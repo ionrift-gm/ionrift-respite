@@ -8,6 +8,7 @@ import { normalizeRecipeOutputImg } from "../recipes/RecipeIcons.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { applyCustomRecipesToEngine } from "../recipes/RecipeCatalog.js";
 import { buildCraftCommitSummary } from "./CraftCommitSummary.js";
+import { matchesRecipeIngredient } from "./CraftingEngine.js";
 
 export const CRAFT_PROFESSION_LABELS = {
     cooking: "Cooking",
@@ -90,8 +91,7 @@ export function enrichCraftRecipe(recipe, {
         lockReason: recipe.reason ?? null,
         ingredientList: (recipe.ingredients ?? []).map(ing => {
             const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
-            const invKey = ing.name.toLowerCase().trim();
-            const invEntry = actor.items?.find(i => i.name?.toLowerCase().trim() === invKey);
+            const invEntry = actor.items?.find(i => matchesRecipeIngredient(i, ing));
             const fallbackIcon = ing.resourceType === "water"
                 ? "icons/magic/water/water-drop-swirl-blue.webp"
                 : "icons/consumables/food/bread-loaf-round-white.webp";

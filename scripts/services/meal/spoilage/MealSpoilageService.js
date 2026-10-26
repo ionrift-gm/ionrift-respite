@@ -221,7 +221,9 @@ export async function spoilActorItems(actor, shouldSpoil) {
 
         // Stack onto existing Spoiled Food or create a new one
         const existing = actor.items.find(
-            i => i.name === "Spoiled Food" && i.flags?.[MODULE_ID]?.spoiled
+            i => i.flags?.[MODULE_ID]?.spoiled === true
+                || i.flags?.[MODULE_ID]?.itemRef === "spoiled_food"
+                || (i.name === "Spoiled Food" && i.flags?.[MODULE_ID]?.spoiled)
         );
         if (existing) {
             const currentQty = existing.system?.quantity ?? 0;

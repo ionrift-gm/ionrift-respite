@@ -113,14 +113,15 @@ export function tableResultCount(table) {
  */
 export async function ensureRespiteRollTableFolder() {
     let parent = game.folders.find(folder =>
-        folder.name === PARENT_FOLDER && folder.type === "RollTable" && !folder.folder
+        folder.type === "RollTable" && !folder.folder && (folder.flags?.[MODULE_ID]?.folderKey === "ionrift" || folder.name === PARENT_FOLDER)
     );
     if (!parent) {
         parent = await Folder.create({
             name: PARENT_FOLDER,
             type: "RollTable",
             parent: null,
-            ownership: buildGmOnlyRollTableOwnership()
+            ownership: buildGmOnlyRollTableOwnership(),
+            flags: { [MODULE_ID]: { folderKey: "ionrift" } }
         });
     } else {
         await parent.update({
@@ -130,16 +131,17 @@ export async function ensureRespiteRollTableFolder() {
 
     const parentId = parent.id ?? parent._id;
     let child = game.folders.find(folder =>
-        folder.name === CHILD_FOLDER
-        && folder.type === "RollTable"
+        folder.type === "RollTable"
         && (folder.folder?.id === parentId || folder.folder === parentId)
+        && (folder.flags?.[MODULE_ID]?.folderKey === "respite" || folder.name === CHILD_FOLDER)
     );
     if (!child) {
         child = await Folder.create({
             name: CHILD_FOLDER,
             type: "RollTable",
             folder: parentId,
-            ownership: buildGmOnlyRollTableOwnership()
+            ownership: buildGmOnlyRollTableOwnership(),
+            flags: { [MODULE_ID]: { folderKey: "respite" } }
         });
     } else {
         await child.update({
@@ -429,9 +431,15 @@ export class ForageTableSync {
         let folders = 0;
         for (const folder of game.folders) {
             if (folder.type !== "RollTable") continue;
-            const isRespiteRollFolder = folder.name === PARENT_FOLDER
+            const fKey = folder.flags?.[MODULE_ID]?.folderKey;
+            const parentDoc = folder.folder ? (game.folders.get?.(folder.folder?.id ?? folder.folder) ?? folder.folder) : null;
+            const parentKey = parentDoc?.flags?.[MODULE_ID]?.folderKey;
+            const isRespiteRollFolder = fKey === "ionrift"
+                || fKey === "respite"
+                || parentKey === "ionrift"
+                || folder.name === PARENT_FOLDER
                 || folder.name === CHILD_FOLDER
-                || (folder.folder && game.folders.get(folder.folder)?.name === PARENT_FOLDER);
+                || (parentDoc?.name === PARENT_FOLDER);
             if (!isRespiteRollFolder) continue;
             await folder.update({
                 ownership: buildGmOnlyRollTableOwnership(folder.ownership ?? {})
@@ -640,12 +648,12 @@ export class ForageTableSync {
      */
     static async _ensureTable(terrainTag, folderId) {
         const tableName = ForageTableSync._tableName(terrainTag);
-        let table = game.tables.find(row => row.name === tableName);
+        let table = game.tables.find(row =>
+            row.flags?.[MODULE_ID]?.isForageTable
+            && row.flags?.[MODULE_ID]?.terrainTag === terrainTag
+        );
         if (!table) {
-            table = game.tables.find(row =>
-                row.flags?.[MODULE_ID]?.isForageTable
-                && row.flags?.[MODULE_ID]?.terrainTag === terrainTag
-            );
+            table = game.tables.find(row => row.name === tableName);
         }
         if (!table) {
             table = await RollTable.create({

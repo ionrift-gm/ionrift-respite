@@ -12,6 +12,7 @@ import { hasChefFeat } from "../../meal/buffs/ChefFeat.js";
 import { GatherYieldService } from "../forage/GatherYieldService.js";
 import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 import { CARD_FADED_HINTS, cardHintNotPrepared } from "../../../data/activityCardHint.js";
+import { isHealersKitItem } from "../../../data/RestConstants.js";
 import {
     ActivityEligibility,
     isActivityExcludedForRestOptions,
@@ -162,7 +163,7 @@ export class ActivityResolver {
         if (activity.check.advantageIf?.length) {
             for (const cond of activity.check.advantageIf) {
                 if (cond === "healer_kit") {
-                    const kit = actor.items?.find(i => i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit"));
+                    const kit = actor.items?.find(i => isHealersKitItem(i));
                     if (kit && (kit.system?.quantity ?? kit.system?.uses?.value ?? 1) > 0) rollAdvantage = true;
                 }
             }

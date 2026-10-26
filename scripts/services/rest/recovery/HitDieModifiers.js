@@ -14,7 +14,7 @@ export class HitDieModifiers {
         const conMod = hdAdapter ? hdAdapter.getAbilityMod(actor, "con") : (actor.system?.abilities?.con?.mod ?? 0);
 
         const hasDurable = items.some(i =>
-            i.type === "feat" && HitDieModifiers.#isDurableFeatName(i.name)
+            i.type === "feat" && HitDieModifiers.#isDurableFeatItem(i)
         );
 
         const hasPeriapt = items.some(i => HitDieModifiers.#isAttunedPeriaptOfWoundClosure(i));
@@ -32,15 +32,32 @@ export class HitDieModifiers {
         return name.trim().toLowerCase() === "durable";
     }
 
+    static #isDurableFeatItem(item) {
+        if (!item) return false;
+        if (item.flags?.["ionrift-respite"]?.featKey === "durable" || item.flags?.["ionrift-respite"]?.itemRef === "durable") return true;
+        const ident = (item.system?.identifier ?? item.system?.slug ?? "").trim().toLowerCase();
+        if (ident === "durable") return true;
+        const src = (item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "").toLowerCase();
+        if (/(?:^|[./-])durable$/.test(src)) return true;
+        return HitDieModifiers.#isDurableFeatName(item.name);
+    }
+
     /**
      * @param {Item} item
      * @returns {boolean}
      */
     static #isAttunedPeriaptOfWoundClosure(item) {
+        if (!item) return false;
+        const ref = (item.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase();
+        const ident = (item.system?.identifier ?? item.system?.slug ?? "").toLowerCase();
+        const src = (item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "").toLowerCase();
         const lowerName = (item.name?.toLowerCase() ?? "").replace(/\u00a0/g, " ");
-        if (!lowerName.includes("periapt") || !lowerName.includes("wound") || !lowerName.includes("closure")) {
-            return false;
-        }
+        const isPeriapt = ref === "periapt_of_wound_closure"
+            || ident === "periapt-of-wound-closure"
+            || ident === "periapt_of_wound_closure"
+            || /(?:^|[./-])periapt[-_]of[-_]wound[-_]closure$/.test(src)
+            || (lowerName.includes("periapt") && lowerName.includes("wound") && lowerName.includes("closure"));
+        if (!isPeriapt) return false;
         return HitDieModifiers.#isItemAttuned(item);
     }
 
@@ -114,8 +131,14 @@ export class HitDieModifiers {
         for (const actor of actors ?? []) {
             const classes = actor.items?.filter(i => i.type === "class") ?? [];
             for (const cls of classes) {
+                const ident = (cls.system?.identifier ?? cls.system?.slug ?? "").toLowerCase();
+                const src = (cls._stats?.compendiumSource ?? cls.flags?.core?.sourceId ?? "").toLowerCase();
                 const clsName = cls.name?.toLowerCase() ?? "";
-                if (!/\bbard\b/.test(clsName)) continue;
+                const isBard = cls.flags?.["ionrift-respite"]?.songOfRest === true
+                    || ident === "bard"
+                    || /(?:^|[./-])bard$/.test(src)
+                    || /\bbard\b/.test(clsName);
+                if (!isBard) continue;
                 const levels = cls.system?.levels ?? 0;
                 if (levels < 2) continue;
                 if (levels > best.level) {

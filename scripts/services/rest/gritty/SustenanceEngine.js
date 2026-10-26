@@ -34,16 +34,23 @@ export class SustenanceEngine {
         for (const actor of partyActors) {
             if (!actor?.items) continue;
 
+            const hasActorFlag = actor.getFlag?.(MODULE_ID, "hasOutlander") === true
+                || actor.flags?.[MODULE_ID]?.hasOutlander === true;
             const bg = actor.system?.details?.background ?? "";
-            const isOutlanderBg = typeof bg === "string" && bg.toLowerCase().includes("outlander");
+            const bgProbe = typeof bg === "string"
+                ? bg.toLowerCase()
+                : `${bg?.identifier ?? ""} ${bg?.name ?? ""}`.toLowerCase();
+            const isOutlanderBg = bgProbe.includes("outlander");
 
             const hasWandererFeat = actor.items.some(i => {
-                const name = (i.name ?? "").toLowerCase();
-                return (i.type === "feat" || i.type === "background") &&
-                    (name.includes("outlander") || name.includes("wanderer") || name.includes("natural explorer"));
+                if (i.type !== "feat" && i.type !== "feature" && i.type !== "background") return false;
+                const probe = `${i.flags?.[MODULE_ID]?.featureKey ?? ""} ${i.flags?.[MODULE_ID]?.itemRef ?? ""} ${i.system?.identifier ?? ""} ${i.system?.slug ?? ""} ${i._stats?.compendiumSource ?? ""} ${i.name ?? ""}`
+                    .toLowerCase()
+                    .replace(/[-_]/g, " ");
+                return probe.includes("outlander") || probe.includes("wanderer") || probe.includes("natural explorer");
             });
 
-            if (isOutlanderBg || hasWandererFeat) {
+            if (hasActorFlag || isOutlanderBg || hasWandererFeat) {
                 outlanderActor = actor;
                 break;
             }
@@ -122,6 +129,8 @@ export class SustenanceEngine {
 
         // 2. Plain rations / hardtack
         const ration = items.find(i => {
+            const ref = String(i.flags?.[MODULE_ID]?.itemRef ?? i.system?.identifier ?? "").toLowerCase().replace(/[-_]/g, " ");
+            if (ref && (ref.includes("ration") || ref.includes("hardtack") || ref.includes("iron ration"))) return true;
             const name = (i.name ?? "").toLowerCase();
             return name.includes("ration") || name.includes("hardtack") || name.includes("iron ration");
         });
@@ -129,6 +138,11 @@ export class SustenanceEngine {
 
         // 3. Raw/bulk forage
         const raw = items.find(i => {
+            const fTag = i.flags?.[MODULE_ID]?.foodTag;
+            const cat = i.flags?.[MODULE_ID]?.category;
+            if (fTag === "meat" || fTag === "plant" || cat === "forage" || cat === "hunting") return true;
+            const ref = String(i.flags?.[MODULE_ID]?.itemRef ?? i.system?.identifier ?? "").toLowerCase().replace(/[-_]/g, " ");
+            if (ref && (ref.includes("berry") || ref.includes("meat") || ref.includes("nut") || ref.includes("root"))) return true;
             const name = (i.name ?? "").toLowerCase();
             return name.includes("berry") || name.includes("meat") || name.includes("nut") || name.includes("root");
         });

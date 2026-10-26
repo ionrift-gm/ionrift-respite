@@ -130,7 +130,11 @@ export class PF2eAdapter extends SystemAdapter {
             profKeys.push("crafting", "cook", "herb", "alchemist", "smith");
         }
         for (const item of actor.items ?? []) {
+            const flagKey = item.flags?.["ionrift-respite"]?.toolKey;
+            if (flagKey) profKeys.push(String(flagKey).toLowerCase());
             if (item.type === "lore") {
+                const slug = (item.system?.slug ?? item.system?.identifier ?? "").toLowerCase().replace(/[-_]+lore$/i, "").replace(/[-_]+/g, " ").trim();
+                if (slug) profKeys.push(slug);
                 profKeys.push(item.name?.toLowerCase().replace(/\s+lore$/i, "") ?? "");
             }
         }
@@ -182,8 +186,19 @@ export class PF2eAdapter extends SystemAdapter {
     }
 
     findItemByName(actor, name) {
-        const lower = name.toLowerCase();
-        return (actor.items ?? []).find(i => i.name?.toLowerCase().includes(lower)) ?? null;
+        if (!name) return null;
+        const lower = name.toLowerCase().trim();
+        const normTarget = lower.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
+        return (actor.items ?? []).find(i => {
+            const rf = i.flags?.["ionrift-respite"] ?? {};
+            for (const cand of [rf.itemRef, rf.campGearRole, rf.toolKey, i.system?.identifier, i.system?.slug, i.system?.type?.baseItem]) {
+                if (!cand) continue;
+                const cLow = String(cand).toLowerCase().trim();
+                const cNorm = cLow.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
+                if (cLow === lower || cNorm === normTarget || cNorm.includes(normTarget)) return true;
+            }
+            return i.name?.toLowerCase().includes(lower);
+        }) ?? null;
     }
 
     hasItemByName(actor, name) {
@@ -206,9 +221,12 @@ export class PF2eAdapter extends SystemAdapter {
         if (toolKey === "cook" || toolKey === "cook's utensils") {
             return this.isSkillProficient(actor, "crafting");
         }
-        return (actor.items ?? []).some(i =>
-            i.type === "lore" && i.name?.toLowerCase().includes(toolKey.toLowerCase())
-        );
+        const keyLower = toolKey.toLowerCase();
+        return (actor.items ?? []).some(i => {
+            if (i.type !== "lore") return false;
+            const probe = `${i.flags?.["ionrift-respite"]?.toolKey ?? ""} ${i.system?.slug ?? ""} ${i.system?.identifier ?? ""} ${i.name ?? ""}`.toLowerCase();
+            return probe.includes(keyLower);
+        });
     }
 
     getCurrency(actor) {

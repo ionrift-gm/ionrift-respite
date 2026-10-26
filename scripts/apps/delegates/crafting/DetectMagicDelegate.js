@@ -19,7 +19,15 @@ const trackedDetectMagicTemplateUuids = new Set();
 function actorIsWizard(actor) {
     if (!actor) return false;
     if (actor.classes?.wizard) return true;
-    return !!(actor.items?.find(i2 => i2.type === "class" && i2.name?.toLowerCase() === "wizard"));
+    return !!(actor.items?.find(i2 => {
+        if (i2.type !== "class") return false;
+        const ident = (i2.system?.identifier ?? i2.system?.slug ?? "").toLowerCase().trim();
+        if (ident === "wizard") return true;
+        if (i2.flags?.["ionrift-respite"]?.classIdentifier === "wizard") return true;
+        const src = (i2._stats?.compendiumSource ?? i2.flags?.core?.sourceId ?? "").toLowerCase();
+        if (/(?:^|[./-])wizard$/.test(src)) return true;
+        return i2.name?.toLowerCase() === "wizard";
+    }));
 }
 
 /**
@@ -57,20 +65,31 @@ function readSpellPrep(spellItem) {
  * @returns {boolean}
  */
 function spellItemMatchesName(spellItem, spellNameLower) {
-    const name = String(spellItem?.name ?? "").toLowerCase().trim();
-    if (name === spellNameLower) return true;
-    if (name.startsWith(`${spellNameLower} `) || name.startsWith(`${spellNameLower}(`)) return true;
-    const identifier = String(spellItem?.system?.identifier ?? "").toLowerCase();
-    if (identifier === spellNameLower || identifier === spellNameLower.replace(/\s+/g, "")) return true;
+    const slugTarget = spellNameLower.replace(/\s+/g, "-");
+    const snakeTarget = spellNameLower.replace(/\s+/g, "_");
+    const compactTarget = spellNameLower.replace(/\s+/g, "");
+    const flagSpell = String(spellItem?.flags?.["ionrift-respite"]?.spellKey ?? spellItem?.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().trim();
+    if (flagSpell && (flagSpell === spellNameLower || flagSpell === slugTarget || flagSpell === snakeTarget || flagSpell === compactTarget)) return true;
+    const identifier = String(spellItem?.system?.identifier ?? spellItem?.system?.slug ?? "").toLowerCase().trim();
+    if (identifier && (identifier === spellNameLower || identifier === slugTarget || identifier === snakeTarget || identifier === compactTarget)) return true;
     const source = String(
         spellItem?.flags?.core?.sourceId
         ?? spellItem?.system?.source?.revision
         ?? spellItem?._stats?.compendiumSource
         ?? ""
     ).toLowerCase();
-    if (source.includes(`.${spellNameLower.replace(/\s+/g, "")}`) || source.includes(`/${spellNameLower}`)) {
+    if (
+        source.includes(`.${compactTarget}`)
+        || source.includes(`.${slugTarget}`)
+        || source.includes(`/${spellNameLower}`)
+        || source.includes(`/${slugTarget}`)
+        || source.endsWith(`-${slugTarget}`)
+    ) {
         return true;
     }
+    const name = String(spellItem?.name ?? "").toLowerCase().trim();
+    if (name === spellNameLower) return true;
+    if (name.startsWith(`${spellNameLower} `) || name.startsWith(`${spellNameLower}(`)) return true;
     return false;
 }
 

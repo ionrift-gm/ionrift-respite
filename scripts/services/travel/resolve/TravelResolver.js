@@ -303,6 +303,8 @@ export class TravelResolver {
         }
         const label = String(registered?.label ?? "").trim();
         if (label) return label;
+        const i18nKey = `ionrift-respite.terrain.${tag}`;
+        if (game.i18n?.has?.(i18nKey)) return game.i18n.localize(i18nKey);
         const words = tag.split(/[_-]+/).filter(Boolean);
         if (!words.length) return "Wilderness";
         return words.map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");

@@ -58,13 +58,14 @@ export class ProvisionsCustomPack {
         }
 
         let sidebarFolder = game.folders.find(
-            folder => folder.name === SIDEBAR_FOLDER_NAME && folder.type === "Compendium"
+            folder => folder.type === "Compendium" && (folder.flags?.[MODULE_ID]?.folderKey === "ionrift-custom" || folder.name === SIDEBAR_FOLDER_NAME)
         );
         if (!sidebarFolder) {
             sidebarFolder = await Folder.create({
                 name: SIDEBAR_FOLDER_NAME,
                 type: "Compendium",
-                sorting: "a"
+                sorting: "a",
+                flags: { [MODULE_ID]: { folderKey: "ionrift-custom" } }
             });
         }
         if (pack.folder?.id !== sidebarFolder.id) {
@@ -92,17 +93,28 @@ export class ProvisionsCustomPack {
      * @param {string} name
      * @param {string|null} parentId
      */
-    static async _ensureItemFolder(pack, name, parentId) {
-        const match = pack.folders.find(folder =>
-            folder.name === name && (
-                parentId
-                    ? folderParentId(folder) === parentId
-                    : !folderParentId(folder)
-            )
-        );
+    static _toFolderKey(name) {
+        return String(name ?? "").toLowerCase().trim().replace(/\s+/g, "-");
+    }
+
+    static async _ensureItemFolder(pack, name, parentId, folderKey = null) {
+        const key = folderKey ?? ProvisionsCustomPack._toFolderKey(name);
+        const match = pack.folders.find(folder => {
+            const sameParent = parentId
+                ? folderParentId(folder) === parentId
+                : !folderParentId(folder);
+            if (!sameParent) return false;
+            const fKey = folder.flags?.[MODULE_ID]?.folderKey ?? folder.getFlag?.(MODULE_ID, "folderKey");
+            return (key && fKey === key) || folder.name === name;
+        });
         if (match) return match;
         return Folder.create(
-            { name, type: "Item", folder: parentId ?? null },
+            {
+                name,
+                type: "Item",
+                folder: parentId ?? null,
+                flags: { [MODULE_ID]: { folderKey: key } }
+            },
             { pack: pack.collection }
         );
     }
@@ -110,10 +122,11 @@ export class ProvisionsCustomPack {
     /**
      * @param {CompendiumCollection} pack
      * @param {string} folderName - e.g. Cooking Outputs
+     * @param {string} [folderKey] - e.g. cooking-outputs
      * @returns {Promise<Folder|null>}
      */
-    static async ensureOutputFolder(pack, folderName) {
+    static async ensureOutputFolder(pack, folderName, folderKey = null) {
         if (!pack) return null;
-        return ProvisionsCustomPack._ensureItemFolder(pack, folderName, null);
+        return ProvisionsCustomPack._ensureItemFolder(pack, folderName, null, folderKey);
     }
 }

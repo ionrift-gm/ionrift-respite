@@ -658,7 +658,8 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
             if (id === "custom") continue;
             const merged = { ...ItemClassifier.DEFAULT_DIET, ...preset };
             const mergedSType = merged.sustenanceType ?? "food";
-            const labelMatch = diet.label === merged.label
+            const labelMatch = (diet.presetId && diet.presetId === id)
+                || diet.label === merged.label
                 || (id === "construct" && diet.label === "Construct")
                 || (id === "maintenance" && diet.label === "Construct (Maintenance)");
             if (labelMatch

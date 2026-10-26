@@ -232,14 +232,31 @@ export class ActivityEligibility {
             } else {
                 const classEntries = actor.classes ?? {};
                 const classNames = new Set(
-                    Object.values(classEntries).map(c => c.name?.toLowerCase().trim())
+                    Object.values(classEntries).flatMap(c => [
+                        c.name?.toLowerCase().trim(),
+                        c.system?.identifier?.toLowerCase().trim(),
+                        c.system?.slug?.toLowerCase().trim()
+                    ]).filter(Boolean)
                 );
-                const isWizard = !!classEntries.wizard || classNames.has("wizard");
+                const isWizard = !!classEntries.wizard || classNames.has("wizard") || (actor.items ?? []).some(c => {
+                    if (c.type !== "class") return false;
+                    const id = (c.system?.identifier ?? c.system?.slug ?? "").toLowerCase().trim();
+                    return id === "wizard" || c.name?.toLowerCase().trim() === "wizard";
+                });
                 if (!isWizard) {
-                    const isWarlock = !!classEntries.warlock || classNames.has("warlock");
-                    const hasSpellbook = isWarlock && (actor.items ?? []).some(i =>
-                        i.name?.toLowerCase().includes("spellbook") || i.name?.toLowerCase().includes("book of shadows")
-                    );
+                    const isWarlock = !!classEntries.warlock || classNames.has("warlock") || (actor.items ?? []).some(c => {
+                        if (c.type !== "class") return false;
+                        const id = (c.system?.identifier ?? c.system?.slug ?? "").toLowerCase().trim();
+                        return id === "warlock" || c.name?.toLowerCase().trim() === "warlock";
+                    });
+                    const hasSpellbook = isWarlock && (actor.items ?? []).some(i => {
+                        const id = (i.system?.identifier ?? i.system?.slug ?? i.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().replace(/[-_]/g, " ");
+                        return i.flags?.["ionrift-respite"]?.isSpellbook === true
+                            || id.includes("spellbook")
+                            || id.includes("book of shadows")
+                            || i.name?.toLowerCase().includes("spellbook")
+                            || i.name?.toLowerCase().includes("book of shadows");
+                    });
                     if (!hasSpellbook) return false;
                 }
             }
@@ -281,20 +298,22 @@ export class ActivityEligibility {
         for (const item of actor.items ?? []) {
             const baseItem = item.system?.type?.baseItem;
             if (baseItem) profKeys.add(baseItem);
+            const flagKey = item.flags?.["ionrift-respite"]?.toolKey;
+            if (flagKey) profKeys.add(String(flagKey).toLowerCase());
 
-            const nameLower = (item.name ?? "").toLowerCase();
-            if (nameLower.includes("cook")) profKeys.add("cook");
-            if (nameLower.includes("herbalism")) profKeys.add("herb");
-            if (nameLower.includes("alchemist")) profKeys.add("alchemist");
-            if (nameLower.includes("brewer")) profKeys.add("brewer");
-            if (nameLower.includes("tinker")) profKeys.add("tinker");
-            if (nameLower.includes("smith")) profKeys.add("smith");
-            if (nameLower.includes("thiev")) profKeys.add("thief");
-            if (nameLower.includes("potter")) profKeys.add("potter");
-            if (nameLower.includes("glassblower")) profKeys.add("glassblower");
-            if (nameLower.includes("mason")) profKeys.add("mason");
-            if (nameLower.includes("calligrapher")) profKeys.add("calligrapher");
-            if (nameLower.includes("cartographer")) profKeys.add("cartographer");
+            const probe = `${item.system?.identifier ?? ""} ${item.system?.slug ?? ""} ${item.flags?.["ionrift-respite"]?.itemRef ?? ""} ${item._stats?.compendiumSource ?? ""} ${item.name ?? ""}`.toLowerCase();
+            if (probe.includes("cook")) profKeys.add("cook");
+            if (probe.includes("herbalism") || probe.includes("herb")) profKeys.add("herb");
+            if (probe.includes("alchemist")) profKeys.add("alchemist");
+            if (probe.includes("brewer")) profKeys.add("brewer");
+            if (probe.includes("tinker")) profKeys.add("tinker");
+            if (probe.includes("smith")) profKeys.add("smith");
+            if (probe.includes("thiev") || probe.includes("thief")) profKeys.add("thief");
+            if (probe.includes("potter")) profKeys.add("potter");
+            if (probe.includes("glassblower")) profKeys.add("glassblower");
+            if (probe.includes("mason")) profKeys.add("mason");
+            if (probe.includes("calligrapher")) profKeys.add("calligrapher");
+            if (probe.includes("cartographer")) profKeys.add("cartographer");
         }
 
         return [...profKeys];
@@ -312,24 +331,41 @@ export class ActivityEligibility {
 
         if (!actor) return { prepared, known };
 
+        const addSpellKeys = (set, item) => {
+            const name = item.name?.toLowerCase();
+            if (name) set.add(name);
+            const ident = (item.system?.identifier ?? item.system?.slug ?? item.flags?.["ionrift-respite"]?.spellKey ?? item.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().trim();
+            if (ident) {
+                set.add(ident);
+                set.add(ident.replace(/[-_]+/g, " "));
+            }
+            const src = (item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "").toLowerCase();
+            const m = src.match(/(?:^|[./-])([a-z0-9_-]+)$/);
+            if (m?.[1]) {
+                set.add(m[1]);
+                set.add(m[1].replace(/[-_]+/g, " "));
+            }
+        };
+
         for (const item of actor.items ?? []) {
             if (item.type !== "spell") continue;
             const name = item.name?.toLowerCase();
-            if (!name) continue;
+            const hasIdent = Boolean(item.system?.identifier || item.system?.slug || item.flags?.["ionrift-respite"]?.spellKey || item.flags?.["ionrift-respite"]?.itemRef);
+            if (!name && !hasIdent) continue;
 
-            known.add(name);
+            addSpellKeys(known, item);
 
-            const raw = item.toObject?.()?.system ?? {};
+            const raw = item.toObject?.()?.system ?? item.system ?? {};
             const mode = raw.method ?? raw.preparation?.mode ?? "";
             const isPrepared = raw.prepared ?? raw.preparation?.prepared ?? false;
 
             if (mode === "always" || mode === "innate" || mode === "pact" || mode === "atwill") {
-                prepared.add(name);
+                addSpellKeys(prepared, item);
                 continue;
             }
 
             if (isPrepared) {
-                prepared.add(name);
+                addSpellKeys(prepared, item);
             }
         }
 

@@ -61,10 +61,15 @@ export class PF1eAdapter extends SystemAdapter {
     getToolProficiencies(actor) {
         const profKeys = new Set();
         for (const item of actor.items ?? []) {
+            const flagKey = item.flags?.["ionrift-respite"]?.toolKey;
+            if (flagKey) profKeys.add(String(flagKey).toLowerCase());
+            const ident = (item.system?.identifier ?? item.system?.slug ?? item.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().replace(/[-_]/g, " ").trim();
             if (item.type === "loot" && item.system?.subType === "tradeGoods") {
+                if (ident) profKeys.add(ident);
                 profKeys.add(item.name?.toLowerCase() ?? "");
             }
             if (item.type === "equipment" && item.system?.subType === "tool") {
+                if (ident) profKeys.add(ident);
                 profKeys.add(item.name?.toLowerCase() ?? "");
             }
         }
@@ -104,15 +109,30 @@ export class PF1eAdapter extends SystemAdapter {
     }
 
     hasSpellbook(actor) {
-        return (actor.items ?? []).some(i =>
-            i.type === "spellbook" ||
-            (i.type === "class" && /wizard/i.test(i.name ?? ""))
-        );
+        return (actor.items ?? []).some(i => {
+            if (i.type === "spellbook" || i.flags?.["ionrift-respite"]?.isSpellbook === true) return true;
+            if (i.type === "class") {
+                const probe = `${i.system?.identifier ?? ""} ${i.system?.slug ?? ""} ${i.name ?? ""}`;
+                return /wizard/i.test(probe);
+            }
+            return false;
+        });
     }
 
     findItemByName(actor, name) {
-        const lower = name.toLowerCase();
-        return (actor.items ?? []).find(i => i.name?.toLowerCase().includes(lower)) ?? null;
+        if (!name) return null;
+        const lower = name.toLowerCase().trim();
+        const normTarget = lower.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
+        return (actor.items ?? []).find(i => {
+            const rf = i.flags?.["ionrift-respite"] ?? {};
+            for (const cand of [rf.itemRef, rf.campGearRole, rf.toolKey, i.system?.identifier, i.system?.slug, i.system?.type?.baseItem]) {
+                if (!cand) continue;
+                const cLow = String(cand).toLowerCase().trim();
+                const cNorm = cLow.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
+                if (cLow === lower || cNorm === normTarget || cNorm.includes(normTarget)) return true;
+            }
+            return i.name?.toLowerCase().includes(lower);
+        }) ?? null;
     }
 
     hasItemByName(actor, name) {
@@ -132,10 +152,11 @@ export class PF1eAdapter extends SystemAdapter {
 
     isToolProficient(actor, toolKey) {
         const lower = toolKey.toLowerCase();
-        return (actor.items ?? []).some(i =>
-            i.type === "equipment" &&
-            (i.system?.subType === "tool" || i.name?.toLowerCase().includes(lower))
-        );
+        return (actor.items ?? []).some(i => {
+            if (i.type !== "equipment") return false;
+            const probe = `${i.flags?.["ionrift-respite"]?.toolKey ?? ""} ${i.flags?.["ionrift-respite"]?.itemRef ?? ""} ${i.system?.identifier ?? ""} ${i.system?.slug ?? ""} ${i.name ?? ""}`.toLowerCase();
+            return i.system?.subType === "tool" || probe.includes(lower);
+        });
     }
 
     getCurrency(actor) {

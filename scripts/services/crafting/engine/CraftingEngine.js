@@ -20,10 +20,56 @@ import { MODULE_ID } from "../../../data/moduleId.js";
 export function ingredientNameOptions(ingredient) {
     const primary = String(ingredient?.name ?? "").toLowerCase().trim();
     if (!primary) return [];
-    const alts = (ingredient?.alternates ?? [])
+    const alts = (ingredient?.alternates ?? ingredient?.alternatives ?? [])
         .map(name => String(name).toLowerCase().trim())
         .filter(Boolean);
     return [...new Set([primary, ...alts])];
+}
+
+function normalizeIngredientToken(val) {
+    return String(val ?? "").toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+export function ingredientMatchTokens(ingredient) {
+    const raw = [
+        ingredient?.itemRef,
+        ingredient?.name,
+        ...(ingredient?.alternates ?? ingredient?.alternatives ?? [])
+    ].filter(Boolean);
+    const out = new Set();
+    for (const r of raw) {
+        const low = String(r).toLowerCase().trim();
+        if (low) out.add(low);
+        const norm = normalizeIngredientToken(r);
+        if (norm) out.add(norm);
+    }
+    return [...out];
+}
+
+export function matchesRecipeIngredient(item, ingredient) {
+    if (!item || !ingredient) return false;
+    const tokens = ingredientMatchTokens(ingredient);
+    if (!tokens.length) return false;
+
+    const itemRef = item.flags?.[MODULE_ID]?.itemRef ?? item.getFlag?.(MODULE_ID, "itemRef");
+    if (itemRef) {
+        const refLow = String(itemRef).toLowerCase().trim();
+        const refNorm = normalizeIngredientToken(itemRef);
+        if (tokens.includes(refLow) || tokens.includes(refNorm)) return true;
+    }
+
+    const ident = item.system?.identifier ?? item.system?.slug;
+    if (ident) {
+        const idLow = String(ident).toLowerCase().trim();
+        const idNorm = normalizeIngredientToken(ident);
+        if (tokens.includes(idLow) || tokens.includes(idNorm)) return true;
+    }
+
+    const baseName = stripSpoilageCohortSuffix(item.name ?? "").toLowerCase().trim();
+    if (baseName && (tokens.includes(baseName) || tokens.includes(normalizeIngredientToken(baseName)))) {
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -478,15 +524,35 @@ export class CraftingEngine {
      */
     _buildInventoryMap(actor) {
         const map = new Map();
-        for (const item of actor.items) {
-            const key = stripSpoilageCohortSuffix(item.name).toLowerCase().trim();
-            if (map.has(key)) {
-                map.get(key).quantity += (item.system?.quantity ?? 1);
+        const addKey = (key, item, qty) => {
+            if (!key) return;
+            const existing = map.get(key);
+            if (existing) {
+                if (!existing.items.includes(item)) {
+                    existing.quantity += qty;
+                    existing.items.push(item);
+                }
             } else {
                 map.set(key, {
                     item,
-                    quantity: item.system?.quantity ?? 1
+                    items: [item],
+                    quantity: qty
                 });
+            }
+        };
+        for (const item of actor.items) {
+            const qty = item.system?.quantity ?? 1;
+            const key = stripSpoilageCohortSuffix(item.name).toLowerCase().trim();
+            addKey(key, item, qty);
+            const itemRef = item.flags?.[MODULE_ID]?.itemRef ?? item.getFlag?.(MODULE_ID, "itemRef");
+            if (itemRef) {
+                addKey(String(itemRef).toLowerCase().trim(), item, qty);
+                addKey(normalizeIngredientToken(itemRef), item, qty);
+            }
+            const ident = item.system?.identifier ?? item.system?.slug;
+            if (ident) {
+                addKey(String(ident).toLowerCase().trim(), item, qty);
+                addKey(normalizeIngredientToken(ident), item, qty);
             }
         }
         return map;
@@ -515,8 +581,23 @@ export class CraftingEngine {
                 available = this._countWaterPints(actor);
             } else {
                 available = 0;
-                for (const key of ingredientNameOptions(ing)) {
-                    available += inventory.get(key)?.quantity ?? 0;
+                const seenItems = new Set();
+                for (const key of ingredientMatchTokens(ing)) {
+                    const entry = inventory.get(key);
+                    if (!entry) continue;
+                    if (Array.isArray(entry.items)) {
+                        for (const it of entry.items) {
+                            if (!seenItems.has(it)) {
+                                seenItems.add(it);
+                                available += (it.system?.quantity ?? 1);
+                            }
+                        }
+                    } else if (entry.item && !seenItems.has(entry.item)) {
+                        seenItems.add(entry.item);
+                        available += (entry.quantity ?? 0);
+                    } else if (!entry.item && !entry.items) {
+                        available += (entry.quantity ?? 0);
+                    }
                 }
             }
 
@@ -582,14 +663,22 @@ export class CraftingEngine {
             }
 
             let remaining = required;
-            const nameOrder = ingredientNameOptions(ing);
+            const nameOrder = ingredientMatchTokens(ing);
+            const consumedIds = new Set();
 
             for (const nameKey of nameOrder) {
                 if (remaining <= 0) break;
 
-                const matches = actor.items.filter(
-                    i => stripSpoilageCohortSuffix(i.name).toLowerCase().trim() === nameKey
-                );
+                const matches = actor.items.filter(i => {
+                    if (consumedIds.has(i.id)) return false;
+                    const base = stripSpoilageCohortSuffix(i.name).toLowerCase().trim();
+                    if (base === nameKey) return true;
+                    const ref = String(i.flags?.[MODULE_ID]?.itemRef ?? i.getFlag?.(MODULE_ID, "itemRef") ?? "").toLowerCase().trim();
+                    if (ref && (ref === nameKey || normalizeIngredientToken(ref) === nameKey)) return true;
+                    const ident = String(i.system?.identifier ?? i.system?.slug ?? "").toLowerCase().trim();
+                    if (ident && (ident === nameKey || normalizeIngredientToken(ident) === nameKey)) return true;
+                    return false;
+                });
                 matches.sort((a, b) => {
                     const ka = SpoilageClock.getConsumeSortKey(a);
                     const kb = SpoilageClock.getConsumeSortKey(b);
@@ -601,6 +690,7 @@ export class CraftingEngine {
 
                 for (const item of matches) {
                     if (remaining <= 0) break;
+                    consumedIds.add(item.id);
                     const qty = item.system?.quantity ?? 1;
 
                     if (qty <= remaining) {
@@ -791,11 +881,15 @@ export class CraftingEngine {
         const toolData = actor.system?.tools?.[toolKey];
         if ((toolData?.value ?? 0) > 0 || (toolData?.effectValue ?? 0) > 0) return true;
 
+        const keyLower = toolKey.toLowerCase();
         for (const item of actor.items ?? []) {
             if (item.type !== "tool") continue;
-            if (item.system?.type?.baseItem === toolKey) return true;
-            const nameLower = item.name.toLowerCase();
-            if (nameLower.includes(toolKey)) return true;
+            if (item.system?.type?.baseItem?.toLowerCase() === keyLower) return true;
+            const flagKey = (item.flags?.[MODULE_ID]?.toolKey ?? item.flags?.[MODULE_ID]?.itemRef ?? "").toLowerCase();
+            const ident = (item.system?.identifier ?? item.system?.slug ?? "").toLowerCase();
+            if (flagKey.includes(keyLower) || ident.includes(keyLower)) return true;
+            const nameLower = (item.name ?? "").toLowerCase();
+            if (nameLower.includes(keyLower)) return true;
         }
 
         return false;
