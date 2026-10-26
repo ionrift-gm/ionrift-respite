@@ -43,9 +43,12 @@ export class RestRenderBindings {
         }
 
         const showTotmCampfirePanelEarly = app._shouldShowTotmCampfirePanel();
+        const showFireRailEarly = !!app._shouldMountFireRailEmbed?.();
         app._bindRestWindowUserMoveTracking();
         if ((app._isTotM && (app._phase === "camp" || ((app._phase === "activity" || app._phase === "meal") && showTotmCampfirePanelEarly)))
-            || (app._phase === "camp" && app._showFullMakeCampPanel())) {
+            || ((app._phase === "activity" || app._phase === "meal") && showFireRailEarly)
+            || (app._phase === "camp" && app._showFullMakeCampPanel())
+            || true) {
             app._bindRestWindowResizeObserver();
         } else {
             app._disposeRestWindowResizeObserver();

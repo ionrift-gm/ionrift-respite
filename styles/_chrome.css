@@ -2230,10 +2230,20 @@
     background: rgba(16, 20, 32, 0.96);
     border: 1px solid rgba(168, 140, 255, 0.28);
     border-radius: 10px;
-    margin-top: -28px;    /* mock: dock overlaps the banner */
+    margin-top: 0;
     margin-bottom: 8px;
     position: relative;
     z-index: 2;
+}
+
+.phase-banner + .rest-dock {
+    margin-top: -28px;    /* mock: dock overlaps the banner when banner is visible */
+}
+
+.hide-terrain-banners .phase-banner + .rest-dock,
+.downtime-ledger-window.pacing-flow-active .phase-banner + .rest-dock,
+.downtime-ledger-window:has(.pacing-flow-active) .phase-banner + .rest-dock {
+    margin-top: 0;
 }
 
 .rest-dock-top {

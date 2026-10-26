@@ -203,6 +203,7 @@ export class BivouacApp extends BaseShortRestApp {
 
     _onRender(context, options) {
         super._onRender(context, options);
+        this.element?.classList.toggle("hide-terrain-banners", !!context?.hideTerrainBanner);
         registerRestSessionApp("bivouac", this);
         setRespiteFlowActive(true);
         if (this._isGM && !this._workbenchHookId) {

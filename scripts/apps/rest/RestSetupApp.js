@@ -369,6 +369,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._restWindowResizeObserver = null;
         this._restWindowRecenterPending = false;
         this._restWindowUserPositioned = false;
+        this._lastRenderedPhase = undefined;
         this._restWindowRecenterSuppressed = 0;
         this._safeRestPulseAlert = false;
         /** Forces TotM for this rest only; never writes restInterfaceMode. */
@@ -829,6 +830,7 @@ _shouldShowEventPoolNudge(terrainTag) {
         document.getElementById("ionrift-gm-guidance-flyout")?.remove();
         this._disposeRestWindowResizeObserver();
         this._restWindowUserPositioned = false;
+        this._lastRenderedPhase = undefined;
         return super.close(options);
     }
 
@@ -1221,6 +1223,11 @@ static #formatGmGuidance(text) {
 
     /** @override */
     async render(options = {}) {
+        const phaseChanged = this._lastRenderedPhase !== undefined && this._lastRenderedPhase !== this._phase;
+        if (phaseChanged) {
+            this._restWindowUserPositioned = false;
+        }
+        this._lastRenderedPhase = this._phase;
         const preservePos = this._restWindowUserPositioned && this.rendered && this.element;
         let savedPos = null;
         if (preservePos) {

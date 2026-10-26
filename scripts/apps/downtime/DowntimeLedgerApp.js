@@ -3415,6 +3415,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         try {
             currentTheme = game.settings.get(MODULE_ID, "uiTheme") ?? "glass";
         } catch { /* ignore */ }
+        html.classList.toggle("hide-terrain-banners", !!context?.hideTerrainBanner);
         html.classList.toggle("theme-ionrift-glass", currentTheme === "glass");
         html.classList.toggle("theme-respite-cockpit", currentTheme === "cockpit");
 
@@ -3426,6 +3427,23 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         }
 
         html.classList.toggle("pacing-flow-active", Boolean(this._pacingActive));
+        const pacingChanged = this._lastRenderedPacing !== Boolean(this._pacingActive);
+        this._lastRenderedPacing = Boolean(this._pacingActive);
+        if (pacingChanged) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const el = this.element;
+                    if (!el || !this.rendered) return;
+                    const h = el.offsetHeight;
+                    const w = el.offsetWidth;
+                    if (h < 1 || w < 1) return;
+                    this.setPosition({
+                        top: Math.max(10, Math.round((window.innerHeight - h) / 2)),
+                        left: Math.max(10, Math.round((window.innerWidth - w) / 2))
+                    });
+                });
+            });
+        }
         if (this._pacingActive) {
             html.style.removeProperty("height");
             const content = html.querySelector(".window-content");

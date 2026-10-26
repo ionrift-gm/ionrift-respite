@@ -16,9 +16,27 @@ export class RestWindowLayout {
         const header = el.querySelector("header.window-header") ?? el.querySelector(".window-header");
         if (!header || header.dataset.restUserMoveBound) return;
         header.dataset.restUserMoveBound = "1";
-        header.addEventListener("pointerdown", () => {
-            app._restWindowUserPositioned = true;
+        header.addEventListener("pointerdown", (ev) => {
+            if (ev.target?.closest?.("button, a, input, select, .header-control")) return;
+            const startLeft = el.offsetLeft;
+            const startTop = el.offsetTop;
+            const onUp = () => {
+                window.removeEventListener("pointerup", onUp, true);
+                window.removeEventListener("pointercancel", onUp, true);
+                if (Math.hypot(el.offsetLeft - startLeft, el.offsetTop - startTop) > 4) {
+                    app._restWindowUserPositioned = true;
+                }
+            };
+            window.addEventListener("pointerup", onUp, true);
+            window.addEventListener("pointercancel", onUp, true);
         });
+        const resizeHandle = el.querySelector(".window-resize-handle");
+        if (resizeHandle && !resizeHandle.dataset.restUserResizeBound) {
+            resizeHandle.dataset.restUserResizeBound = "1";
+            resizeHandle.addEventListener("pointerdown", () => {
+                app._restWindowUserPositioned = true;
+            });
+        }
     }
 
     campRestWindowTargetWidth() {
@@ -260,11 +278,6 @@ export class RestWindowLayout {
         const app = this._app;
         const el = app.element;
         if (!el || app._restWindowResizeObserver) return;
-        const watchCampFullPanel = app._phase === "camp" && app._showFullMakeCampPanel();
-        if (!app._isTotM && !watchCampFullPanel) return;
-        const watchCamp = app._phase === "camp";
-        const watchActivityCampfire = app._phase === "activity" && app._totmCampfireMinigamePanelEnabled();
-        if (!watchCamp && !watchActivityCampfire) return;
 
         app._restWindowResizeObserver = new ResizeObserver(() => {
             if (isTrailerFilmingMode()) {
@@ -332,23 +345,26 @@ export class RestWindowLayout {
         }
 
         el.classList.remove("ionrift-camp-dock");
-        const top = Math.max(10, Math.round((window.innerHeight - h) / 2));
-        const pos = { top };
 
+        let targetW;
         if ((app._phase === "camp" || app._phase === "activity" || app._phase === "meal")
             && (app._campCeremonyMinigameEnabled?.() || app._totmCampfireMinigamePanelEnabled?.() || app._shouldMountFireRailEmbed?.())) {
-            const targetW = this.campRestWindowTargetWidth();
-            pos.width = targetW;
-            pos.left = Math.max(20, Math.round((window.innerWidth - targetW) / 2));
+            targetW = this.campRestWindowTargetWidth();
         } else if (app._phase === "camp") {
-            const targetW = this.campRestWindowTargetWidth();
-            pos.width = targetW;
-            pos.left = Math.max(20, Math.round((window.innerWidth - targetW) / 2));
+            targetW = this.campRestWindowTargetWidth();
         } else {
-            const w = el.offsetWidth;
-            pos.left = Math.max(10, Math.round((window.innerWidth - w) / 2));
+            targetW = app.constructor.DEFAULT_OPTIONS?.position?.width ?? 720;
         }
 
-        this.applyRestWindowPosition(pos, { smooth: !!options.smooth });
+        if (Math.abs((el.offsetWidth || 0) - targetW) > 2) {
+            app.setPosition({ width: targetW, height: "auto" });
+        }
+
+        const measuredH = el.offsetHeight || h;
+        const measuredW = el.offsetWidth || targetW;
+        const top = Math.max(10, Math.round((window.innerHeight - measuredH) / 2));
+        const left = Math.max(10, Math.round((window.innerWidth - measuredW) / 2));
+
+        this.applyRestWindowPosition({ top, left, width: targetW, height: "auto" }, { smooth: !!options.smooth });
     }
 }
