@@ -1,8 +1,11 @@
 import { Logger } from "../../../utils/Logger.js";
 import {
     CampGearScanner,
+    actorHasTinderbox,
     countActorFirewood,
-    findConsumableFirewoodItem
+    findConsumableFirewoodItem,
+    isActorFirewoodItem,
+    isFireCantripItem
 } from "../../../services/camp/gear/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../../services/camp/fire/CampfireTokenLinker.js";
 import { logCampfireReconnect } from "../../../services/camp/fire/CampfireReconnectLog.js";
@@ -187,10 +190,7 @@ export class CampCeremonyDelegate {
         }
         const actor = game.actors.get(actorId);
         if (!actor) return;
-        const firewoodItem = actor.items.find(i => {
-            const n = i.name?.toLowerCase() ?? "";
-            return n.includes("firewood") || n === "kindling";
-        });
+        const firewoodItem = actor.items.find(i => isActorFirewoodItem(i));
         const existing = this.firewoodPledges.get(userId);
         const pledgedSoFar = existing?.count ?? 0;
         const available = firewoodItem?.system?.quantity ?? 0;
@@ -1318,7 +1318,7 @@ export class CampCeremonyDelegate {
             for (const actor of getPartyActors()) {
                 if (rawLighters.some(l => l.actorId === actor.id)) continue;
                 const cantrip = fireCantrips.length > 0
-                    ? actor.items.find(i => i.type === "spell" && (i.system?.level === 0) && fireCantrips.includes(i.name))
+                    ? actor.items.find(i => isFireCantripItem(i, fireCantrips))
                     : null;
                 if (cantrip) cantripLighters.push({ actorId: actor.id, actorName: actor.name, method: cantrip.name });
             }
@@ -1525,10 +1525,7 @@ export class CampCeremonyDelegate {
         const F = CampGearScanner.FIREWOOD_COST_BY_LEVEL;
         const costCur = coldCamp || curLevel === "unlit" ? 0 : (F[curLevel] ?? 0);
         const actors = getPartyActors();
-        const hasTinderbox = actors.some(a => a.items.some(i => {
-            const n = i.name?.toLowerCase() ?? "";
-            return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
-        }));
+        const hasTinderbox = actors.some(a => actorHasTinderbox(a));
         const totalPartyFirewood = actors.reduce((sum, a) => sum + countActorFirewood(a), 0);
 
         const campFireTierCards = ["embers", "campfire", "bonfire"].map(id => {

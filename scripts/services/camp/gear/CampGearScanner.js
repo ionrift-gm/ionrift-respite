@@ -2,14 +2,212 @@ import { getPartyActors } from "../../party/partyActors.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
 /**
+ * Read an ionrift-respite flag from an item or document (handles both getFlag and plain objects).
+ * @param {object} doc
+ * @param {string} key
+ * @returns {*}
+ */
+export function getRespiteFlag(doc, key) {
+    if (!doc) return undefined;
+    if (typeof doc.getFlag === "function") {
+        try {
+            const val = doc.getFlag(MODULE_ID, key);
+            if (val !== undefined) return val;
+        } catch { /* fall through */ }
+    }
+    return doc.flags?.[MODULE_ID]?.[key];
+}
+
+/**
+ * Read normalized system identifier / slug from an item.
+ * @param {Item|object} item
+ * @returns {string}
+ */
+export function getItemIdentifier(item) {
+    const raw = item?.system?.identifier ?? item?.system?.slug ?? "";
+    return typeof raw === "string" ? raw.toLowerCase().trim() : "";
+}
+
+/**
+ * Read lowercased compendium source UUID from an item or actor.
+ * @param {object} doc
+ * @returns {string}
+ */
+export function getDocSourceId(doc) {
+    const raw = doc?._stats?.compendiumSource ?? doc?.flags?.core?.sourceId ?? "";
+    return typeof raw === "string" ? raw.toLowerCase().trim() : "";
+}
+
+/**
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isBedrollItem(item) {
+    if (!item) return false;
+    const role = getRespiteFlag(item, "campGearRole");
+    const ref = getRespiteFlag(item, "itemRef");
+    if (role === "bedroll" || ref === "bedroll") return true;
+    const id = getItemIdentifier(item);
+    if (id === "bedroll") return true;
+    const src = getDocSourceId(item);
+    if (src && /(?:^|[.\/])bedroll$/i.test(src)) return true;
+    return (item.name ?? "").toLowerCase().includes("bedroll");
+}
+
+/**
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isTentItem(item) {
+    if (!item) return false;
+    const role = getRespiteFlag(item, "campGearRole");
+    const ref = getRespiteFlag(item, "itemRef");
+    if (role === "tent" || ref === "tent" || ref === "two-person-tent") return true;
+    const id = getItemIdentifier(item);
+    if (id === "tent" || id === "two-person-tent") return true;
+    const src = getDocSourceId(item);
+    if (src && /(?:^|[.\/])(?:two-person-)?tent$/i.test(src)) return true;
+    return /(?:^|[\s,\-])tent\b/i.test(item.name ?? "");
+}
+
+/**
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isMessKitOnlyItem(item) {
+    if (!item) return false;
+    const role = getRespiteFlag(item, "campGearRole");
+    const ref = getRespiteFlag(item, "itemRef");
+    if (role === "messkit" || role === "mess-kit" || ref === "mess-kit" || ref === "messkit") return true;
+    const id = getItemIdentifier(item);
+    if (id === "mess-kit" || id === "messkit") return true;
+    const src = getDocSourceId(item);
+    if (src && /(?:^|[.\/])mess-?kit$/i.test(src)) return true;
+    return (item.name ?? "").toLowerCase().includes("mess kit");
+}
+
+/**
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isCooksUtensilsItem(item) {
+    if (!item) return false;
+    const role = getRespiteFlag(item, "campGearRole");
+    const ref = getRespiteFlag(item, "itemRef");
+    if (role === "cooks-utensils" || role === "cooking-utensils" || ref === "cooks-utensils" || ref === "cooking-utensils") return true;
+    const id = getItemIdentifier(item);
+    if (id === "cooks-utensils" || id === "cook-utensils" || id === "cooking-utensils") return true;
+    const baseItem = (item.system?.type?.baseItem ?? "").toLowerCase();
+    if (baseItem === "cook" || baseItem === "cooks-utensils") return true;
+    const src = getDocSourceId(item);
+    if (src && /(?:^|[.\/])cooks?-?utensils$/i.test(src)) return true;
+    const n = (item.name ?? "").toLowerCase();
+    if (n.includes("mess kit")) return false;
+    return (n.includes("cook") && n.includes("utensil"));
+}
+
+/**
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isMessKitItem(item) {
+    return isMessKitOnlyItem(item) || isCooksUtensilsItem(item);
+}
+
+/**
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isTinderboxItem(item) {
+    if (!item) return false;
+    const role = getRespiteFlag(item, "campGearRole");
+    const ref = getRespiteFlag(item, "itemRef");
+    if (role === "tinderbox" || ref === "tinderbox" || ref === "flint-and-steel") return true;
+    const id = getItemIdentifier(item);
+    if (id === "tinderbox" || id === "flint-and-steel") return true;
+    const src = getDocSourceId(item);
+    if (src && /(?:^|[.\/])(?:tinderbox|flint-and-steel)$/i.test(src)) return true;
+    const n = (item.name ?? "").toLowerCase();
+    return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+}
+
+/**
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isTorchItem(item) {
+    if (!item) return false;
+    const role = getRespiteFlag(item, "campGearRole");
+    const ref = getRespiteFlag(item, "itemRef");
+    const fuelType = getRespiteFlag(item, "fuelType");
+    if (role === "torch" || ref === "torch" || fuelType === "torch") return true;
+    const id = getItemIdentifier(item);
+    if (id === "torch") return true;
+    const src = getDocSourceId(item);
+    if (src && /(?:^|[.\/])torch$/i.test(src)) return true;
+    return (item.name ?? "").toLowerCase().includes("torch");
+}
+
+const FIRE_CANTRIP_IDENTIFIERS = new Set([
+    "create-bonfire",
+    "produce-flame",
+    "fire-bolt",
+    "prestidigitation",
+    "control-flames",
+    "druidcraft",
+    "thaumaturgy"
+]);
+
+/**
+ * @param {Item|object} item
+ * @param {string[]} [fireCantrips]
+ * @returns {boolean}
+ */
+export function isFireCantripItem(item, fireCantrips = []) {
+    if (!item || item.type !== "spell" || (item.system?.level !== 0)) return false;
+    if (getRespiteFlag(item, "isFireCantrip") === true) return true;
+    const ref = getRespiteFlag(item, "itemRef");
+    if (typeof ref === "string" && FIRE_CANTRIP_IDENTIFIERS.has(ref.toLowerCase())) return true;
+    const id = getItemIdentifier(item);
+    if (id && (FIRE_CANTRIP_IDENTIFIERS.has(id) || fireCantrips.some(fc => fc?.toLowerCase().replace(/\s+/g, "-") === id))) {
+        return true;
+    }
+    const src = getDocSourceId(item);
+    if (src && [...FIRE_CANTRIP_IDENTIFIERS].some(cid => src.endsWith(`.${cid}`) || src.endsWith(`/${cid}`))) {
+        return true;
+    }
+    return fireCantrips.includes(item.name);
+}
+
+/**
+ * @param {Item|object} cantrip
+ * @returns {boolean}
+ */
+export function isCreateBonfireCantrip(cantrip) {
+    if (!cantrip) return false;
+    if (getRespiteFlag(cantrip, "itemRef") === "create-bonfire") return true;
+    const id = getItemIdentifier(cantrip);
+    if (id === "create-bonfire") return true;
+    const src = getDocSourceId(cantrip);
+    if (src && /(?:^|[.\/])create-bonfire$/i.test(src)) return true;
+    return cantrip.name === "Create Bonfire";
+}
+
+/**
  * @param {Item} item
  * @returns {boolean}
  */
 export function isActorFirewoodItem(item) {
     if (!item) return false;
-    const n = (item.name ?? "").toLowerCase();
-    const firewoodType = item.flags?.[MODULE_ID]?.firewoodType;
+    const firewoodType = getRespiteFlag(item, "firewoodType") ?? getRespiteFlag(item, "fuelType");
     if (firewoodType === "kindling" || firewoodType === "firewood") return true;
+    const ref = getRespiteFlag(item, "itemRef");
+    if (ref === "kindling" || ref === "firewood") return true;
+    const id = getItemIdentifier(item);
+    if (id === "kindling" || id === "firewood") return true;
+    const src = getDocSourceId(item);
+    if (src && /(?:^|[.\/])(?:kindling|firewood)$/i.test(src)) return true;
+    const n = (item.name ?? "").toLowerCase();
     return n.includes("firewood") || n === "kindling";
 }
 import {
@@ -59,13 +257,21 @@ export function findConsumableFirewoodItem(actor) {
 /** @param {Actor} actor @returns {boolean} */
 export function actorHasTinderbox(actor) {
     if (!actor) return false;
-    return (actor.items ?? []).some(i => {
-        const n = i.name?.toLowerCase() ?? "";
-        return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
-    });
+    return (actor.items ?? []).some(i => isTinderboxItem(i));
 }
 
 export class CampGearScanner {
+
+    static isBedrollItem(item) { return isBedrollItem(item); }
+    static isTentItem(item) { return isTentItem(item); }
+    static isMessKitOnlyItem(item) { return isMessKitOnlyItem(item); }
+    static isCooksUtensilsItem(item) { return isCooksUtensilsItem(item); }
+    static isMessKitItem(item) { return isMessKitItem(item); }
+    static isTinderboxItem(item) { return isTinderboxItem(item); }
+    static isTorchItem(item) { return isTorchItem(item); }
+    static isFireCantripItem(item, fireCantrips) { return isFireCantripItem(item, fireCantrips); }
+    static isCreateBonfireCantrip(cantrip) { return isCreateBonfireCantrip(cantrip); }
+    static isActorFirewoodItem(item) { return isActorFirewoodItem(item); }
 
     /**
      * @param {Actor} actor
@@ -312,23 +518,12 @@ export class CampGearScanner {
      * @returns {Object} Gear presence flags and item details.
      */
     static scanActor(actor) {
-        const items = actor.items?.map(i => ({
-            name: i.name?.toLowerCase() ?? "",
-            quantity: i.system?.quantity ?? 1,
-            originalName: i.name
-        })) ?? [];
+        const rawItems = Array.from(actor?.items ?? []);
 
-        const hasBedroll = items.some(i => i.name.includes("bedroll"));
-        const hasTent = items.some(i => /(?:^|[\s,\-])tent\b/i.test(i.name));
-        const hasMessKit = items.some(i =>
-            i.name.includes("mess kit") ||
-            (i.name.includes("cook") && i.name.includes("utensil"))
-        );
-        const hasTinderbox = items.some(i =>
-            i.name.includes("tinderbox") ||
-            i.name.includes("flint and steel") ||
-            i.name.includes("flint & steel")
-        );
+        const hasBedroll = rawItems.some(i => isBedrollItem(i));
+        const hasTent = rawItems.some(i => isTentItem(i));
+        const hasMessKit = rawItems.some(i => isMessKitItem(i));
+        const hasTinderbox = rawItems.some(i => isTinderboxItem(i));
 
         const firewoodCount = countActorFirewood(actor);
 

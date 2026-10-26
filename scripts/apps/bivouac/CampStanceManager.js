@@ -1,3 +1,16 @@
+import { getItemIdentifier, getRespiteFlag } from "../../services/camp/gear/CampGearScanner.js";
+
+const SHELTER_EFFECT_IDS = new Set([
+    "leomunds-tiny-hut",
+    "tiny-hut",
+    "rope-trick",
+    "galders-tower",
+    "cozy-cabin",
+    "mordenkainens-magnificent-mansion",
+    "magnificent-mansion",
+    "shelter"
+]);
+
 /**
  * Manages Camp Stance (Warm Camp vs Cold & Dark), shelter detection,
  * and player toggle cooldowns for Bivouac rests.
@@ -125,6 +138,30 @@ export class CampStanceManager {
         for (const actor of partyActors) {
             if (!actor?.effects) continue;
             const hasShelterEffect = actor.effects.some(e => {
+                if (getRespiteFlag(e, "shelterEffect") === true || Boolean(getRespiteFlag(e, "shelterSpellId"))) {
+                    return true;
+                }
+                const ident = getItemIdentifier(e);
+                if (ident && SHELTER_EFFECT_IDS.has(ident)) return true;
+                const origin = typeof e.origin === "string" ? e.origin.toLowerCase() : "";
+                if (origin) {
+                    for (const id of SHELTER_EFFECT_IDS) {
+                        if (origin.endsWith(`.${id}`) || origin.endsWith(`/${id}`) || origin.includes(`.${id}.`) || origin === id) {
+                            return true;
+                        }
+                    }
+                    const originItem = actor.items?.find?.(i =>
+                        (i.uuid && i.uuid.toLowerCase() === origin)
+                        || (i.id && origin.endsWith(`.${String(i.id).toLowerCase()}`))
+                    );
+                    if (originItem) {
+                        const originIdent = getItemIdentifier(originItem);
+                        if (originIdent && SHELTER_EFFECT_IDS.has(originIdent)) return true;
+                        if (getRespiteFlag(originItem, "shelterEffect") === true || Boolean(getRespiteFlag(originItem, "shelterSpellId"))) {
+                            return true;
+                        }
+                    }
+                }
                 const name = (e.name ?? e.label ?? "").toLowerCase();
                 return name.includes("tiny hut") || name.includes("rope trick") || name.includes("shelter");
             });

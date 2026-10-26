@@ -1,6 +1,12 @@
 import { Logger } from "../../../utils/Logger.js";
 import { getPartyActors } from "../../party/partyActors.js";
 import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION, isComfortEnabled } from "../../camp/gear/ComfortCalculator.js";
+import {
+    isBedrollItem,
+    isCooksUtensilsItem,
+    isMessKitItem,
+    isMessKitOnlyItem
+} from "../../camp/gear/CampGearScanner.js";
 
 /**
  * RestFlowEngine
@@ -305,8 +311,8 @@ export class RestFlowEngine {
                 baseHpRestored = Math.max(0, Math.floor(naturalHealing * overallHpMultiplier));
             }
 
-            const items = actor.items?.map(i => i.name?.toLowerCase()) ?? [];
-            const hasBedroll = items.some(n => n?.includes("bedroll"));
+            const actorItems = actor.items ? Array.from(actor.items) : [];
+            const hasBedroll = actorItems.some(i => isBedrollItem(i));
             const bonusHdFromActivity = activitySchema?.outcomes?.success?.effects
                 ?.filter(e => e.type === "bonus_hd")
                 ?.reduce((sum, e) => sum + (e.value ?? 0), 0) ?? 0;
@@ -412,11 +418,11 @@ export class RestFlowEngine {
         } catch (e) { /* setting may not exist yet */ }
 
         // Personal gear detection (separate axis from camp comfort)
-        const items = actor.items?.map(i => i.name?.toLowerCase()) ?? [];
-        const hasBedroll = items.some(n => n?.includes("bedroll"));
-        const hasMessKit = items.some(n => n?.includes("mess kit"));
-        const hasCooksUtensils = items.some(n => n?.includes("cook") && n?.includes("utensil"));
-        const hasDiningGear = hasMessKit || hasCooksUtensils;
+        const actorItems = actor.items ? Array.from(actor.items) : [];
+        const hasBedroll = actorItems.some(i => isBedrollItem(i));
+        const hasMessKit = actorItems.some(i => isMessKitOnlyItem(i));
+        const hasCooksUtensils = actorItems.some(i => isCooksUtensilsItem(i));
+        const hasDiningGear = hasMessKit || hasCooksUtensils || actorItems.some(i => isMessKitItem(i));
 
         // Activity bonus HD (Rest Fully: +1 HD from deep sleep)
         const bonusHdFromActivity = activitySchema?.outcomes?.success?.effects
@@ -489,13 +495,13 @@ export class RestFlowEngine {
                 effectiveComfort = boostComfort(effectiveComfort, 1);
             }
         }
-        const items = actor?.items?.map(item => item.name?.toLowerCase()) ?? [];
-        const hasBedroll = items.some(name => name?.includes("bedroll"));
+        const actorItems = actor?.items ? Array.from(actor.items) : [];
+        const hasBedroll = actorItems.some(item => isBedrollItem(item));
         if (comfortEnabled && hasBedroll) {
             effectiveComfort = boostComfort(effectiveComfort, 1);
         }
         const exhaustionDC = getExhaustionDC(effectiveComfort);
-        const hasDiningGear = items.some(name => name?.includes("mess kit") || (name?.includes("cook") && name?.includes("utensil")));
+        const hasDiningGear = actorItems.some(item => isMessKitItem(item));
         return {
             exhaustionDC,
             exhaustionAdvantage: !!(comfortEnabled && hasDiningGear && exhaustionDC),

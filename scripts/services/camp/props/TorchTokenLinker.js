@@ -1,5 +1,6 @@
 import { Logger } from "../../../utils/Logger.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { getDocSourceId, getRespiteFlag } from "../gear/CampGearScanner.js";
 /**
  * TorchTokenLinker
  * Finds all perimeter torch tokens on the active scene and toggles their
@@ -46,7 +47,7 @@ export class TorchTokenLinker {
      */
     static getTokenName() {
         try {
-            return game.settings.get(MODULE_ID, "torchTokenName") ?? "Perimeter Torch";
+            const v = game.settings.get(MODULE_ID, "torchTokenName"); return typeof v === "string" && v ? v : "Perimeter Torch";
         } catch {
             return "Perimeter Torch";
         }
@@ -61,7 +62,14 @@ export class TorchTokenLinker {
         const targetName = TorchTokenLinker.getTokenName().toLowerCase();
         const scene = canvas?.scene;
         if (!scene) return [];
-        return scene.tokens.filter(t => t.name?.toLowerCase() === targetName);
+        return scene.tokens.filter(t =>
+            getRespiteFlag(t, "isTorchToken") === true
+            || getRespiteFlag(t.document, "isTorchToken") === true
+            || getRespiteFlag(t, "isPerimeterTorch") === true
+            || getRespiteFlag(t.document, "isPerimeterTorch") === true
+            || ["torch", "perimeter-torch"].includes(getRespiteFlag(t, "propKey") ?? getRespiteFlag(t.document, "propKey"))
+            || t.name?.toLowerCase() === targetName
+        );
     }
 
     /**
@@ -71,11 +79,16 @@ export class TorchTokenLinker {
      */
     static findTemplateActor() {
         const targetName = TorchTokenLinker.getTokenName().toLowerCase();
-        const matches = game.actors?.filter(a => a.name?.toLowerCase() === targetName) ?? [];
+        const matches = game.actors?.filter(a =>
+            ["torch", "perimeter-torch"].includes(getRespiteFlag(a, "propKey"))
+            || /(?:^|[.\/])(?:perimeter-)?torch$/i.test(getDocSourceId(a))
+            || a.name?.toLowerCase() === targetName
+        ) ?? [];
         if (matches.length === 0) return null;
 
         const inFolder = matches.find(a =>
-            a.folder?.name?.toLowerCase().includes("ionrift")
+            ["camp-props", "ionrift"].includes(getRespiteFlag(a.folder, "folderKey"))
+            || a.folder?.name?.toLowerCase().includes("ionrift")
         );
         return inFolder ?? matches[0];
     }

@@ -14,6 +14,15 @@ import { MODULE_ID } from "../../../data/moduleId.js";
 import { getPartyActors } from "../../party/partyActors.js";
 import { isSimpleStationsMode } from "../../rest/flow/RestProfileSettings.js";
 import { ImageResolver } from "../../../utils/ImageResolver.js";
+import {
+    getDocSourceId,
+    getItemIdentifier,
+    getRespiteFlag,
+    isBedrollItem,
+    isCooksUtensilsItem,
+    isMessKitItem,
+    isTentItem
+} from "../gear/CampGearScanner.js";
 
 /** Placeholder token definition for station build-sites before equipment is assigned. */
 const PLACEHOLDER_CAMP_STATION = {
@@ -86,12 +95,9 @@ function resolveStationIcon(key, options = {}) {
 function findPlayerGearItem(actor, gearType) {
     const items = actor.items ?? [];
     for (const item of items) {
-        const n = item.name?.toLowerCase() ?? "";
-        if (gearType === "bedroll" && n.includes("bedroll")) return item;
-        if (gearType === "tent" && n.includes("tent")) return item;
-        if (gearType === "messkit" && (n.includes("mess kit") || (n.includes("cook") && n.includes("utensil")))) {
-            return item;
-        }
+        if (gearType === "bedroll" && isBedrollItem(item)) return item;
+        if (gearType === "tent" && isTentItem(item)) return item;
+        if (gearType === "messkit" && isMessKitItem(item)) return item;
     }
     return undefined;
 }
@@ -459,6 +465,7 @@ function buildFurnitureToken(key, x, y, def, extraFlags = {}) {
                 isCampFurniture: true,
                 campSessionId: getCampSessionId(),
                 furnitureKey: key,
+                propKey: key,
                 ...extraFlags
             }
         }
@@ -511,6 +518,11 @@ export function pickCampfirePitBaseTexture() {
 }
 
 function findCampfireActor() {
+    const byFlagOrSrc = game.actors?.find(a =>
+        getRespiteFlag(a, "propKey") === "campfire"
+        || /(?:^|[.\/])campfire$/i.test(getDocSourceId(a))
+    );
+    if (byFlagOrSrc) return byFlagOrSrc;
     const name = game.settings.get(MODULE_ID, "campfireTokenName")?.toLowerCase() ?? "campfire";
     return game.actors?.find(a => a.name?.toLowerCase() === name) ?? null;
 }
@@ -541,6 +553,7 @@ export function canPlaceStation(actor, stationKey) {
     }
     if (stationKey === "cookingArea") {
         return (actor.items ?? []).some(i => {
+            if (isCooksUtensilsItem(i)) return true;
             const n = i.name?.toLowerCase() ?? "";
             if (n.includes("mess kit")) return false;
             return n.includes("cook's utensils") || n.includes("cooks utensils")
@@ -559,10 +572,21 @@ export function canPlaceStation(actor, stationKey) {
 export function actorHasBrewingTools(actor) {
     if (!actor) return false;
     return (actor.items ?? []).some(i => {
+        const role = String(getRespiteFlag(i, "campGearRole") ?? getRespiteFlag(i, "itemRef") ?? "").toLowerCase();
+        if (["alchemists-supplies", "brewers-supplies", "herbalism-kit", "alchemist", "brewer", "herbalism", "brewing-tools"].includes(role)) {
+            return true;
+        }
+        const ident = getItemIdentifier(i);
+        if (["alchemists-supplies", "brewers-supplies", "herbalism-kit", "alchemist", "brewer", "herbalism"].includes(ident)) {
+            return true;
+        }
+        const src = getDocSourceId(i).toLowerCase();
+        if (/(?:^|[.\/-])(alchemist|brewer|herbalism)/.test(src)) return true;
         const n = i.name?.toLowerCase() ?? "";
-        const baseItem = i.system?.type?.baseItem ?? "";
+        const baseItem = (i.system?.type?.baseItem ?? "").toLowerCase();
         return n.includes("alchemist") || n.includes("brewer") || n.includes("herbalism")
-            || baseItem === "alchemist" || baseItem === "brewer" || baseItem === "herbalism";
+            || baseItem === "alchemist" || baseItem === "brewer" || baseItem === "herbalism"
+            || baseItem === "alchemists-supplies" || baseItem === "brewers-supplies" || baseItem === "herbalism-kit";
     });
 }
 
@@ -644,7 +668,8 @@ async function _placeCampfireNow(worldX, worldY, options, scene) {
                 campfireLinkId: linkId,
                 isCampFurniture: true,
                 campSessionId: sessionId,
-                furnitureKey: "campfire"
+                furnitureKey: "campfire",
+                propKey: "campfire-base"
             }
         }
     };
@@ -682,7 +707,8 @@ async function _placeCampfireNow(worldX, worldY, options, scene) {
                 campfireLinkId: linkId,
                 isCampFurniture: true,
                 campSessionId: sessionId,
-                furnitureKey: "campfireFlame"
+                furnitureKey: "campfireFlame",
+                propKey: "campfire"
             }
         }
     };
@@ -1317,6 +1343,7 @@ function buildPlaceholderToken(targetKey, x, y) {
                 isCampFurniture: true,
                 isPlaceholder: true,
                 targetStationKey: targetKey,
+                propKey: "build-site",
                 campSessionId: getCampSessionId()
             }
         }
@@ -1539,6 +1566,7 @@ export async function promoteAllPlaceholders(safeRestSpot = false, options = {})
         delete prev.isPlaceholder;
         delete prev.targetStationKey;
         prev.furnitureKey = key;
+        prev.propKey = key;
         prev.isSharedStation = true;
         if (key === "cookingArea") {
             prev.partyHasCookingUtensils = partyHasCookingUtensils();

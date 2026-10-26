@@ -1,4 +1,9 @@
-import { CampGearScanner } from "../../../services/camp/gear/CampGearScanner.js";
+import {
+    CampGearScanner,
+    actorHasTinderbox,
+    isActorFirewoodItem,
+    isBedrollItem
+} from "../../../services/camp/gear/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../../services/camp/fire/CampfireTokenLinker.js";
 import {
     placeCampfire,
@@ -328,8 +333,7 @@ export class CampPlacementDelegate {
         const partyActors = getPartyActors();
         const actorMap = {};
         for (const actor of partyActors) {
-            const items = actor.items?.map(i => i.name?.toLowerCase() ?? "") ?? [];
-            const hasBedroll = items.some(n => n.includes("bedroll"));
+            const hasBedroll = (actor.items ? Array.from(actor.items) : []).some(i => isBedrollItem(i));
             const sceneToken = canvas.tokens?.placeables.find(t => t.actor?.id === actor.id);
             actorMap[actor.id] = { hasBedroll, assignedTokenId: sceneToken?.id ?? null };
         }
@@ -829,10 +833,7 @@ export class CampPlacementDelegate {
 
         const actors = getPartyActors();
         if (!gmOverride) {
-            const hasTinderbox = actors.some(a => a.items.some(i => {
-                const n = i.name?.toLowerCase() ?? "";
-                return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
-            }));
+            const hasTinderbox = actors.some(a => actorHasTinderbox(a));
             if (!hasTinderbox) {
                 ui.notifications.warn(game.i18n.localize("ionrift-respite.campPlacement.noTinderboxAmpersand"));
                 return;
@@ -842,10 +843,7 @@ export class CampPlacementDelegate {
         const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[level] ?? 0;
         if (!gmOverride) {
             const totalFirewood = actors.reduce((sum, a) => {
-                const it = a.items.find(i => {
-                    const n = i.name?.toLowerCase() ?? "";
-                    return n.includes("firewood") || n === "kindling";
-                });
+                const it = a.items.find(i => isActorFirewoodItem(i));
                 return sum + (it?.system?.quantity ?? 0);
             }, 0);
             if (cost > totalFirewood) {
@@ -918,10 +916,7 @@ export class CampPlacementDelegate {
         const newCost = costOf(level);
 
         const actors = getPartyActors();
-        const hasTinderbox = actors.some(a => a.items.some(i => {
-            const n = i.name?.toLowerCase() ?? "";
-            return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
-        }));
+        const hasTinderbox = actors.some(a => actorHasTinderbox(a));
 
         if (newCost < curCost) {
             // Player request or minigame douse: deliberate action, no extra GM prompt
@@ -947,10 +942,7 @@ export class CampPlacementDelegate {
                 ? actors.filter(a => (a.ownership?.[requestingUserId] ?? 0) >= OWNER)
                 : actors;
             const totalFirewood = spendActors.reduce((sum, a) => {
-                const it = a.items.find(i => {
-                    const n = i.name?.toLowerCase() ?? "";
-                    return n.includes("firewood") || n === "kindling";
-                });
+                const it = a.items.find(i => isActorFirewoodItem(i));
                 return sum + (it?.system?.quantity ?? 0);
             }, 0);
             if (need > 0 && totalFirewood < need) {
@@ -1100,10 +1092,7 @@ export class CampPlacementDelegate {
                 if (newCost > curCost) {
                     // Promoting fire: check kindling locally (any party member can have tinderbox)
                     const allActors = getPartyActors();
-                    const hasTinderbox = cur !== "unlit" || allActors.some(a => a.items.some(i => {
-                        const n = i.name?.toLowerCase() ?? "";
-                        return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
-                    }));
+                    const hasTinderbox = cur !== "unlit" || allActors.some(a => actorHasTinderbox(a));
                     if (cur === "unlit" && !hasTinderbox) {
                         await game.ionrift.library.confirm({
                             title: game.i18n.localize("ionrift-respite.campPlacement.cannotLightTitle"),
@@ -1119,10 +1108,7 @@ export class CampPlacementDelegate {
                     const myActors = allActors.filter(a => a.isOwner);
                     const need = newCost - curCost;
                     const myFirewood = myActors.reduce((sum, a) => {
-                        const it = a.items.find(i => {
-                            const n = i.name?.toLowerCase() ?? "";
-                            return n.includes("firewood") || n === "kindling";
-                        });
+                        const it = a.items.find(i => isActorFirewoodItem(i));
                         return sum + (it?.system?.quantity ?? 0);
                     }, 0);
                     if (need > 0 && myFirewood < need) {

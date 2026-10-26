@@ -7,7 +7,13 @@ import { resolveNightWatchMode } from "../events/nightWatchMode.js";
 import { resolveDefaultCraftRecipeId } from "../../../services/crafting/engine/CraftCommitSummary.js";
 import { buildCraftRecipeListContext, CRAFT_PROFESSION_LABELS } from "../../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { MonstrousFeastBridge } from "../../../services/meal/provisions/MonstrousFeastBridge.js";
-import { CampGearScanner } from "../../../services/camp/gear/CampGearScanner.js";
+import {
+    CampGearScanner,
+    isBedrollItem,
+    isTentItem,
+    isMessKitItem,
+    isFireCantripItem
+} from "../../../services/camp/gear/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../../services/camp/fire/CampfireTokenLinker.js";
 import { hasCampPlaced, hasCampfirePlaced } from "../../../services/camp/props/CompoundCampPlacer.js";
 import { ImageResolver } from "../../../utils/ImageResolver.js";
@@ -16,7 +22,8 @@ import { RestDockContext } from "../../../utils/RestDockContext.js";
 import {
     WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS,
     getComfortTip, getStationsForTerrain, getActivityAdvisory, buildActivityAssignments,
-    applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchIdentifyUiEnabled
+    applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchIdentifyUiEnabled,
+    matchesShelterSpell
 } from "../../../data/RestConstants.js";
 import { isComfortEnabled, COMFORT_TIERS, boostComfort, pendingFireComfortDelta } from "../../../services/camp/gear/ComfortCalculator.js";
 import { isSimpleStationsMode, requiresMapCampFire } from "../../../services/rest/flow/RestProfileSettings.js";
@@ -132,7 +139,7 @@ export class RestPrepareContext {
         }
 
         const tentOwners = partyActors.filter(a =>
-            a.items?.some(i => i.name?.toLowerCase().includes("tent"))
+            a.items?.some(i => isTentItem(i))
         );
         const tentAvailable = tentOwners.length > 0;
         const tentOwnerNames = tentOwners.map(a => a.name).join(", ");
@@ -141,11 +148,7 @@ export class RestPrepareContext {
             .filter(spell => spell.restTypes.includes(currentRestType))
             .map(spell => {
                 const casters = partyActors.filter(a =>
-                    a.items?.some(i => {
-                        if (i.type !== "spell") return false;
-                        const spellName = i.name?.toLowerCase() ?? "";
-                        return spell.altNames.some(alt => spellName.includes(alt));
-                    })
+                    a.items?.some(i => matchesShelterSpell(i, spell))
                 );
                 const hasCaster = casters.length > 0;
                 return {
@@ -371,11 +374,11 @@ export class RestPrepareContext {
                 stationCardColumns[i % 2].push(stationCards[i]);
             }
 
-            const actorItems = a.items?.map(i => i.name?.toLowerCase()) ?? [];
+            const actorItems = a.items ? Array.from(a.items) : [];
             const gearBadges = [
-                { id: "bedroll", icon: "fas fa-bed", name: game.i18n.localize("ionrift-respite.restPrepare.gear.bedroll"), present: actorItems.some(n => n?.includes("bedroll")), tooltip: game.i18n.localize("ionrift-respite.restPrepare.gear.bedrollTooltip") },
-                { id: "messkit", icon: "fas fa-utensils", name: game.i18n.localize("ionrift-respite.restPrepare.gear.messKit"), present: actorItems.some(n => n?.includes("mess kit") || (n?.includes("cook") && n?.includes("utensil"))), tooltip: game.i18n.localize("ionrift-respite.restPrepare.gear.messKitTooltip") },
-                { id: "tent", icon: "fas fa-campground", name: game.i18n.localize("ionrift-respite.restPrepare.gear.tent"), present: actorItems.some(n => n?.includes("tent")), tooltip: game.i18n.localize("ionrift-respite.restPrepare.gear.tentTooltip") }
+                { id: "bedroll", icon: "fas fa-bed", name: game.i18n.localize("ionrift-respite.restPrepare.gear.bedroll"), present: actorItems.some(i => isBedrollItem(i)), tooltip: game.i18n.localize("ionrift-respite.restPrepare.gear.bedrollTooltip") },
+                { id: "messkit", icon: "fas fa-utensils", name: game.i18n.localize("ionrift-respite.restPrepare.gear.messKit"), present: actorItems.some(i => isMessKitItem(i)), tooltip: game.i18n.localize("ionrift-respite.restPrepare.gear.messKitTooltip") },
+                { id: "tent", icon: "fas fa-campground", name: game.i18n.localize("ionrift-respite.restPrepare.gear.tent"), present: actorItems.some(i => isTentItem(i)), tooltip: game.i18n.localize("ionrift-respite.restPrepare.gear.tentTooltip") }
             ];
 
             return {
@@ -1158,7 +1161,7 @@ export class RestPrepareContext {
             for (const actor of getPartyActors()) {
                 if (rawLighters.some(l => l.actorId === actor.id)) continue; // already in tinderbox list
                 const cantrip = fireCantrips.length > 0
-                    ? actor.items.find(i => i.type === "spell" && (i.system?.level === 0) && fireCantrips.includes(i.name))
+                    ? actor.items.find(i => isFireCantripItem(i, fireCantrips))
                     : null;
                 if (cantrip) cantripLighters.push({ actorId: actor.id, actorName: actor.name, method: cantrip.name });
             }

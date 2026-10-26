@@ -19,6 +19,7 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  */
 
 import { CAMPFIRE_FLAME_FLOOR_SORT, CAMPFIRE_PIT_SORT } from "./CompoundCampPlacer.js";
+import { getDocSourceId, getRespiteFlag } from "../gear/CampGearScanner.js";
 
 // Asset paths: Foundry core icons (installed art overrides via ImageResolver)
 const TORCH_STAKES = [
@@ -57,6 +58,11 @@ function gridSize() {
  * @returns {Actor|null}
  */
 function findTorchActor() {
+    const byFlagOrSrc = game.actors?.find(a =>
+        ["torch", "perimeter-torch"].includes(getRespiteFlag(a, "propKey"))
+        || /(?:^|[.\/])(?:perimeter-)?torch$/i.test(getDocSourceId(a))
+    );
+    if (byFlagOrSrc) return byFlagOrSrc;
     const name = game.settings.get(MODULE_ID, "torchTokenName")?.toLowerCase() ?? "perimeter torch";
     return game.actors?.find(a => a.name?.toLowerCase() === name) ?? null;
 }
@@ -66,6 +72,11 @@ function findTorchActor() {
  * @returns {Actor|null}
  */
 function findCampfireActor() {
+    const byFlagOrSrc = game.actors?.find(a =>
+        getRespiteFlag(a, "propKey") === "campfire"
+        || /(?:^|[.\/])campfire$/i.test(getDocSourceId(a))
+    );
+    if (byFlagOrSrc) return byFlagOrSrc;
     const name = game.settings.get(MODULE_ID, "campfireTokenName")?.toLowerCase() ?? "campfire";
     return game.actors?.find(a => a.name?.toLowerCase() === name) ?? null;
 }
@@ -122,6 +133,7 @@ async function createTorchPair(x, y, stakeImg) {
         flags: {
             [MODULE_ID]: {
                 isTorchStake: true,
+                propKey: "torch-stake",
                 torchLinkId: linkId
             }
         }
@@ -167,6 +179,8 @@ async function createTorchPair(x, y, stakeImg) {
         flags: {
             [MODULE_ID]: {
                 isPerimeterTorch: true,
+                isTorchToken: true,
+                propKey: "torch",
                 torchLinkId: linkId
             }
         }
@@ -216,6 +230,7 @@ async function createCampfirePair(x, y) {
         flags: {
             [MODULE_ID]: {
                 isCampfireBase: true,
+                propKey: "campfire-base",
                 campfireLinkId: linkId
             }
         }
@@ -259,6 +274,7 @@ async function createCampfirePair(x, y) {
         flags: {
             [MODULE_ID]: {
                 isCampfireToken: true,
+                propKey: "campfire",
                 campfireLinkId: linkId
             }
         }

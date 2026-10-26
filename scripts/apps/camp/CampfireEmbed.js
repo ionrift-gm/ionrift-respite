@@ -12,7 +12,9 @@ import {
     CampGearScanner,
     actorHasTinderbox,
     countActorFirewood,
-    findConsumableFirewoodItem
+    findConsumableFirewoodItem,
+    isFireCantripItem,
+    isCreateBonfireCantrip
 } from "../../services/camp/gear/CampGearScanner.js";
 import { logCampfireReconnect } from "../../services/camp/fire/CampfireReconnectLog.js";
 import { MODULE_ID } from "../../data/moduleId.js";
@@ -1033,11 +1035,7 @@ export class CampfireEmbed {
         if (fireCantrips.length === 0) return null;
         const ctx = this._getPlayerActor();
         if (!this._viewerCanUseActorFireGear(ctx)) return null;
-        return ctx.items?.find(i =>
-            i.type === "spell"
-            && (i.system?.level === 0)
-            && fireCantrips.includes(i.name)
-        ) ?? null;
+        return ctx.items?.find(i => isFireCantripItem(i, fireCantrips)) ?? null;
     }
 
     _onCantripIgnite() {
@@ -1071,7 +1069,7 @@ export class CampfireEmbed {
             method: cantrip.name
         });
         // Create Bonfire goes straight to bonfire heat
-        if (cantrip.name === "Create Bonfire") {
+        if (isCreateBonfireCantrip(cantrip)) {
             this._heat = 70;
             this._updateMeter(this._container);
             this._notifyFireLevel();

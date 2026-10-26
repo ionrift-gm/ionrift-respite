@@ -4,7 +4,7 @@ import { HitDiceService } from "../../services/rest/recovery/HitDiceService.js";
 import { SpellSlotRecovery } from "../../services/rest/recovery/SpellSlotRecovery.js";
 import { confirmAbandonRest } from "./confirmAbandonRest.js";
 import { MODULE_ID } from "../../data/moduleId.js";
-import { isWorkbenchIdentifyUiEnabled } from "../../data/RestConstants.js";
+import { isWorkbenchIdentifyUiEnabled, matchesShelterSpell } from "../../data/RestConstants.js";
 import {
     registerActiveShortRestApp,
     clearActiveShortRestApp,
@@ -56,9 +56,9 @@ import { BaseShortRestApp } from "./BaseShortRestApp.js";
 const SHORT_REST_SHELTERS = [
     { id: "none",      get name() { return game.i18n.localize("ionrift-respite.shortRest.shelter.openAir.name"); },   icon: "fas fa-wind",       get hint() { return game.i18n.localize("ionrift-respite.shortRest.shelter.openAir.hint"); } },
     { id: "rope_trick", get name() { return game.i18n.localize("ionrift-respite.shortRest.shelter.ropeTrick.name"); }, icon: "fas fa-hat-wizard", get hint() { return game.i18n.localize("ionrift-respite.shortRest.shelter.ropeTrick.hint"); },
-      altNames: ["rope trick"] },
+      identifiers: ["rope-trick"], altNames: ["rope trick"] },
     { id: "tiny_hut",  get name() { return game.i18n.localize("ionrift-respite.shortRest.shelter.tinyHut.name"); },   icon: "fas fa-igloo",      get hint() { return game.i18n.localize("ionrift-respite.shortRest.shelter.tinyHut.hint"); },
-      altNames: ["leomund's tiny hut", "tiny hut"] },
+      identifiers: ["leomunds-tiny-hut", "tiny-hut", "cozy-cabin", "galders-tower"], altNames: ["leomund's tiny hut", "tiny hut"] },
 ];
 
 export class ShortRestApp extends BaseShortRestApp {
@@ -409,13 +409,9 @@ export class ShortRestApp extends BaseShortRestApp {
 
         const preparedShelterIds = new Set(["none"]);
         for (const spell of SHORT_REST_SHELTERS) {
-            if (!spell.altNames) continue;
+            if (!spell.altNames && !spell.identifiers) continue;
             const hasCaster = partyActors.some(a =>
-                a.items?.some(i => {
-                    if (i.type !== "spell") return false;
-                    const name = i.name?.toLowerCase() ?? "";
-                    return spell.altNames.some(alt => name.includes(alt));
-                })
+                a.items?.some(i => matchesShelterSpell(i, spell))
             );
             if (hasCaster) preparedShelterIds.add(spell.id);
         }

@@ -17,7 +17,7 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  * Only the GM may update tokens. Players emit a socket request and the
  * GM-side handler calls these methods.
  */
-import { CampGearScanner } from "../gear/CampGearScanner.js";
+import { CampGearScanner, getDocSourceId, getRespiteFlag } from "../gear/CampGearScanner.js";
 
 /** Sensible fallback if no template actor exists. */
 const DEFAULT_LIGHT = {
@@ -48,7 +48,7 @@ export class CampfireTokenLinker {
      */
     static getTokenName() {
         try {
-            return game.settings.get(MODULE_ID, "campfireTokenName") ?? "Campfire";
+            const v = game.settings.get(MODULE_ID, "campfireTokenName"); return typeof v === "string" && v ? v : "Campfire";
         } catch {
             return "Campfire";
         }
@@ -62,7 +62,13 @@ export class CampfireTokenLinker {
     static findCampfireToken() {
         const scene = canvas?.scene;
         if (!scene) return null;
-        const byFlag = scene.tokens.find(t => t.flags?.[MODULE_ID]?.isCampfireToken === true);
+        const byFlag = scene.tokens.find(t =>
+            t.flags?.[MODULE_ID]?.isCampfireToken === true
+            || getRespiteFlag(t, "isCampfireToken") === true
+            || getRespiteFlag(t.document, "isCampfireToken") === true
+            || getRespiteFlag(t, "propKey") === "campfire"
+            || getRespiteFlag(t.document, "propKey") === "campfire"
+        );
         if (byFlag) return byFlag;
         const targetName = CampfireTokenLinker.getTokenName().toLowerCase();
         return scene.tokens.find(t => t.name?.toLowerCase() === targetName) ?? null;
@@ -86,13 +92,18 @@ export class CampfireTokenLinker {
      */
     static findTemplateActor() {
         const targetName = CampfireTokenLinker.getTokenName().toLowerCase();
-        const matches = game.actors?.filter(a => a.name?.toLowerCase() === targetName) ?? [];
+        const matches = game.actors?.filter(a =>
+            getRespiteFlag(a, "propKey") === "campfire"
+            || /(?:^|[.\/])campfire$/i.test(getDocSourceId(a))
+            || a.name?.toLowerCase() === targetName
+        ) ?? [];
 
         if (matches.length === 0) return null;
 
-        // Prefer actor in an Ionrift folder
+        // Prefer actor in an Ionrift folder (by folderKey flag first, then folder name)
         const inFolder = matches.find(a =>
-            a.folder?.name?.toLowerCase().includes("ionrift")
+            ["camp-props", "ionrift"].includes(getRespiteFlag(a.folder, "folderKey"))
+            || a.folder?.name?.toLowerCase().includes("ionrift")
         );
         return inFolder ?? matches[0];
     }

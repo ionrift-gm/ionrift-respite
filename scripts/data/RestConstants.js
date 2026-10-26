@@ -1,4 +1,5 @@
 import { isGearDeployed } from "../services/camp/props/CompoundCampPlacer.js";
+import { getRespiteFlag, getItemIdentifier, getDocSourceId } from "../services/camp/gear/CampGearScanner.js";
 import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod, COMFORT_RANK, RANK_TO_KEY } from "../services/camp/gear/ComfortCalculator.js";
 import { isSimpleStationsMode } from "../services/rest/flow/RestProfileSettings.js";
 import { isFletchingEnabled } from "../services/crafting/settings/FletchingSettings.js";
@@ -135,10 +136,10 @@ export function getActivityAdvisory(activityId, actor, partyState) {
         case "act_tend_wounds": {
             const injured = partyState.injuredMembers.filter(m => m.id !== actor.id);
             const hasKit = actor.items?.some(i =>
-                i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit")
+                isHealersKitItem(i)
                 && ((i.system?.uses?.value ?? i.system?.quantity ?? 0) > 0)
             );
-            const hasFeat = actor.items?.some(i => i.type === "feat" && i.name?.toLowerCase() === "healer");
+            const hasFeat = actor.items?.some(i => isHealerFeatItem(i));
             const gearNote = hasFeat && hasKit ? " + Healer"
                 : hasKit ? " + kit"
                 : "";
@@ -295,16 +296,24 @@ export function buildPartyState(partyActors, pendingSelections, encounterDC, com
  */
 function _ammoStock(actor) {
     const kinds = [
-        { test: /bolt/i, one: "bolt", many: "bolts", count: 0 },
-        { test: /arrow/i, one: "arrow", many: "arrows", count: 0 },
-        { test: /dart/i, one: "dart", many: "darts", count: 0 },
-        { test: /sling bullet|bullet/i, one: "bullet", many: "bullets", count: 0 }
+        { key: "bolts", subtypes: ["crossbowbolt", "bolt"], identifiers: ["crossbow-bolt", "crossbow-bolts", "bolt", "bolts"], test: /bolt/i, one: "bolt", many: "bolts", count: 0 },
+        { key: "arrows", subtypes: ["arrow"], identifiers: ["arrow", "arrows"], test: /arrow/i, one: "arrow", many: "arrows", count: 0 },
+        { key: "darts", subtypes: ["dart", "blowgunneedle"], identifiers: ["dart", "darts", "blowgun-needle"], test: /dart/i, one: "dart", many: "darts", count: 0 },
+        { key: "bullets", subtypes: ["slingbullet", "bullet", "firearmammunition"], identifiers: ["sling-bullet", "sling-bullets", "bullet", "bullets"], test: /sling bullet|bullet/i, one: "bullet", many: "bullets", count: 0 }
     ];
     let found = false;
     for (const item of actor.items ?? []) {
-        if (item.type !== "consumable" || item.system?.type?.value !== "ammo") continue;
+        const fletchKind = (getRespiteFlag(item, "fletchKind") ?? getRespiteFlag(item, "ammoKind") ?? "").toLowerCase();
+        if (!fletchKind && (item.type !== "consumable" || item.system?.type?.value !== "ammo")) continue;
+        const subtype = (item.system?.type?.subtype ?? "").toLowerCase();
+        const ident = getItemIdentifier(item);
         const name = item.name ?? "";
-        const kind = kinds.find(entry => entry.test.test(name));
+        const kind = kinds.find(entry =>
+            (fletchKind && entry.key === fletchKind)
+            || (subtype && entry.subtypes.includes(subtype))
+            || (ident && entry.identifiers.includes(ident))
+            || entry.test.test(name)
+        );
         if (!kind) continue;
         kind.count += item.system?.quantity ?? 0;
         found = true;
@@ -522,13 +531,67 @@ export function applyActivityPortraitAssignments(item, assigned) {
     item.hasAssignments = assigned.length > 0;
 }
 
+/**
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isHealersKitItem(item) {
+    if (!item) return false;
+    const role = getRespiteFlag(item, "campGearRole");
+    const ref = getRespiteFlag(item, "itemRef");
+    if (role === "healers-kit" || ref === "healers-kit" || ref === "healer-kit") return true;
+    const id = getItemIdentifier(item);
+    if (id === "healers-kit" || id === "healer-kit") return true;
+    const src = getDocSourceId(item);
+    if (src && /(?:^|[.\/])healers?-?kit$/i.test(src)) return true;
+    const n = (item.name ?? "").toLowerCase();
+    return n.includes("healer") && n.includes("kit");
+}
+
+/**
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isHealerFeatItem(item) {
+    if (!item || item.type !== "feat") return false;
+    const ref = getRespiteFlag(item, "itemRef") ?? getRespiteFlag(item, "featKey");
+    if (ref === "healer") return true;
+    const id = getItemIdentifier(item);
+    if (id === "healer") return true;
+    const src = getDocSourceId(item);
+    if (src && /(?:^|[.\/])healer$/i.test(src)) return true;
+    return (item.name ?? "").toLowerCase().trim() === "healer";
+}
+
+/**
+ * @param {Item|object} item
+ * @param {{ id?: string, identifiers?: string[], altNames?: string[] }} spellDef
+ * @returns {boolean}
+ */
+export function matchesShelterSpell(item, spellDef) {
+    if (!item || item.type !== "spell" || !spellDef) return false;
+    const flagShelter = getRespiteFlag(item, "shelterSpell") ?? getRespiteFlag(item, "itemRef");
+    if (typeof flagShelter === "string") {
+        const normFlag = flagShelter.toLowerCase().trim();
+        if (normFlag === spellDef.id || spellDef.identifiers?.includes(normFlag)) return true;
+    }
+    const id = getItemIdentifier(item);
+    if (id && (id === spellDef.id || spellDef.identifiers?.includes(id))) return true;
+    const src = getDocSourceId(item);
+    if (src && spellDef.identifiers?.some(sid => src.endsWith(`.${sid}`) || src.endsWith(`/${sid}`))) {
+        return true;
+    }
+    const spellName = (item.name ?? "").toLowerCase();
+    return (spellDef.altNames ?? []).some(alt => spellName.includes(alt));
+}
+
 /** Shelter spell definitions. Used in setup phase for shelter detection. */
 export const SHELTER_SPELLS = [
-    { id: "tiny_hut", name: "Tiny Hut", altNames: ["leomund's tiny hut", "tiny hut", "cozy cabin"], icon: "fas fa-igloo", comfortFloor: "sheltered", encounterMod: 5, restTypes: ["long"], blocksFire: true,
+    { id: "tiny_hut", name: "Tiny Hut", identifiers: ["leomunds-tiny-hut", "tiny-hut", "cozy-cabin", "galders-tower"], altNames: ["leomund's tiny hut", "tiny hut", "cozy cabin", "galder's tower"], icon: "fas fa-igloo", comfortFloor: "sheltered", encounterMod: 5, restTypes: ["long"], blocksFire: true,
         hint: "Impenetrable force dome. Comfort floor: Sheltered. Night check -5. No campfire, cooking, or brewing (sealed dome)." },
-    { id: "rope_trick", name: "Rope Trick", altNames: ["rope trick"], icon: "fas fa-hat-wizard", comfortFloor: null, encounterMod: 5, restTypes: ["short"], blocksFire: true,
+    { id: "rope_trick", name: "Rope Trick", identifiers: ["rope-trick"], altNames: ["rope trick"], icon: "fas fa-hat-wizard", comfortFloor: null, encounterMod: 5, restTypes: ["short"], blocksFire: true,
         hint: "Hidden extradimensional space. Short rest only (1 hr). Night check -5. No campfire (no ventilation)." },
-    { id: "magnificent_mansion", name: "Mansion", altNames: ["magnificent mansion", "mordenkainen's magnificent mansion", "mordenkainen", "resplendent mansion"], icon: "fas fa-chess-rook", comfortFloor: "safe", encounterMod: 99, restTypes: ["long"], blocksFire: true,
+    { id: "magnificent_mansion", name: "Mansion", identifiers: ["mordenkainens-magnificent-mansion", "magnificent-mansion", "resplendent-mansion"], altNames: ["magnificent mansion", "mordenkainen's magnificent mansion", "mordenkainen", "resplendent mansion"], icon: "fas fa-chess-rook", comfortFloor: "safe", encounterMod: 99, restTypes: ["long"], blocksFire: true,
         hint: "Separate dimension. No encounters. Safe rest guaranteed. Has its own hearth and kitchen." }
 ];
 
