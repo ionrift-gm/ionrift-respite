@@ -122,8 +122,8 @@ export function injectDietButton(app, html) {
     if (!btn) {
         btn = document.createElement("button");
         btn.type = "button";
-        btn.dataset.tooltip = "Diet Configuration";
-        btn.setAttribute("aria-label", "Diet Configuration");
+        btn.dataset.tooltip = game.i18n.localize("ionrift-respite.uiInjections.dietConfigTooltip");
+        btn.setAttribute("aria-label", game.i18n.localize("ionrift-respite.uiInjections.dietConfigTooltip"));
         btn.innerHTML = `<i class="fas fa-utensils"></i>`;
         btn.addEventListener("click", (e) => {
             e.preventDefault();
@@ -169,7 +169,7 @@ export function injectItemProvisionsButton(app, html) {
         if (!btn) {
             btn = document.createElement("button");
             btn.type = "button";
-            btn.setAttribute("aria-label", "Respite: Cold Storage");
+            btn.setAttribute("aria-label", game.i18n.localize("ionrift-respite.uiInjections.coldStorageAria"));
             btn.innerHTML = `<i class="fas fa-snowflake"></i>`;
             btn.addEventListener("click", async (e) => {
                 e.preventDefault();
@@ -181,8 +181,8 @@ export function injectItemProvisionsButton(app, html) {
                     await item.setFlag(MODULE_ID, "preservationMultiplier", 2);
                 }
                 const multVal = ItemClassifier.getPreservationMultiplier(item);
-                const label = multVal === 0 ? "Stasis (no spoilage)" : `${multVal}× shelf life`;
-                ui.notifications?.info(`${item.name}: Cold Storage ${nextState ? `Enabled (${label})` : "Disabled"}`);
+                const label = multVal === 0 ? game.i18n.localize("ionrift-respite.uiInjections.stasisNoSpoilage") : game.i18n.format("ionrift-respite.uiInjections.multShelfLife", { mult: multVal });
+                ui.notifications?.info(game.i18n.format(nextState ? "ionrift-respite.inventoryContext.coldStorageEnabled" : "ionrift-respite.inventoryContext.coldStorageDisabled", { name: item.name, mult: label }));
                 refreshSpoilageBadgesOnOpenSheets();
                 app.render(false);
             });
@@ -193,10 +193,10 @@ export function injectItemProvisionsButton(app, html) {
             });
         }
 
-        const multLabel = mult === 0 ? "Stasis (no spoilage)" : `${mult}× shelf life`;
+        const multLabel = mult === 0 ? game.i18n.localize("ionrift-respite.uiInjections.stasisNoSpoilage") : game.i18n.format("ionrift-respite.uiInjections.multShelfLife", { mult });
         btn.dataset.tooltip = isCold
-            ? `Respite: Cold Storage Active (${multLabel}). Click to toggle, Right-click to configure.`
-            : "Respite: Normal Container. Click to enable Cold Storage, Right-click to configure.";
+            ? game.i18n.format("ionrift-respite.uiInjections.coldStorageActiveTooltip", { label: multLabel })
+            : game.i18n.localize("ionrift-respite.uiInjections.normalContainerTooltip");
 
         const baseClass = resolveDietButtonClassName(app).replace("respite-diet-btn", "respite-container-btn");
         btn.className = `${baseClass}${isCold ? " cold-active" : ""}`;
@@ -208,8 +208,8 @@ export function injectItemProvisionsButton(app, html) {
     if (!btn) {
         btn = document.createElement("button");
         btn.type = "button";
-        btn.dataset.tooltip = "Respite: Provisions & Spoilage";
-        btn.setAttribute("aria-label", "Respite: Provisions & Spoilage");
+        btn.dataset.tooltip = game.i18n.localize("ionrift-respite.uiInjections.provisionsSpoilageTooltip");
+        btn.setAttribute("aria-label", game.i18n.localize("ionrift-respite.uiInjections.provisionsSpoilageTooltip"));
         btn.innerHTML = `<i class="fas fa-carrot"></i>`;
         btn.addEventListener("click", (e) => {
             e.preventDefault();
@@ -249,8 +249,8 @@ export function injectContainerEnrichment(app, html) {
 
     const mult = ItemClassifier.getPreservationMultiplier(item);
     const content = mult === 0
-        ? `<i class="fas fa-snowflake" style="color: #c4b5fd; margin-right: 4px;"></i><strong>Respite:</strong> <strong>Stasis Container.</strong> Perishable food and harvested monster ingredients stored inside this container are preserved indefinitely.`
-        : `<i class="fas fa-snowflake" style="color: #c4b5fd; margin-right: 4px;"></i><strong>Respite:</strong> <strong>Cold Storage Container.</strong> Perishable food and harvested monster ingredients stored inside this container have their shelf life extended (<strong>${mult}× shelf life</strong>).`;
+        ? game.i18n.localize("ionrift-respite.uiInjections.enrichmentStasis")
+        : game.i18n.format("ionrift-respite.uiInjections.enrichmentCold", { mult });
 
     if (existing) {
         existing.innerHTML = content;
@@ -312,13 +312,13 @@ export function refreshSpoilageBadgesForElement(actor, el) {
             const isCold = ItemClassifier.isColdStorageContainer(item);
             if (isCold) {
                 const mult = ItemClassifier.getPreservationMultiplier(item);
-                const badgeLabel = mult === 0 ? "STASIS" : `COLD (${mult}×)`;
+                const badgeLabel = mult === 0 ? game.i18n.localize("ionrift-respite.uiInjections.badgeStasis") : game.i18n.format("ionrift-respite.uiInjections.badgeCold", { mult });
                 const badge = existingColdBadge ?? document.createElement("span");
                 badge.className = "respite-spoil-badge spoil-cold";
                 badge.innerHTML = `<i class="fas fa-snowflake"></i> ${badgeLabel}`;
                 badge.dataset.tooltip = mult === 0
-                    ? "Cold Storage: Indefinite preservation (items inside do not spoil)"
-                    : `Cold Storage: Food and ingredients inside spoil ${mult}× slower`;
+                    ? game.i18n.localize("ionrift-respite.uiInjections.badgeStasisTooltip")
+                    : game.i18n.format("ionrift-respite.uiInjections.badgeColdTooltip", { mult });
 
                 if (!existingColdBadge) {
                     const nameEl = row.querySelector(".item-name, .entry-name, h4, .name");
@@ -354,7 +354,7 @@ export function refreshSpoilageBadgesForElement(actor, el) {
             ? `${badgeState.text} ❄️`
             : badgeState.text;
         badge.dataset.tooltip = inCold
-            ? `${badgeState.tooltip} (Preserved in ${container.name})`
+            ? game.i18n.format("ionrift-respite.uiInjections.badgeColdWrapper", { tooltip: badgeState.tooltip, container: container.name })
             : badgeState.tooltip;
 
         if (!existingBadge) {

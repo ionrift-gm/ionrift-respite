@@ -106,7 +106,7 @@ export function getNatD20FromRoll(roll) {
 export function disableRollButton(target) {
     if (!target) return;
     target.disabled = true;
-    target.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Rolling...`;
+    target.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${game.i18n.localize("ionrift-respite.rollRequest.rolling")}`;
 }
 
 /**
@@ -121,16 +121,18 @@ export function disableRollButton(target) {
  * @param {'normal'|'advantage'|'disadvantage'} [rollMode='normal']
  * @returns {Promise<{ total: number, passed: boolean, skill: string, modifier: number, natD20: number|null }>}
  */
-export async function rollForPlayer(actor, skills, dc, context = "Skill check", rollMode = "normal") {
+export async function rollForPlayer(actor, skills, dc, context = null, rollMode = "normal") {
     const skillList = Array.isArray(skills) ? skills : [skills];
     const skill = pickBestSkill(actor, skillList);
     const { roll, modifier } = buildSkillRoll(actor, skill, rollMode);
     await roll.evaluate();
 
+    const ctx = context ?? game.i18n.localize("ionrift-respite.rollRequest.skillCheck");
     const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill.toUpperCase();
     const passed = roll.total >= dc;
-    const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
-    const flavor = `<strong>${actor.name}</strong> - ${context} (${skillName}, DC ${dc}) [GM roll]${modeLabel}`;
+    const modeLabel = rollMode === "advantage" ? ` [${game.i18n.localize("ionrift-respite.rollRequest.advantage")}]` : (rollMode === "disadvantage" ? ` [${game.i18n.localize("ionrift-respite.rollRequest.disadvantage")}]` : "");
+    const gmRollTag = ` [${game.i18n.localize("ionrift-respite.rollRequest.gmRoll")}]`;
+    const flavor = game.i18n.format("ionrift-respite.rollRequest.gmRollFlavor", { name: actor.name, context: ctx, skill: skillName, dc, gmRoll: gmRollTag, mode: modeLabel });
 
     const gate = armDiceSoNiceSettle();
     try {
@@ -215,13 +217,30 @@ export async function executeAbilityRoll(actor, abilityKey, modifier, dc, flavor
  * Used by rollForPlayer to label chat messages.
  */
 export const SKILL_DISPLAY_NAMES = {
-    acr: "Acrobatics", ani: "Animal Handling", arc: "Arcana",
-    ath: "Athletics", dec: "Deception", his: "History",
-    ins: "Insight", itm: "Intimidation", inv: "Investigation",
-    med: "Medicine", nat: "Nature", prc: "Perception",
-    prf: "Performance", per: "Persuasion", rel: "Religion",
-    sle: "Sleight of Hand", slt: "Sleight of Hand", ste: "Stealth", sur: "Survival",
+    get acr() { return game.i18n.localize("ionrift-respite.skills.acr"); },
+    get ani() { return game.i18n.localize("ionrift-respite.skills.ani"); },
+    get arc() { return game.i18n.localize("ionrift-respite.skills.arc"); },
+    get ath() { return game.i18n.localize("ionrift-respite.skills.ath"); },
+    get dec() { return game.i18n.localize("ionrift-respite.skills.dec"); },
+    get his() { return game.i18n.localize("ionrift-respite.skills.his"); },
+    get ins() { return game.i18n.localize("ionrift-respite.skills.ins"); },
+    get itm() { return game.i18n.localize("ionrift-respite.skills.itm"); },
+    get inv() { return game.i18n.localize("ionrift-respite.skills.inv"); },
+    get med() { return game.i18n.localize("ionrift-respite.skills.med"); },
+    get nat() { return game.i18n.localize("ionrift-respite.skills.nat"); },
+    get prc() { return game.i18n.localize("ionrift-respite.skills.prc"); },
+    get prf() { return game.i18n.localize("ionrift-respite.skills.prf"); },
+    get per() { return game.i18n.localize("ionrift-respite.skills.per"); },
+    get rel() { return game.i18n.localize("ionrift-respite.skills.rel"); },
+    get sle() { return game.i18n.localize("ionrift-respite.skills.sle"); },
+    get slt() { return game.i18n.localize("ionrift-respite.skills.slt"); },
+    get ste() { return game.i18n.localize("ionrift-respite.skills.ste"); },
+    get sur() { return game.i18n.localize("ionrift-respite.skills.sur"); },
     // Ability abbreviations
-    str: "Strength", dex: "Dexterity", con: "Constitution",
-    int: "Intelligence", wis: "Wisdom", cha: "Charisma"
+    get str() { return game.i18n.localize("ionrift-respite.skills.str"); },
+    get dex() { return game.i18n.localize("ionrift-respite.skills.dex"); },
+    get con() { return game.i18n.localize("ionrift-respite.skills.con"); },
+    get int() { return game.i18n.localize("ionrift-respite.skills.int"); },
+    get wis() { return game.i18n.localize("ionrift-respite.skills.wis"); },
+    get cha() { return game.i18n.localize("ionrift-respite.skills.cha"); }
 };

@@ -93,7 +93,7 @@ export class DowntimeBatchEngine {
                 const outlanderOutcome = characterOutcomes.get(outlanderStatus.outlanderActor.id);
                 if (outlanderOutcome) {
                     outlanderOutcome.harvestedRations += outlanderRations;
-                    outlanderOutcome.activitiesSummary.push(`Sustenance: Outlander Wanderer secured camp provisions (+${outlanderRations} rations)`);
+                    outlanderOutcome.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.outlanderSustenance", { count: outlanderRations }));
                 }
             }
         }
@@ -196,7 +196,7 @@ export class DowntimeBatchEngine {
                     outcome.harvestedRations += harvested;
 
                     outcome.rolls.push({
-                        activity: isHunt ? "Hunt" : "Forage",
+                        activity: isHunt ? game.i18n.localize("ionrift-respite.downtimeBatch.hunt") : game.i18n.localize("ionrift-respite.downtimeBatch.forage"),
                         day: dayEntry.day ?? 1,
                         checks: [{ total: checkTotal, yield: harvested, detail }]
                     });
@@ -208,15 +208,15 @@ export class DowntimeBatchEngine {
                 const skipDays = days.filter(d => d.mode === "skip").length;
 
                 if (days.length === 1) {
-                    const actName = days[0].mode === "hunt" ? "Hunt" : (days[0].mode === "skip" ? "Skip" : "Forage");
-                    outcome.activitiesSummary.push(`${actName}: +${charHarvested} provisions`);
+                    const actName = days[0].mode === "hunt" ? game.i18n.localize("ionrift-respite.downtimeBatch.hunt") : (days[0].mode === "skip" ? game.i18n.localize("ionrift-respite.downtimeBatch.skip") : game.i18n.localize("ionrift-respite.downtimeBatch.forage"));
+                    outcome.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.actSummaryProvisions", { act: actName, count: charHarvested }));
                 } else {
                     const parts = [];
-                    if (forageDays > 0) parts.push(`${forageDays} forage`);
-                    if (huntDays > 0) parts.push(`${huntDays} hunt`);
-                    if (skipDays > 0) parts.push(`${skipDays} skipped`);
+                    if (forageDays > 0) parts.push(game.i18n.format("ionrift-respite.downtimeBatch.forageDays", { days: forageDays }));
+                    if (huntDays > 0) parts.push(game.i18n.format("ionrift-respite.downtimeBatch.huntDays", { days: huntDays }));
+                    if (skipDays > 0) parts.push(game.i18n.format("ionrift-respite.downtimeBatch.skipDays", { days: skipDays }));
                     const breakdown = parts.length ? ` (${parts.join(", ")})` : "";
-                    outcome.activitiesSummary.push(`Gathering: +${charHarvested} provisions${breakdown}`);
+                    outcome.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.gatheringSummary", { count: charHarvested, breakdown }));
                 }
             }
         }
@@ -256,10 +256,10 @@ export class DowntimeBatchEngine {
                 totalMealsCooked += cookedCount;
 
                 if (cookedCount > 0) {
-                    outcome.activitiesSummary.push(`Cook (${cookedCount}d): ${cookedCount} meals prepared`);
+                    outcome.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.cookSummary", { days: cookedCount, count: cookedCount }));
                 }
                 if (downgradedCount > 0) {
-                    outcome.notes.push(`${downgradedCount} cook days downgraded to Camp Maintenance (no ingredients).`);
+                    outcome.notes.push(game.i18n.format("ionrift-respite.downtimeBatch.cookDowngradedNote", { count: downgradedCount }));
                 }
             }
 
@@ -320,12 +320,12 @@ export class DowntimeBatchEngine {
                         });
 
                         outcome.activitiesSummary.push(
-                            `Tend Wounds → ${patient.name} (${days}d): ${daysSucceeded}/${days} successful`
+                            game.i18n.format("ionrift-respite.downtimeBatch.tendPatientSummary", { patient: patient.name, days, succeeded: daysSucceeded })
                         );
                     }
                 } else {
                     // Fallback: no patient selected, blanket text summary
-                    outcome.activitiesSummary.push(`Tend Wounds (${tendDays}d): Assisted ally recovery`);
+                    outcome.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.tendFallbackSummary", { days: tendDays }));
                 }
             }
 
@@ -355,10 +355,10 @@ export class DowntimeBatchEngine {
                 outcome.drinksProduced += brewedCount;
 
                 if (brewedCount > 0) {
-                    outcome.activitiesSummary.push(`Brew (${brewedCount}d): ${brewedCount} drinks prepared`);
+                    outcome.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.brewSummary", { days: brewedCount, count: brewedCount }));
                 }
                 if (downgradedCount > 0) {
-                    outcome.notes.push(`${downgradedCount} brew days downgraded to Camp Maintenance (no ingredients).`);
+                    outcome.notes.push(game.i18n.format("ionrift-respite.downtimeBatch.brewDowngradedNote", { count: downgradedCount }));
                 }
             }
 
@@ -394,7 +394,7 @@ export class DowntimeBatchEngine {
                         else failCount++;
 
                         outcome.rolls.push({
-                            activity: "Fortify",
+                            activity: game.i18n.localize("ionrift-respite.downtimeBatch.fortify"),
                             day: dayIdx + 1,
                             checks: [{ total: rollEntry.rollTotal, success: rollEntry.success, dc: rollEntry.dc }]
                         });
@@ -402,7 +402,7 @@ export class DowntimeBatchEngine {
                 }
 
                 outcome.activitiesSummary.push(
-                    `Fortify (${fortifyDays}d): ${successCount}/${fortifyDays} days held (-${successCount * 2} DC)`
+                    game.i18n.format("ionrift-respite.downtimeBatch.fortifySummary", { days: fortifyDays, succeeded: successCount, dcReduction: successCount * 2 })
                 );
             }
 
@@ -425,10 +425,10 @@ export class DowntimeBatchEngine {
                     if (rollEntry?.yieldQty) yieldQty += Number(rollEntry.yieldQty) || 0;
                     if (rollEntry?.fletchKind) kind = rollEntry.fletchKind;
                 }
-                const noun = kind === "bolts" ? "bolts" : "arrows";
-                const yieldBit = yieldQty > 0 ? `, ${yieldQty} ${noun}` : "";
+                const noun = kind === "bolts" ? game.i18n.localize("ionrift-respite.downtimeBatch.bolts") : game.i18n.localize("ionrift-respite.downtimeBatch.arrows");
+                const yieldBit = yieldQty > 0 ? game.i18n.format("ionrift-respite.downtimeBatch.fletchYieldBit", { count: yieldQty, noun }) : "";
                 outcome.activitiesSummary.push(
-                    `Fletch Arrows (${fletchDays}d): ${successCount}/${fletchDays}${yieldBit}`
+                    game.i18n.format("ionrift-respite.downtimeBatch.fletchSummary", { days: fletchDays, succeeded: successCount, yield: yieldBit })
                 );
             }
 
@@ -468,7 +468,7 @@ export class DowntimeBatchEngine {
                     dualWaterCredits.set(actor.id, (dualWaterCredits.get(actor.id) ?? 0) + 1);
                 }
                 characterOutcomes.get(actor.id)?.activitiesSummary.push(
-                    `Departure Meal: ${served.itemName || "Meal"} (send-off)`
+                    game.i18n.format("ionrift-respite.downtimeBatch.departureMealSendoff", { item: served.itemName || game.i18n.localize("ionrift-respite.downtimeBatch.mealFallback") })
                 );
                 continue;
             }
@@ -498,7 +498,7 @@ export class DowntimeBatchEngine {
                     if (treatHp > currentTemp) {
                         await actor.update?.({ "system.attributes.hp.temp": treatHp });
                     }
-                    outcome?.activitiesSummary.push(`Departure Meal: ${item.name} (+${treatHp} temp HP)`);
+                    outcome?.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.departureMealChefTreat", { item: item.name, hp: treatHp }));
                 } else if (rf.wellFed || rf.buff) {
                     if (!itemSnapshot.flags) itemSnapshot.flags = {};
                     if (!itemSnapshot.flags[MODULE_ID]) itemSnapshot.flags[MODULE_ID] = {};
@@ -512,9 +512,9 @@ export class DowntimeBatchEngine {
                     } catch (err) {
                         Logger.error?.(`${MODULE_ID} | Failed to dispatch departure meal buff:`, err);
                     }
-                    outcome?.activitiesSummary.push(`Departure Meal: ${item.name} (Well Fed Active Effect)`);
+                    outcome?.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.departureMealWellFed", { item: item.name }));
                 } else {
-                    outcome?.activitiesSummary.push(`Departure Meal: ${item.name}`);
+                    outcome?.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.departureMealPlain", { item: item.name }));
                 }
             }
         }
@@ -600,7 +600,7 @@ export class DowntimeBatchEngine {
                 const foodShortfallDays = (fpd > 0) ? Math.ceil(actorFoodUnitsNeeded / fpd) : 0;
                 characterFoodShortfalls.set(actor.id, foodShortfallDays);
                 if (foodShortfallDays > 0) {
-                    outcome?.notes.push(`Starvation Risk: ${foodShortfallDays} days without food in the wilderness.`);
+                    outcome?.notes.push(game.i18n.format("ionrift-respite.downtimeBatch.starvationRiskNote", { days: foodShortfallDays }));
                 }
 
                 // 3. Water Consumption
@@ -628,10 +628,10 @@ export class DowntimeBatchEngine {
                 characterWaterShortfalls.set(actor.id, waterShortfallDays);
 
                 if (totalWaterUnitsNeeded > 0) {
-                    outcome?.activitiesSummary.push(`Hydration: ${totalWaterFulfilled}/${totalWaterUnitsNeeded} units fulfilled`);
+                    outcome?.activitiesSummary.push(game.i18n.format("ionrift-respite.downtimeBatch.hydrationSummary", { fulfilled: totalWaterFulfilled, needed: totalWaterUnitsNeeded }));
                 }
                 if (waterShortfallDays > 0) {
-                    outcome?.notes.push(`Dehydration Risk: ${waterShortfallDays} days without adequate water.`);
+                    outcome?.notes.push(game.i18n.format("ionrift-respite.downtimeBatch.dehydrationRiskNote", { days: waterShortfallDays }));
                 }
             }
 
@@ -645,15 +645,15 @@ export class DowntimeBatchEngine {
 
         if (haven === "wilderness") {
             const FIRE_LABELS = {
-                cold_camp: "Cold Camp",
-                embers: "Embers",
-                campfire: "Campfire",
-                bonfire: "Bonfire"
+                get cold_camp() { return game.i18n.localize("ionrift-respite.downtimeBatch.fireColdCamp"); },
+                get embers() { return game.i18n.localize("ionrift-respite.downtimeBatch.fireEmbers"); },
+                get campfire() { return game.i18n.localize("ionrift-respite.downtimeBatch.fireCampfire"); },
+                get bonfire() { return game.i18n.localize("ionrift-respite.downtimeBatch.fireBonfire"); }
             };
-            fireLevelLabel = FIRE_LABELS[fireLevel] ?? "Campfire";
+            fireLevelLabel = FIRE_LABELS[fireLevel] ?? game.i18n.localize("ionrift-respite.downtimeBatch.fireCampfire");
 
             if (fireLevel === "cold_camp") {
-                fuelBurnDetail = "No fire (Cold camp)";
+                fuelBurnDetail = game.i18n.localize("ionrift-respite.downtimeBatch.fuelColdCamp");
             } else {
                 const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[fireLevel] ?? (fireLevel === "embers" ? 1 : fireLevel === "bonfire" ? 3 : 2);
                 let remainingCost = cost;
@@ -678,11 +678,11 @@ export class DowntimeBatchEngine {
                 }
 
                 if (fuelContributors.length > 0) {
-                    fuelBurnDetail = `${firewoodBurned} firewood burned (${fuelContributors.join(", ")})`;
+                    fuelBurnDetail = game.i18n.format("ionrift-respite.downtimeBatch.fuelBurned", { count: firewoodBurned, contributors: fuelContributors.join(", ") });
                 } else if (cost > 0) {
-                    fuelBurnDetail = `${cost} firewood required (none in stock)`;
+                    fuelBurnDetail = game.i18n.format("ionrift-respite.downtimeBatch.fuelRequiredNone", { cost });
                 } else {
-                    fuelBurnDetail = "0 firewood burned";
+                    fuelBurnDetail = game.i18n.localize("ionrift-respite.downtimeBatch.fuelZeroBurned");
                 }
             }
         }
@@ -784,11 +784,11 @@ export class DowntimeBatchEngine {
 
                 if (exhaustionEntry?.gainLevel > 0) {
                     newExhaustion += exhaustionEntry.gainLevel;
-                    outcome?.notes?.push(`Constitution save failed: gained 1 level of exhaustion (now ${newExhaustion})`);
+                    outcome?.notes?.push(game.i18n.format("ionrift-respite.downtimeBatch.conSaveFailedNote", { level: newExhaustion }));
                 } else if (exhaustionEntry?.mustRoll && exhaustionEntry?.passed) {
-                    outcome?.notes?.push("Constitution save passed: resisted exhaustion");
+                    outcome?.notes?.push(game.i18n.localize("ionrift-respite.downtimeBatch.conSavePassedNote"));
                 } else if (exhaustionEntry?.waived) {
-                    outcome?.notes?.push("Exhaustion check waived by GM");
+                    outcome?.notes?.push(game.i18n.localize("ionrift-respite.downtimeBatch.conSaveWaivedNote"));
                 } else if (currentExhaustion > 0) {
                     let reduction = 1; // standard long rest: -1 exhaustion
                     if (restDays >= 5) {
@@ -798,7 +798,7 @@ export class DowntimeBatchEngine {
                     }
                     newExhaustion = Math.max(0, currentExhaustion - reduction);
                     if (newExhaustion < currentExhaustion) {
-                        outcome?.notes?.push(`Exhaustion recovered: -${currentExhaustion - newExhaustion} (now ${newExhaustion})`);
+                        outcome?.notes?.push(game.i18n.format("ionrift-respite.downtimeBatch.exhaustionRecoveredNote", { count: currentExhaustion - newExhaustion, level: newExhaustion }));
                     }
                 }
                 if (newExhaustion !== currentExhaustion) {

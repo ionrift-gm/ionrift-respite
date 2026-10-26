@@ -65,23 +65,25 @@ export function buildSkillCheckSummary({
     const days = Number(dayCount) || 0;
     if (days <= 0) return null;
     const names = Array.isArray(labels) ? labels.filter(Boolean) : [];
-    const label = names.length === 1 ? names[0] : "Checks";
-    const statusName = names.length === 1 ? String(names[0]).split(" ")[0] : "Checks";
+    const defaultChecks = game.i18n.localize("ionrift-respite.downtimeSkillCheck.checks");
+    const label = names.length === 1 ? names[0] : defaultChecks;
+    const statusName = names.length === 1 ? String(names[0]).split(" ")[0] : defaultChecks;
     const rolled = Number(rolledCount) || 0;
     const success = Number(successCount) || 0;
-    let tooltip = "Skill checks for the week.";
+    let tooltip = game.i18n.localize("ionrift-respite.downtimeSkillCheck.tooltipDefault");
     if (names.length === 1 && actDef?.check) {
         const skillNames = (actDef.check.skills ?? [])
             .map(key => SKILL_DISPLAY_NAMES[key] ?? key);
         const dc = actDef.check.dc ?? 12;
-        tooltip = skillNames.length ? `${skillNames.join(" or ")}, DC ${dc}.` : `DC ${dc}.`;
+        const orWord = game.i18n.localize("ionrift-respite.downtimeSkillCheck.or");
+        tooltip = skillNames.length ? game.i18n.format("ionrift-respite.downtimeSkillCheck.tooltipWithSkills", { skills: skillNames.join(` ${orWord} `), dc }) : game.i18n.format("ionrift-respite.downtimeSkillCheck.tooltipDcOnly", { dc });
         if (actDef.id === "fletch") {
-            tooltip += " Success adds arrows or bolts.";
+            tooltip += ` ${game.i18n.localize("ionrift-respite.downtimeSkillCheck.fletchSuccessAdds")}`;
             const made = Number(fletchYield) || 0;
-            if (made > 0) tooltip += ` ${made} made so far.`;
+            if (made > 0) tooltip += ` ${game.i18n.format("ionrift-respite.downtimeSkillCheck.fletchMadeSoFar", { count: made })}`;
         }
     } else if (names.length > 1) {
-        tooltip = `Roll ${names.join(", ")}.`;
+        tooltip = game.i18n.format("ionrift-respite.downtimeSkillCheck.tooltipRollNames", { names: names.join(", ") });
     }
     return {
         assignedDays: days,
@@ -110,9 +112,9 @@ export function formatFletchGrantNotice(grants) {
         else arrows += qty;
     }
     const bits = [];
-    if (arrows) bits.push(`${arrows} ${arrows === 1 ? "arrow" : "arrows"}`);
-    if (bolts) bits.push(`${bolts} ${bolts === 1 ? "bolt" : "bolts"}`);
-    return bits.length ? `${bits.join(", ")} added.` : "";
+    if (arrows) bits.push(game.i18n.format(arrows === 1 ? "ionrift-respite.downtimeSkillCheck.arrowSingular" : "ionrift-respite.downtimeSkillCheck.arrowPlural", { count: arrows }));
+    if (bolts) bits.push(game.i18n.format(bolts === 1 ? "ionrift-respite.downtimeSkillCheck.boltSingular" : "ionrift-respite.downtimeSkillCheck.boltPlural", { count: bolts }));
+    return bits.length ? game.i18n.format("ionrift-respite.downtimeSkillCheck.fletchAdded", { bits: bits.join(", ") }) : "";
 }
 
 async function rollFletchQuantity(actor) {
@@ -169,7 +171,7 @@ export async function rollDowntimeSkillDay(actor, dayRoll, options = {}) {
     const skill = pickBestSkill(actor, skills);
     const dc = checkDef.dc ?? 12;
     const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill;
-    const flavor = `<strong>${actor.name}</strong>: ${actDef.label} (${skillName}), DC ${dc}`;
+    const flavor = game.i18n.format("ionrift-respite.downtimeSkillCheck.rollFlavor", { name: actor.name, activity: actDef.label, skill: skillName, dc });
     const { total, passed } = await executePlayerRoll(actor, skill, dc, flavor);
 
     dayRoll.rolled = true;

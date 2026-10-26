@@ -101,7 +101,7 @@ export function dispatch(data, ctx) {
 
         case SOCKET_TYPES.REST_ABANDONED:
             if (game.user.isGM) return;
-            ui.notifications.info("The GM has abandoned the rest.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.socket.abandonedRest"));
             handleRestResolved(data, ctx);
             break;
 
@@ -176,7 +176,7 @@ export function dispatch(data, ctx) {
                 });
                 ctx.activeRestSetupApp._syncCampCeremonyPreviewToEmbed?.();
                 ctx.activeRestSetupApp.render();
-            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            } else { ui.notifications.warn(game.i18n.localize("ionrift-respite.socket.openRestOnGMFirst")); }
             break;
 
         case SOCKET_TYPES.CAMP_COLD_CAMP:
@@ -194,7 +194,7 @@ export function dispatch(data, ctx) {
                 });
                 ctx.activeRestSetupApp._syncCampCeremonyPreviewToEmbed?.();
                 ctx.activeRestSetupApp.render();
-            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            } else { ui.notifications.warn(game.i18n.localize("ionrift-respite.socket.openRestOnGMFirst")); }
             break;
 
         case "campCeremonyStageWood":
@@ -230,7 +230,7 @@ export function dispatch(data, ctx) {
 
                     console.error(`${MODULE_ID} | campColdCampCommit:`, err);
                 });
-            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            } else { ui.notifications.warn(game.i18n.localize("ionrift-respite.socket.openRestOnGMFirst")); }
             break;
 
         case SOCKET_TYPES.ACTIVITY_COLD_CAMP_REQUEST:
@@ -240,7 +240,7 @@ export function dispatch(data, ctx) {
 
                     console.error(`${MODULE_ID} | activityColdCampRequest:`, err);
                 });
-            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            } else { ui.notifications.warn(game.i18n.localize("ionrift-respite.socket.openRestOnGMFirst")); }
             break;
 
         case SOCKET_TYPES.ACTIVITY_FIRE_LEVEL_REQUEST:
@@ -250,13 +250,13 @@ export function dispatch(data, ctx) {
 
                     console.error(`${MODULE_ID} | activityFireLevelRequest:`, err);
                 });
-            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            } else { ui.notifications.warn(game.i18n.localize("ionrift-respite.socket.openRestOnGMFirst")); }
             break;
 
         case SOCKET_TYPES.CAMP_LIGHT_FIRE: {
             if (!game.user.isGM) return;
             if (!ctx.activeRestSetupApp?._campCeremony) {
-                ui.notifications.warn("Open the rest session on the GM client first.");
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.socket.openRestOnGMFirst"));
                 break;
             }
             const chosenLevel = ["embers", "campfire", "bonfire"].includes(data.previewLevel)
@@ -282,7 +282,7 @@ export function dispatch(data, ctx) {
 
                     console.error(`${MODULE_ID} | campFirewoodPledge:`, err);
                 });
-            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            } else { ui.notifications.warn(game.i18n.localize("ionrift-respite.socket.openRestOnGMFirst")); }
             break;
 
         case SOCKET_TYPES.CAMP_FIREWOOD_RECLAIM:
@@ -292,7 +292,7 @@ export function dispatch(data, ctx) {
 
                     console.error(`${MODULE_ID} | campFirewoodReclaim:`, err);
                 });
-            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            } else { ui.notifications.warn(game.i18n.localize("ionrift-respite.socket.openRestOnGMFirst")); }
             break;
 
         case SOCKET_TYPES.MEAL_CHOICE:

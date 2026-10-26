@@ -461,7 +461,7 @@ export class ActivityBudgetDelegate {
                 filled: false,
                 activityId: null,
                 icon: null,
-                label: "Unallocated"
+                label: game.i18n.localize("ionrift-respite.downtime.unallocated")
             });
             segCount++;
         }

@@ -29,7 +29,7 @@ export function registerInventoryContextMenu() {
     Hooks.on("dnd5e.getItemContextOptions", (item, menuItems) => {
         if (game?.user?.isGM && ItemClassifier.isProvisionEligible(item)) {
             menuItems.push({
-                name: "Respite Provisions...",
+                name: game.i18n.localize("ionrift-respite.inventoryContext.provisions"),
                 icon: `<i class="fas fa-carrot respite-context-icon"></i>`,
                 group: "system",
                 callback: () => ItemProvisionsApp.openForItem(item)
@@ -39,7 +39,7 @@ export function registerInventoryContextMenu() {
         if (game?.user?.isGM && ItemClassifier.isContainer(item)) {
             const isCold = ItemClassifier.isColdStorageContainer(item);
             menuItems.push({
-                name: isCold ? "Disable Cold Storage" : "Enable Cold Storage",
+                name: isCold ? game.i18n.localize("ionrift-respite.inventoryContext.disableColdStorage") : game.i18n.localize("ionrift-respite.inventoryContext.enableColdStorage"),
                 icon: `<i class="fas fa-snowflake respite-context-icon"></i>`,
                 group: "system",
                 callback: async () => {
@@ -49,13 +49,13 @@ export function registerInventoryContextMenu() {
                         await item.setFlag(MODULE_ID, "preservationMultiplier", 2);
                     }
                     const mult = ItemClassifier.getPreservationMultiplier(item);
-                    const multLabel = mult === 0 ? "Stasis" : `${mult}×`;
-                    ui.notifications?.info(`${item.name}: Cold Storage ${next ? `Enabled (${multLabel})` : "Disabled"}`);
+                    const multLabel = mult === 0 ? game.i18n.localize("ionrift-respite.inventoryContext.stasis") : `${mult}×`;
+                    ui.notifications?.info(game.i18n.format(next ? "ionrift-respite.inventoryContext.coldStorageEnabled" : "ionrift-respite.inventoryContext.coldStorageDisabled", { name: item.name, mult: multLabel }));
                     refreshSpoilageBadgesOnOpenSheets();
                 }
             });
             menuItems.push({
-                name: "Configure Storage...",
+                name: game.i18n.localize("ionrift-respite.inventoryContext.configureStorage"),
                 icon: `<i class="fas fa-box-archive respite-context-icon"></i>`,
                 group: "system",
                 callback: () => ItemProvisionsApp.openForItem(item)
@@ -93,7 +93,7 @@ export function registerInventoryContextMenu() {
 
         if (isDrinkable) {
             menuItems.push({
-                name: "Drink",
+                name: game.i18n.localize("ionrift-respite.inventoryContext.drink"),
                 icon: `<i class="fas fa-tint respite-context-icon"></i>`,
                 group: "action",
                 condition: hasStock,
@@ -103,7 +103,7 @@ export function registerInventoryContextMenu() {
 
         if (isEdible && !isDrinkable) {
             const flags = item.flags?.[MODULE_ID] ?? {};
-            const eatLabel = flags.chefTreat ? "Eat Treat" : "Eat";
+            const eatLabel = flags.chefTreat ? game.i18n.localize("ionrift-respite.inventoryContext.eatTreat") : game.i18n.localize("ionrift-respite.inventoryContext.eat");
 
             // Inventory food is eaten through the normal consume path, which
             // applies any Well Fed buff. Monstrous Feast meals are eaten fresh
@@ -147,11 +147,11 @@ async function _consumeFromInventory(actor, item, isFood) {
     if (consumed <= 0) {
         ui.notifications.warn(ItemClassifier.isSpoiled(item)
             ? SPOILED_FOOD_BLOCKED_MESSAGE
-            : `${itemName} could not be consumed.`);
+            : game.i18n.format("ionrift-respite.inventoryContext.couldNotBeConsumed", { name: itemName }));
         return;
     }
 
-    const verb = isFood ? "eats" : "drinks from";
+    const verb = isFood ? game.i18n.localize("ionrift-respite.inventoryContext.verbEats") : game.i18n.localize("ionrift-respite.inventoryContext.verbDrinks");
     const icon = isFood ? "fa-utensils" : "fa-tint";
 
     // Check for Well Fed buff and apply if present
@@ -175,7 +175,7 @@ async function _consumeFromInventory(actor, item, isFood) {
 
     // Build chat content
     const buffSummary = buffLines.length
-        ? `<p class="respite-well-fed-summary"><i class="fas fa-star"></i> <em>Well Fed:</em> ${buffLines.join("; ")}</p>`
+        ? `<p class="respite-well-fed-summary"><i class="fas fa-star"></i> <em>${game.i18n.localize("ionrift-respite.inventoryContext.wellFed")}</em> ${buffLines.join("; ")}</p>`
         : "";
 
     await ChatMessage.create({

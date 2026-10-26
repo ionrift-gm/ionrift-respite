@@ -215,13 +215,13 @@ function buildSustenanceDiegetic({
         canInteract: Boolean(canUnlock),
         trait: isTraitPill ? { label: climateLabel, tooltip: climateTooltip } : null,
         food: {
-            budget: { text: foodBudgetDone ? "Fed" : `${foodFlow?.shortfallDays ?? 0}d short`, isDone: foodBudgetDone },
+            budget: { text: foodBudgetDone ? game.i18n.localize("ionrift-respite.downtimeLedger.fed") : game.i18n.format("ionrift-respite.downtimeLedger.daysShort", { days: foodFlow?.shortfallDays ?? 0 }), isDone: foodBudgetDone },
             slots: foodSlots,
             sendoff: foodSendoff,
             inventory: foodInventory
         },
         water: {
-            budget: { text: waterBudgetDone ? "Hydrated" : `${waterFlow?.shortfallDays ?? 0}d short`, isDone: waterBudgetDone },
+            budget: { text: waterBudgetDone ? game.i18n.localize("ionrift-respite.downtimeLedger.hydrated") : game.i18n.format("ionrift-respite.downtimeLedger.daysShort", { days: waterFlow?.shortfallDays ?? 0 }), isDone: waterBudgetDone },
             days: waterDays,
             sendoff: waterSendoff,
             inventory: waterInventory,
@@ -260,7 +260,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         classes: ["ionrift-window", "glass-ui", "ionrift-respite-app", "downtime-ledger-window"],
         tag: "div",
         window: {
-            title: "Camp Planning",
+            title: "ionrift-respite.downtimeLedger.titleCampPlanning",
             resizable: true
         },
         position: {
@@ -736,10 +736,10 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
     get title() {
         if (this._pacingActive) {
             const total = this._totalNights || (this._isGrittyLongRest ? 7 : 1);
-            if (this._activePacingNight > total) return "Dawn Finalization";
-            return this._totalNights === 1 ? "Overnight Vigil" : "Night Vigil";
+            if (this._activePacingNight > total) return game.i18n.localize("ionrift-respite.downtimeLedger.titleDawnFinalization");
+            return this._totalNights === 1 ? game.i18n.localize("ionrift-respite.downtimeLedger.titleOvernightVigil") : game.i18n.localize("ionrift-respite.downtimeLedger.titleNightVigil");
         }
-        return this._budgetDelegate?.haven === "civilized" ? "Safe Rest" : "Camp Planning";
+        return this._budgetDelegate?.haven === "civilized" ? game.i18n.localize("ionrift-respite.downtimeLedger.titleSafeRest") : game.i18n.localize("ionrift-respite.downtimeLedger.titleCampPlanning");
     }
 
     /**
@@ -1074,14 +1074,14 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         entry.rollTotal = roll.total;
         entry.passed = passed;
 
-        const advText = entry.advMode === "adv" ? " (Advantage)" : (entry.advMode === "dis" ? " (Disadvantage)" : "");
+        const advText = entry.advMode === "adv" ? ` (${game.i18n.localize("ionrift-respite.rollRequest.advantage")})` : (entry.advMode === "dis" ? ` (${game.i18n.localize("ionrift-respite.rollRequest.disadvantage")})` : "");
         const resultText = passed
-            ? `<strong style="color: #2ecc71;">Passed</strong> (no exhaustion gained)`
-            : `<strong style="color: #e74c3c;">Failed</strong> (+1 Exhaustion)`;
+            ? game.i18n.localize("ionrift-respite.downtimeLedger.conSavePassedHtml")
+            : game.i18n.localize("ionrift-respite.downtimeLedger.conSaveFailedHtml");
 
         await postRollAndSettle(roll, {
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>${actor.name}</strong>: Constitution save vs Exhaustion DC ${entry.dc}${advText}<br>${resultText}`,
+            flavor: game.i18n.format("ionrift-respite.downtimeLedger.conSaveFlavor", { name: actor.name, dc: entry.dc, adv: advText, result: resultText }),
             whisper: game.users.filter(u => u.isGM).map(u => u.id)
         });
 
@@ -1342,7 +1342,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             const fallbackIsAlreadyFull = fallbackCurrentHd >= fallbackTotalHd;
             const personalCard = scanResult.personalCards?.find(c => c.actorId === actor.id) ?? {
                 personalComfort: fallbackComfort,
-                personalComfortLabel: safeRestSpot ? "Safe" : "Rough",
+                personalComfortLabel: safeRestSpot ? game.i18n.localize("ionrift-respite.downtimeLedger.comfortSafe") : game.i18n.localize("ionrift-respite.downtimeLedger.comfortRough"),
                 hasBedroll: !this._campLogistics._enforceBedroll,
                 hasTent: !this._campLogistics._enforceTent,
                 hasMessKit: !this._campLogistics._enforceMessKit,
@@ -1351,7 +1351,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 messKitWaived: !this._campLogistics._enforceMessKit,
                 recovery: {
                     hpFull: true,
-                    hdLabel: fallbackIsAlreadyFull ? `Already at max Hit Dice (${fallbackTotalHd}/${fallbackTotalHd})` : "Normal HD recovery",
+                    hdLabel: fallbackIsAlreadyFull ? game.i18n.format("ionrift-respite.downtimeLedger.alreadyMaxHitDice", { total: fallbackTotalHd }) : game.i18n.localize("ionrift-respite.downtimeLedger.normalHdRecovery"),
                     exhaustionDC: fallbackComfort === "rough" ? 10 : (fallbackComfort === "hostile" ? 15 : null),
                     isAlreadyFull: fallbackIsAlreadyFull,
                     currentHd: fallbackCurrentHd,
@@ -1592,20 +1592,21 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
                 const canToggle = !entry.rolled && isOwner && (!hasAnyRolled || isGM);
                 let tooltip;
+                const huntOrForage = isHunt ? game.i18n.localize("ionrift-respite.downtimeBatch.hunt") : game.i18n.localize("ionrift-respite.downtimeBatch.forage");
                 if (isSkip) {
-                    const editHint = canToggle ? (isGM ? " Click to toggle choice." : " Click to toggle.") : "";
-                    tooltip = `Day ${entry.day}: Skipped (no roll or rations).${editHint}`;
+                    const editHint = canToggle ? (isGM ? ` ${game.i18n.localize("ionrift-respite.downtimeLedger.clickToggleChoice")}` : ` ${game.i18n.localize("ionrift-respite.downtimeLedger.clickToggle")}`) : "";
+                    tooltip = game.i18n.format("ionrift-respite.downtimeLedger.skippedDayTooltip", { day: entry.day, hint: editHint });
                 } else if (entry.rolled) {
                     const outcomeText = entry.detail
                         ? entry.detail
-                        : (entry.success ? "find recorded" : "nothing");
-                    tooltip = bulletTip(`Day ${entry.day} ${isHunt ? "Hunt" : "Forage"}`, [
-                        `Check ${entry.rollTotal} vs DC ${dc}`,
+                        : (entry.success ? game.i18n.localize("ionrift-respite.downtimeLedger.findRecorded") : game.i18n.localize("ionrift-respite.downtimeLedger.nothingFound"));
+                    tooltip = bulletTip(game.i18n.format("ionrift-respite.downtimeLedger.dayActivityTitle", { day: entry.day, activity: huntOrForage }), [
+                        game.i18n.format("ionrift-respite.downtimeLedger.checkVsDc", { roll: entry.rollTotal, dc }),
                         outcomeText
                     ]);
                 } else {
-                    const toggleHint = isOwner ? " Click to toggle." : "";
-                    tooltip = `Day ${entry.day}: ${isHunt ? "Hunt" : "Forage"} (DC ${dc}).${toggleHint}`;
+                    const toggleHint = isOwner ? ` ${game.i18n.localize("ionrift-respite.downtimeLedger.clickToggle")}` : "";
+                    tooltip = game.i18n.format("ionrift-respite.downtimeLedger.dayUnrolledTooltip", { day: entry.day, activity: huntOrForage, dc, hint: toggleHint });
                 }
 
                 return {
@@ -1615,8 +1616,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                     isHunt,
                     isSkip,
                     icon: isSkip ? "fas fa-minus" : (isHunt ? "fas fa-crosshairs" : "fas fa-leaf"),
-                    label: isSkip ? "Skip" : (isHunt ? "Hunt" : "Forage"),
-                    modeLabel: isSkip ? "Camp" : (isHunt ? "Hunt" : "Forage"),
+                    label: isSkip ? game.i18n.localize("ionrift-respite.downtimeBatch.skip") : (isHunt ? game.i18n.localize("ionrift-respite.downtimeBatch.hunt") : game.i18n.localize("ionrift-respite.downtimeBatch.forage")),
+                    modeLabel: isSkip ? game.i18n.localize("ionrift-respite.downtimeLedger.camp") : (isHunt ? game.i18n.localize("ionrift-respite.downtimeBatch.hunt") : game.i18n.localize("ionrift-respite.downtimeBatch.forage")),
                     canToggle,
                     tooltip,
                     finds: GatherYieldService.presentItems(entry.items, {
@@ -1643,24 +1644,24 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             if (forageCount > 0) labelParts.push(`${forageCount}🌿`);
             if (huntCount > 0) labelParts.push(`${huntCount}🎯`);
             if (skipCount > 0) labelParts.push(`${skipCount}➖`);
-            const configLabel = labelParts.length > 0 ? labelParts.join(" ") : "All Skipped";
+            const configLabel = labelParts.length > 0 ? labelParts.join(" ") : game.i18n.localize("ionrift-respite.downtimeLedger.allSkipped");
 
             const dayBreakdownLines = rawSchedule.map(d => {
-                if (d.mode === "skip") return `Day ${d.day}: Skipped (In Camp)`;
-                const type = d.mode === "hunt" ? "Hunt" : "Forage";
+                if (d.mode === "skip") return game.i18n.format("ionrift-respite.downtimeLedger.daySkippedInCamp", { day: d.day });
+                const type = d.mode === "hunt" ? game.i18n.localize("ionrift-respite.downtimeBatch.hunt") : game.i18n.localize("ionrift-respite.downtimeBatch.forage");
                 if (d.rolled) {
                     const dc = d.mode === "hunt" ? (this._campLogistics._huntDC ?? 14) : (this._campLogistics._forageDC ?? 12);
-                    const found = d.detail || (d.success ? "find recorded" : "nothing");
-                    return `Day ${d.day}: ${type} (Check ${d.rollTotal} vs DC ${dc}): ${found}`;
+                    const found = d.detail || (d.success ? game.i18n.localize("ionrift-respite.downtimeLedger.findRecorded") : game.i18n.localize("ionrift-respite.downtimeLedger.nothingFound"));
+                    return game.i18n.format("ionrift-respite.downtimeLedger.dayCheckResult", { day: d.day, type, roll: d.rollTotal, dc, found });
                 }
-                return `Day ${d.day}: ${type} (Unrolled)`;
+                return game.i18n.format("ionrift-respite.downtimeLedger.dayUnrolled", { day: d.day, type });
             });
 
             const rolledHauls = rawSchedule.filter(entry => entry.rolled && entry.mode !== "skip");
             const haulLines = rolledHauls.map(entry => {
-                const kind = entry.mode === "hunt" ? "Hunt" : "Forage";
-                const found = entry.detail || (entry.success ? "find recorded" : "nothing");
-                return `Day ${entry.day} ${kind}: ${found}`;
+                const kind = entry.mode === "hunt" ? game.i18n.localize("ionrift-respite.downtimeBatch.hunt") : game.i18n.localize("ionrift-respite.downtimeBatch.forage");
+                const found = entry.detail || (entry.success ? game.i18n.localize("ionrift-respite.downtimeLedger.findRecorded") : game.i18n.localize("ionrift-respite.downtimeLedger.nothingFound"));
+                return game.i18n.format("ionrift-respite.downtimeLedger.haulLine", { day: entry.day, kind, found });
             });
             const findCount = rolledHauls.filter(entry => {
                 if (Array.isArray(entry.items) && entry.items.length > 0) return true;
@@ -1813,7 +1814,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                     `<div class='tooltip-header'>` +
                     iconHtml +
                     `<div class='tooltip-titles'>` +
-                    `<span class='tooltip-day-label'>Day ${day} ${esc(type)}</span>` +
+                    `<span class='tooltip-day-label'>${game.i18n.format("ionrift-respite.downtimeLedger.tooltipDayType", { day, type: esc(type) })}</span>` +
                     `<strong class='tooltip-item-name'>${esc(name)}</strong>` +
                     `</div></div>` +
                     `<div class='${detailClass}'>${esc(detail)}</div>` +
@@ -1827,8 +1828,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 ? "icons/consumables/meat/meat-chunk-red.webp"
                 : "icons/consumables/fruit/berries-cluster-purple.webp";
             const harvestName = (huntCount > 0 && forageCount === 0)
-                ? "Gathered Game"
-                : ((forageCount > 0 && huntCount === 0) ? "Foraged Provisions" : "Camp Harvest");
+                ? game.i18n.localize("ionrift-respite.downtimeLedger.gatheredGame")
+                : ((forageCount > 0 && huntCount === 0) ? game.i18n.localize("ionrift-respite.downtimeLedger.foragedProvisions") : game.i18n.localize("ionrift-respite.downtimeLedger.campHarvest"));
 
             const packFoodPool = plainFoodItems.map(f => ({
                 id: f.id,
@@ -1846,15 +1847,15 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 const isDeparture = (d === 7);
                 if (isDeparture) {
                     if (haven === "civilized") {
-                        const mealName = selectedDepartureMeal ? selectedDepartureMeal.name : "Settlement Feast";
+                        const mealName = selectedDepartureMeal ? selectedDepartureMeal.name : game.i18n.localize("ionrift-respite.downtimeLedger.settlementFeast");
                         const mealImg = sanitizeImg(selectedDepartureMeal?.img, "icons/consumables/food/bowl-stew-brown.webp");
-                        const buffNote = selectedDepartureMeal?.buffSummary || "Lodgings & Meals Covered";
+                        const buffNote = selectedDepartureMeal?.buffSummary || game.i18n.localize("ionrift-respite.downtimeLedger.lodgingsMealsCoveredDefault");
                         const tooltip = buildSustenanceTooltip({
                             day: d,
-                            type: "Departure Meal",
+                            type: game.i18n.localize("ionrift-respite.downtimeLedger.departureMeal"),
                             name: mealName,
                             img: mealImg,
-                            detail: "Covered by settlement lodgings & lifestyle.",
+                            detail: game.i18n.localize("ionrift-respite.downtimeLedger.coveredSettlementLodgings"),
                             buff: selectedDepartureMeal?.buffSummary
                         });
                         foodDailyPips.push({
@@ -1872,7 +1873,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         const mealImg = sanitizeImg(selectedDepartureMeal.img, "icons/consumables/food/bread-loaf-round-white.webp");
                         const tooltip = buildSustenanceTooltip({
                             day: d,
-                            type: "Departure Meal",
+                            type: game.i18n.localize("ionrift-respite.downtimeLedger.departureMeal"),
                             name: mealName,
                             img: mealImg,
                             detail: `Send-off meal before departure${selectedDepartureMeal.isDual ? " (satiates food & water)" : ""}.`,
@@ -1924,7 +1925,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                                 : `Routine departure ration (${primary.take} used, ${primary.remaining ?? 0} left in pack).`;
                             const tooltip = buildSustenanceTooltip({
                                 day: d,
-                                type: "Departure Ration",
+                                type: game.i18n.localize("ionrift-respite.downtimeLedger.departureRation"),
                                 name: itemName,
                                 img: itemImg,
                                 detail
@@ -1945,17 +1946,17 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         } else {
                             const tooltip = buildSustenanceTooltip({
                                 day: d,
-                                type: "Departure",
-                                name: "Starvation",
+                                type: game.i18n.localize("ionrift-respite.downtimeLedger.departure"),
+                                name: game.i18n.localize("ionrift-respite.downtimeLedger.starvation"),
                                 icon: "fas fa-triangle-exclamation text-rose",
-                                detail: "No food available for departure send-off.",
+                                detail: game.i18n.localize("ionrift-respite.downtimeLedger.noFoodDepartureSendoff"),
                                 isShortfall: true
                             });
                             foodDailyPips.push({
                                 day: d,
                                 isFed: false,
                                 img: null,
-                                name: "Starvation",
+                                name: game.i18n.localize("ionrift-respite.downtimeLedger.starvation"),
                                 editable: true,
                                 icon: "fas fa-times",
                                 isDeparture: true,
@@ -1967,14 +1968,14 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 } else {
                     // Days 1-6
                     if (haven === "civilized") {
-                        const mealName = "Settlement Meal";
+                        const mealName = game.i18n.localize("ionrift-respite.downtimeLedger.settlementMeal");
                         const mealImg = "icons/consumables/food/bowl-stew-brown.webp";
                         const tooltip = buildSustenanceTooltip({
                             day: d,
-                            type: "Sustenance",
+                            type: game.i18n.localize("ionrift-respite.downtimeLedger.sustenance"),
                             name: mealName,
                             img: mealImg,
-                            detail: "Provided by town lodgings & lifestyle."
+                            detail: game.i18n.localize("ionrift-respite.downtimeLedger.providedTownLodgings")
                         });
                         foodDailyPips.push({
                             day: d,
@@ -1988,14 +1989,14 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         dailyFoodRecord.push({ isDual: false, name: mealName, img: mealImg });
                     } else if (d > days1to6Needed) {
                         // Supplies exempt by GM logistics setting
-                        const mealName = "Supplies Exempt";
+                        const mealName = game.i18n.localize("ionrift-respite.downtimeLedger.suppliesExempt");
                         const mealImg = "icons/consumables/food/bread-loaf-round-white.webp";
                         const tooltip = buildSustenanceTooltip({
                             day: d,
-                            type: "Sustenance",
+                            type: game.i18n.localize("ionrift-respite.downtimeLedger.sustenance"),
                             name: mealName,
                             img: mealImg,
-                            detail: "No camp provisions required for this day."
+                            detail: game.i18n.localize("ionrift-respite.downtimeLedger.noCampProvisionsRequired")
                         });
                         foodDailyPips.push({
                             day: d,
@@ -2043,7 +2044,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                                 : `Pack provisions (${primary.take} used, ${primary.remaining ?? 0} left in pack).`) + dualTag;
                             const tooltip = buildSustenanceTooltip({
                                 day: d,
-                                type: "Sustenance",
+                                type: game.i18n.localize("ionrift-respite.downtimeLedger.sustenance"),
                                 name: itemName,
                                 img: itemImg,
                                 detail
@@ -2064,17 +2065,17 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         } else {
                             const tooltip = buildSustenanceTooltip({
                                 day: d,
-                                type: "Sustenance",
-                                name: "Starvation",
+                                type: game.i18n.localize("ionrift-respite.downtimeLedger.sustenance"),
+                                name: game.i18n.localize("ionrift-respite.downtimeLedger.starvation"),
                                 icon: "fas fa-triangle-exclamation text-rose",
-                                detail: "No food available in pack or camp harvest.",
+                                detail: game.i18n.localize("ionrift-respite.downtimeLedger.noFoodInPackOrHarvest"),
                                 isShortfall: true
                             });
                             foodDailyPips.push({
                                 day: d,
                                 isFed: false,
                                 img: null,
-                                name: "Starvation",
+                                name: game.i18n.localize("ionrift-respite.downtimeLedger.starvation"),
                                 editable: true,
                                 icon: "fas fa-times",
                                 isDeparture: false,
@@ -2100,12 +2101,12 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             for (let d = 1; d <= 7; d++) {
                 const isDeparture = (d === 7);
                 if (haven === "civilized") {
-                    const drinkName = isDeparture && selectedDepartureDrink ? selectedDepartureDrink.name : "Tavern Ale & Fresh Water";
+                    const drinkName = isDeparture && selectedDepartureDrink ? selectedDepartureDrink.name : game.i18n.localize("ionrift-respite.downtimeLedger.tavernAleWater");
                     const drinkImg = isDeparture && selectedDepartureDrink ? sanitizeImg(selectedDepartureDrink.img, "icons/consumables/drinks/pitcher-stoneware-white.webp") : "icons/consumables/drinks/pitcher-stoneware-white.webp";
-                    const buffNote = isDeparture && selectedDepartureDrink?.buffSummary ? selectedDepartureDrink.buffSummary : "Clean water & lodging beverages provided";
+                    const buffNote = isDeparture && selectedDepartureDrink?.buffSummary ? selectedDepartureDrink.buffSummary : game.i18n.localize("ionrift-respite.downtimeLedger.cleanWaterBeverages");
                     const tooltip = buildSustenanceTooltip({
                         day: d,
-                        type: isDeparture ? "Departure Drink" : "Hydration",
+                        type: isDeparture ? game.i18n.localize("ionrift-respite.downtimeLedger.departureDrink") : game.i18n.localize("ionrift-respite.downtimeLedger.hydration"),
                         name: drinkName,
                         img: drinkImg,
                         detail: `${buffNote}.`
@@ -2120,14 +2121,14 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         tooltip
                     });
                 } else if (d > totalDaysWaterNeeded && !isDeparture) {
-                    const drinkName = "Hydration Exempt";
+                    const drinkName = game.i18n.localize("ionrift-respite.downtimeLedger.hydrationExempt");
                     const drinkImg = "icons/magic/water/water-drop-swirl-blue.webp";
                     const tooltip = buildSustenanceTooltip({
                         day: d,
-                        type: "Hydration",
+                        type: game.i18n.localize("ionrift-respite.downtimeLedger.hydration"),
                         name: drinkName,
                         img: drinkImg,
-                        detail: "No water required from camp supplies."
+                        detail: game.i18n.localize("ionrift-respite.downtimeLedger.noWaterRequired")
                     });
                     waterDailyPips.push({
                         day: d,
@@ -2147,7 +2148,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                     if (foodOfThisDay?.isDual && unitsNeeded > 0) {
                         unitsNeeded -= 1;
                         waterSourcesUsed.push({
-                            name: `${foodOfThisDay.name} (Moisture)`,
+                            name: game.i18n.format("ionrift-respite.downtimeLedger.foodMoisture", { name: foodOfThisDay.name }),
                             img: foodOfThisDay.img || "icons/consumables/fruit/berries-cluster-purple.webp",
                             pints: 1,
                             isDualFood: true
@@ -2199,7 +2200,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         }
                         const tooltip = buildSustenanceTooltip({
                             day: d,
-                            type: isDeparture ? "Departure Drink" : "Hydration",
+                            type: isDeparture ? game.i18n.localize("ionrift-respite.downtimeLedger.departureDrink") : game.i18n.localize("ionrift-respite.downtimeLedger.hydration"),
                             name: itemName,
                             img: itemImg,
                             detail,
@@ -2225,17 +2226,17 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                     } else {
                         const tooltip = buildSustenanceTooltip({
                             day: d,
-                            type: isDeparture ? "Departure Drink" : "Hydration",
-                            name: "Dehydration",
+                            type: isDeparture ? game.i18n.localize("ionrift-respite.downtimeLedger.departureDrink") : game.i18n.localize("ionrift-respite.downtimeLedger.hydration"),
+                            name: game.i18n.localize("ionrift-respite.downtimeLedger.dehydration"),
                             icon: "fas fa-droplet-slash text-rose",
-                            detail: "No water available in waterskins or pack sources.",
+                            detail: game.i18n.localize("ionrift-respite.downtimeLedger.noWaterAvailable"),
                             isShortfall: true
                         });
                         waterDailyPips.push({
                             day: d,
                             isHydrated: false,
                             img: null,
-                            name: "Dehydration",
+                            name: game.i18n.localize("ionrift-respite.downtimeLedger.dehydration"),
                             icon: "fas fa-times",
                             isDeparture,
                             tooltip,
@@ -2293,16 +2294,16 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                     `${foodRemainingInPack} left in the pack`
                 ]);
 
-            let day7Subtext = isCivilized ? "Covered by Lodgings" : "Standard Camp Sustenance";
+            let day7Subtext = isCivilized ? game.i18n.localize("ionrift-respite.downtimeLedger.coveredByLodgings") : game.i18n.localize("ionrift-respite.downtimeLedger.standardCampSustenance");
             let day7SubtextClass = "neutral";
             if (selectedDepartureMeal?.hasBuff) {
                 day7Subtext = selectedDepartureMeal.buffSummary;
                 day7SubtextClass = "meal-buff";
             } else if (hasDehydrationRisk) {
-                day7Subtext = `⚠ Dehydration (${waterShortfallDays}d Short)`;
+                day7Subtext = game.i18n.format("ionrift-respite.downtimeLedger.dehydrationShortDays", { days: waterShortfallDays });
                 day7SubtextClass = "fail";
             } else if (hasStarvationRisk && day7RoutineFoodNeeded > 0) {
-                day7Subtext = `⚠ Starvation (${foodShortfallDays}d Short)`;
+                day7Subtext = game.i18n.format("ionrift-respite.downtimeLedger.starvationShortDays", { days: foodShortfallDays });
                 day7SubtextClass = "fail";
             }
 
@@ -2374,21 +2375,21 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 let pipTooltip = `Day ${dayNum}: ${seg.label}`;
                 if (isCraft) {
                     if (roll && roll.rolled) {
-                        pipTooltip += ` · Resolved (${roll.success ? "Success" : "Failed"})`;
-                        if (this._isGM) pipTooltip += " · Click to reroll";
+                        pipTooltip += ` · ${roll.success ? game.i18n.localize("ionrift-respite.downtimeLedger.resolvedSuccess") : game.i18n.localize("ionrift-respite.downtimeLedger.resolvedFailed")}`;
+                        if (this._isGM) pipTooltip += ` · ${game.i18n.localize("ionrift-respite.downtimeLedger.clickToReroll")}`;
                     } else if (isCommitted || this._isGM) {
-                        pipTooltip += ` · Unresolved Craft. Click to resolve`;
+                        pipTooltip += ` · ${game.i18n.localize("ionrift-respite.downtimeLedger.unresolvedCraftClick")}`;
                     } else {
-                        pipTooltip += ` · Unresolved Craft (Lock in choices to resolve)`;
+                        pipTooltip += ` · ${game.i18n.localize("ionrift-respite.downtimeLedger.unresolvedCraftLockIn")}`;
                     }
                 } else if (isRollable) {
                     if (roll && roll.rolled) {
-                        pipTooltip += ` · Check: ${roll.rollTotal} vs DC ${roll.dc ?? checkDef.dc} (${roll.success ? "Held" : "Failed"})`;
-                        if (this._isGM) pipTooltip += " · Click to reroll";
+                        pipTooltip += ` · ${roll.success ? game.i18n.format("ionrift-respite.downtimeLedger.checkResultHeld", { total: roll.rollTotal, dc: roll.dc ?? checkDef.dc }) : game.i18n.format("ionrift-respite.downtimeLedger.checkResultFailed", { total: roll.rollTotal, dc: roll.dc ?? checkDef.dc })}`;
+                        if (this._isGM) pipTooltip += ` · ${game.i18n.localize("ionrift-respite.downtimeLedger.clickToReroll")}`;
                     } else if (isCommitted || this._isGM) {
-                        pipTooltip += ` · Unrolled (DC ${checkDef.dc}). Click to roll`;
+                        pipTooltip += ` · ${game.i18n.format("ionrift-respite.downtimeLedger.unrolledClickToRoll", { dc: checkDef.dc })}`;
                     } else {
-                        pipTooltip += ` · Unrolled (DC ${checkDef.dc}). Lock in choices to roll`;
+                        pipTooltip += ` · ${game.i18n.format("ionrift-respite.downtimeLedger.unrolledLockInToRoll", { dc: checkDef.dc })}`;
                     }
                 }
 
@@ -2417,7 +2418,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             }
             while (activityDaySlots.length < 7) {
                 const d = activityDaySlots.length + 1;
-                activityDaySlots.push({ day: d, label: "Open", icon: "fas fa-question", hint: "Unallocated day", isEmpty: true });
+                activityDaySlots.push({ day: d, label: game.i18n.localize("ionrift-respite.downtimeLedger.openDay"), icon: "fas fa-question", hint: game.i18n.localize("ionrift-respite.downtimeLedger.unallocatedDay"), isEmpty: true });
             }
 
             const hasFortify = fortifyAssignedDays > 0;
@@ -2439,7 +2440,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 statusText: fortifyRolledCount === 0
                     ? `${fortifyAssignedDays}d Unrolled`
                     : `${fortifySuccessCount}/${fortifyAssignedDays} Fortified`,
-                tooltip: `Fortify Defenses (DC 12): ${fortifySuccessCount}/${fortifyAssignedDays} days holding (-${fortifySuccessCount * 2} DC).`
+                tooltip: game.i18n.format("ionrift-respite.downtimeLedger.fortifyDefensesTooltip", { succeeded: fortifySuccessCount, assigned: fortifyAssignedDays, dcReduction: fortifySuccessCount * 2 })
             } : null;
 
             const hasCraftingActivities = craftDaysCount > 0;
@@ -2678,24 +2679,24 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 personalMatchesCamp: personalCard.personalComfort === scanResult.campComfort,
                 headerTooltip: bulletTip(actor.name, [
                     `${personalCard.personalComfortLabel} rest`,
-                    personalCard.hasBedroll ? (personalCard.bedrollWaived ? "Bedroll: +1 comfort (Waived)" : "Bedroll: +1 comfort") : "No bedroll",
-                    personalCard.hasMessKit ? (personalCard.messKitWaived ? "Mess kit: save advantage (Waived)" : "Mess kit: save advantage") : "",
+                    personalCard.hasBedroll ? (personalCard.bedrollWaived ? game.i18n.localize("ionrift-respite.downtimeLedger.bedrollWaivedPill") : game.i18n.localize("ionrift-respite.downtimeLedger.bedrollNormalPill")) : game.i18n.localize("ionrift-respite.downtimeLedger.noBedroll"),
+                    personalCard.hasMessKit ? (personalCard.messKitWaived ? game.i18n.localize("ionrift-respite.downtimeLedger.messKitWaivedPill") : game.i18n.localize("ionrift-respite.downtimeLedger.messKitNormalPill")) : "",
                     personalCard.recovery?.hdLabel
                 ]),
                 bedrollTooltip: personalCard.hasBedroll
-                    ? bulletTip(personalCard.bedrollWaived ? "Bedroll (Waived)" : "Bedroll", ["+1 personal comfort", "Protects Hit Dice", personalCard.bedrollWaived ? "Factor waived by GM" : "Clears the exhaustion save"])
-                    : bulletTip("No bedroll", ["Resting at the camp's comfort"]),
+                    ? bulletTip(personalCard.bedrollWaived ? game.i18n.localize("ionrift-respite.downtimeLedger.bedrollWaivedTitle") : game.i18n.localize("ionrift-respite.downtimeLedger.bedrollNormalTitle"), [game.i18n.localize("ionrift-respite.downtimeLedger.plusOnePersonalComfort"), game.i18n.localize("ionrift-respite.downtimeLedger.protectsHitDice"), personalCard.bedrollWaived ? game.i18n.localize("ionrift-respite.downtimeLedger.factorWaivedByGM") : game.i18n.localize("ionrift-respite.downtimeLedger.clearsExhaustionSave")])
+                    : bulletTip(game.i18n.localize("ionrift-respite.downtimeLedger.noBedroll"), [game.i18n.localize("ionrift-respite.downtimeLedger.restingAtCampComfort")]),
                 tentTooltip: personalCard.hasTent
-                    ? bulletTip(personalCard.tentWaived ? "Tent (Waived)" : "Tent", ["Shields weather penalties", "Lowers encounter risk", ...(personalCard.tentWaived ? ["Factor waived by GM"] : [])])
-                    : bulletTip("No tent", ["Exposed to the weather"]),
+                    ? bulletTip(personalCard.tentWaived ? game.i18n.localize("ionrift-respite.downtimeLedger.tentWaivedTitle") : game.i18n.localize("ionrift-respite.downtimeLedger.tentNormalTitle"), [game.i18n.localize("ionrift-respite.downtimeLedger.shieldsWeatherPenalties"), game.i18n.localize("ionrift-respite.downtimeLedger.lowersEncounterRisk"), ...(personalCard.tentWaived ? [game.i18n.localize("ionrift-respite.downtimeLedger.factorWaivedByGM")] : [])])
+                    : bulletTip(game.i18n.localize("ionrift-respite.downtimeLedger.noTent"), [game.i18n.localize("ionrift-respite.downtimeLedger.exposedToWeather")]),
                 messKitTooltip: personalCard.hasMessKit
-                    ? bulletTip(personalCard.messKitWaived ? "Mess kit (Waived)" : "Mess kit", ["Advantage on exhaustion saves", ...(personalCard.messKitWaived ? ["Factor waived by GM"] : [])])
-                    : "No mess kit. Exhaustion saves are normal.",
-                recoveryTooltip: bulletTip("Recovery", [
+                    ? bulletTip(personalCard.messKitWaived ? game.i18n.localize("ionrift-respite.downtimeLedger.messKitWaivedTitle") : game.i18n.localize("ionrift-respite.downtimeLedger.messKitNormalTitle"), [game.i18n.localize("ionrift-respite.downtimeLedger.advantageOnExhaustionSaves"), ...(personalCard.messKitWaived ? [game.i18n.localize("ionrift-respite.downtimeLedger.factorWaivedByGM")] : [])])
+                    : game.i18n.localize("ionrift-respite.downtimeLedger.noMessKitExhaustionNormal"),
+                recoveryTooltip: bulletTip(game.i18n.localize("ionrift-respite.downtimeLedger.recoveryTitle"), [
                     personalCard.recovery?.hdLabel,
                     personalCard.recovery?.exhaustionDC
-                        ? `Constitution save DC ${personalCard.recovery.exhaustionDC}, or exhaustion`
-                        : "No exhaustion risk"
+                        ? game.i18n.format("ionrift-respite.downtimeLedger.conSaveDcOrExhaustion", { dc: personalCard.recovery.exhaustionDC })
+                        : game.i18n.localize("ionrift-respite.downtimeLedger.noExhaustionRisk")
                 ]),
                 identifyDays,
                 focusBudget,
@@ -3013,11 +3014,11 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const coveredDays = Math.max(0, 7 - this._campLogistics._foodDaysNeeded);
         const coveredDaysLabel = coveredDays === 0
             ? null
-            : (coveredDays === 1 ? "Day 1" : `Days 1-${coveredDays}`);
+            : (coveredDays === 1 ? game.i18n.localize("ionrift-respite.downtimeLedger.day1") : game.i18n.format("ionrift-respite.downtimeLedger.daysRange", { start: 1, end: coveredDays }));
         const neededDays1to6 = Math.max(0, 6 - coveredDays);
         const neededDaysLabel = neededDays1to6 === 0
-            ? "Fully Covered"
-            : (coveredDays === 0 ? "Days 1-6" : (coveredDays === 5 ? "Day 6" : `Days ${coveredDays + 1}-6`));
+            ? game.i18n.localize("ionrift-respite.downtimeLedger.fullyCovered")
+            : (coveredDays === 0 ? game.i18n.localize("ionrift-respite.downtimeLedger.days1to6") : (coveredDays === 5 ? game.i18n.localize("ionrift-respite.downtimeLedger.day6") : game.i18n.format("ionrift-respite.downtimeLedger.daysRange", { start: coveredDays + 1, end: 6 })));
 
         const pacingActive = Boolean(this._pacingActive);
         const maxPacingNight = totalNights + 1;
@@ -3030,9 +3031,9 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         const includeNight = haven !== "civilized";
         const headerStepDefs = [
-            { key: "camp", label: "Camp Planning" },
-            ...(includeNight ? [{ key: "night", label: isSingleNight ? "Overnight Vigil" : "Night Vigil" }] : []),
-            { key: "resolve", label: "Resolution" }
+            { key: "camp", label: game.i18n.localize("ionrift-respite.downtimeLedger.titleCampPlanning") },
+            ...(includeNight ? [{ key: "night", label: isSingleNight ? game.i18n.localize("ionrift-respite.downtimeLedger.titleOvernightVigil") : game.i18n.localize("ionrift-respite.downtimeLedger.titleNightVigil") }] : []),
+            { key: "resolve", label: game.i18n.localize("ionrift-respite.downtimeLedger.titleResolution") }
         ];
         const headerPhase = pacingActive ? (isDawnCheck ? "resolve" : (includeNight ? "night" : "resolve")) : "camp";
         const headerIndex = headerStepDefs.findIndex(step => step.key === headerPhase);
@@ -3042,8 +3043,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             complete: index < headerIndex
         }));
         const phaseLabel = pacingActive
-            ? (isDawnCheck ? "Dawn Finalization" : (isSingleNight ? "Overnight Vigil" : "Night Vigil"))
-            : (haven === "civilized" ? "Safe Rest" : "Camp Planning");
+            ? (isDawnCheck ? game.i18n.localize("ionrift-respite.downtimeLedger.titleDawnFinalization") : (isSingleNight ? game.i18n.localize("ionrift-respite.downtimeLedger.titleOvernightVigil") : game.i18n.localize("ionrift-respite.downtimeLedger.titleNightVigil")))
+            : (haven === "civilized" ? game.i18n.localize("ionrift-respite.downtimeLedger.titleSafeRest") : game.i18n.localize("ionrift-respite.downtimeLedger.titleCampPlanning"));
 
         const partyActors = party;
         const fuelBurnCost = (haven === "wilderness" && currentFire !== "cold_camp")
@@ -3060,7 +3061,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const fireTierOptions = [
             {
                 id: "cold_camp",
-                label: "❄️ Cold Camp",
+                label: game.i18n.localize("ionrift-respite.downtimeLedger.fireTierColdCamp"),
                 costLabel: "0 Fuel",
                 comfortDelta: "−1 Comf",
                 dcDelta: "−2 DC",
@@ -3070,33 +3071,33 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             },
             {
                 id: "embers",
-                label: "🪵 Embers",
+                label: game.i18n.localize("ionrift-respite.downtimeLedger.fireTierEmbers"),
                 costLabel: "1 Fuel",
                 comfortDelta: null,
                 dcDelta: "±0 DC",
                 selected: currentFire === "embers",
                 disabled: !hasTinderbox || fuelStockTotal < 1,
-                disabledReason: !hasTinderbox ? "Needs Tinderbox" : (fuelStockTotal < 1 ? "Needs 1 Fuel" : null)
+                disabledReason: !hasTinderbox ? game.i18n.localize("ionrift-respite.downtimeLedger.needsTinderbox") : (fuelStockTotal < 1 ? game.i18n.format("ionrift-respite.downtimeLedger.needsFuel", { count: 1 }) : null)
             },
             {
                 id: "campfire",
-                label: "🔥 Campfire",
+                label: game.i18n.localize("ionrift-respite.downtimeLedger.fireTierCampfire"),
                 costLabel: "2 Fuel",
                 comfortDelta: null,
                 dcDelta: "+1 DC",
                 selected: currentFire === "campfire",
                 disabled: !hasTinderbox || fuelStockTotal < 2,
-                disabledReason: !hasTinderbox ? "Needs Tinderbox" : (fuelStockTotal < 2 ? "Needs 2 Fuel" : null)
+                disabledReason: !hasTinderbox ? game.i18n.localize("ionrift-respite.downtimeLedger.needsTinderbox") : (fuelStockTotal < 2 ? game.i18n.format("ionrift-respite.downtimeLedger.needsFuel", { count: 2 }) : null)
             },
             {
                 id: "bonfire",
-                label: "💥 Bonfire",
+                label: game.i18n.localize("ionrift-respite.downtimeLedger.fireTierBonfire"),
                 costLabel: "3 Fuel",
                 comfortDelta: "+1 Comf",
                 dcDelta: "+2 DC",
                 selected: currentFire === "bonfire",
                 disabled: !hasTinderbox || fuelStockTotal < 3,
-                disabledReason: !hasTinderbox ? "Needs Tinderbox" : (fuelStockTotal < 3 ? "Needs 3 Fuel" : null)
+                disabledReason: !hasTinderbox ? game.i18n.localize("ionrift-respite.downtimeLedger.needsTinderbox") : (fuelStockTotal < 3 ? game.i18n.format("ionrift-respite.downtimeLedger.needsFuel", { count: 3 }) : null)
             }
         ];
 
@@ -3120,15 +3121,15 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             const isCurrentDawn = activePacingNight > totalNights;
             pacingDraft.push({
                 nightIndex: totalNights + 1,
-                label: "Dawn",
+                label: game.i18n.localize("ionrift-respite.downtimeLedger.dawn"),
                 isDawnStep: true,
                 isCurrentNight: isCurrentDawn,
                 isVeiled: !allNightsRolled && !isCurrentDawn,
                 isRolled: false,
                 effectiveDC: null,
                 statusIcon: "fa-sun",
-                statusLabel: "Dawn Finalization",
-                tooltip: "Dawn: Final adjudication, Constitution saves vs Exhaustion & morning transition"
+                statusLabel: game.i18n.localize("ionrift-respite.downtimeLedger.titleDawnFinalization"),
+                tooltip: game.i18n.localize("ionrift-respite.downtimeLedger.dawnStepTooltip")
             });
         }
 
@@ -3141,7 +3142,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 sentryName: "Party",
                 sentryImg: "icons/svg/sun.svg",
                 sentryPP: 10,
-                statusLabel: "Dawn Finalization",
+                statusLabel: game.i18n.localize("ionrift-respite.downtimeLedger.titleDawnFinalization"),
                 statusIcon: "fa-sun"
             }
             : (pacingDraft.find(e => e.nightIndex === activePacingNight) ?? pacingDraft[0] ?? null);
@@ -3167,10 +3168,10 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         let watchRotation = [];
         if (isSingleNight) {
             const watchDefs = [
-                { key: "dusk", label: "Dusk", hours: "0-2h", icon: "fa-cloud-sun", isPeakHazard: false },
-                { key: "midnight", label: "Midnight", hours: "2-4h", icon: "fa-moon", isPeakHazard: false },
-                { key: "deep", label: "Deep Night", hours: "4-6h", icon: "fa-shield-moon", isPeakHazard: true },
-                { key: "dawn", label: "Pre-Dawn", hours: "6-8h", icon: "fa-sun", isPeakHazard: false }
+                { key: "dusk", label: game.i18n.localize("ionrift-respite.downtimeLedger.watchDusk"), hours: "0-2h", icon: "fa-cloud-sun", isPeakHazard: false },
+                { key: "midnight", label: game.i18n.localize("ionrift-respite.downtimeLedger.watchMidnight"), hours: "2-4h", icon: "fa-moon", isPeakHazard: false },
+                { key: "deep", label: game.i18n.localize("ionrift-respite.downtimeLedger.watchDeepNight"), hours: "4-6h", icon: "fa-shield-moon", isPeakHazard: true },
+                { key: "dawn", label: game.i18n.localize("ionrift-respite.downtimeLedger.watchPreDawn"), hours: "6-8h", icon: "fa-sun", isPeakHazard: false }
             ];
             watchRotation = watchDefs.map((w, idx) => {
                 const actor = party[idx % party.length] ?? null;
@@ -3276,9 +3277,9 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 `${this._campLogistics._foodDaysNeeded} days of food needed`,
                 `Forage DC ${this._campLogistics._forageDC}`,
                 `Hunt DC ${this._campLogistics._huntDC}`,
-                !this._campLogistics._enforceTent ? "Tent factor waived" : null,
-                !this._campLogistics._enforceBedroll ? "Bedroll factor waived" : null,
-                !this._campLogistics._enforceMessKit ? "Mess kit factor waived" : null
+                !this._campLogistics._enforceTent ? game.i18n.localize("ionrift-respite.downtimeLedger.tentFactorWaived") : null,
+                !this._campLogistics._enforceBedroll ? game.i18n.localize("ionrift-respite.downtimeLedger.bedrollFactorWaived") : null,
+                !this._campLogistics._enforceMessKit ? game.i18n.localize("ionrift-respite.downtimeLedger.messKitFactorWaived") : null
             ].filter(Boolean)),
             patronSuppliedDays: this._patronSuppliedDays,
             coveredDays,
@@ -3765,7 +3766,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         if (!this._isGM) return;
 
         const confirmed = await confirmAbandonRest({
-            title: "Abandon Rest?",
+            title: game.i18n.localize("ionrift-respite.downtimeLedger.abandonRestTitle"),
             message: "This will cancel the rest for all players. Any unsaved progress will be lost."
         });
         if (!confirmed) return;
@@ -4005,10 +4006,10 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 category = isTerminalNight ? "disaster" : "combat";
                 isDisaster = isTerminalNight;
                 eventObj = {
-                    title: isTerminalNight ? "Camp Disaster" : "Severe Ambush",
+                    title: isTerminalNight ? game.i18n.localize("ionrift-respite.downtimeLedger.campDisaster") : game.i18n.localize("ionrift-respite.downtimeLedger.severeAmbush"),
                     description: isTerminalNight
-                        ? `A camp-wiping disaster strikes in the ${this._terrainTag}!`
-                        : `A ferocious assault strikes the camp perimeter in the ${this._terrainTag}!`,
+                        ? game.i18n.format("ionrift-respite.downtimeLedger.campWipingDisaster", { terrain: this._terrainTag })
+                        : game.i18n.format("ionrift-respite.downtimeLedger.ferociousAssault", { terrain: this._terrainTag }),
                     category: isTerminalNight ? "disaster" : "encounter",
                     isDisaster: isTerminalNight,
                     terrainTag: this._terrainTag,
@@ -4019,8 +4020,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 state = "red";
                 category = "combat";
                 eventObj = {
-                    title: "Hostile Ambush",
-                    description: `Predators or hostile foes assault the campsite in the ${this._terrainTag}!`,
+                    title: game.i18n.localize("ionrift-respite.downtimeLedger.hostileAmbush"),
+                    description: game.i18n.format("ionrift-respite.downtimeLedger.predatorsHostileAssault", { terrain: this._terrainTag }),
                     category: "encounter",
                     isDisaster: false,
                     terrainTag: this._terrainTag,
@@ -4031,8 +4032,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 state = "amber";
                 category = "discovery";
                 eventObj = {
-                    title: "Nocturnal Encounter",
-                    description: `Strange sounds, curious wildlife, or wanderers approach the campsite in the ${this._terrainTag}.`,
+                    title: game.i18n.localize("ionrift-respite.downtimeLedger.nocturnalEncounter"),
+                    description: game.i18n.format("ionrift-respite.downtimeLedger.strangeSoundsApproach", { terrain: this._terrainTag }),
                     category: "discovery",
                     isDisaster: false,
                     terrainTag: this._terrainTag,
@@ -4878,7 +4879,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             && this._committedActorIds.has(actorId)
             && craftPlanNeedsEscape(rolls, this._craftAvailableCounts(actor, rolls));
         if (!this._isGM && !ownerEscape) {
-            ui.notifications.warn("Only the GM can revoke committed downtime plans.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.downtimeLedger.warnOnlyGmRevoke"));
             return;
         }
 
@@ -4903,7 +4904,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         const isOwner = actor.isOwner || this._isGM;
         if (!isOwner) {
-            ui.notifications.warn("You do not have permission to resolve crafts for this character.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.downtimeLedger.warnNoPermissionResolveCrafts"));
             return;
         }
 
@@ -4911,7 +4912,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const unresolvedCrafts = rolls.filter(r => ["cook", "brew", "craft"].includes(r.activityId) && !r.rolled);
 
         if (!unresolvedCrafts.length) {
-            ui.notifications.info(`${actor.name} has already resolved all crafting activities.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.downtimeLedger.infoAlreadyResolvedCrafts", { name: actor.name }));
             return;
         }
 
@@ -4955,7 +4956,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 this.render();
             }
 
-            ui.notifications.info(`${actor.name}: Quick-rolled ${unresolvedCrafts.length} craft check(s) vs DC ${dc}.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.downtimeLedger.infoQuickRolledCrafts", { name: actor.name, count: unresolvedCrafts.length, dc }));
             return;
         }
 
@@ -4995,9 +4996,9 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
                 const remaining = unresolvedCrafts.length - 1;
                 if (remaining > 0) {
-                    ui.notifications.info(`${actor.name}: Day ${nextCraft.day} ${nextCraft.activityId} resolved! ${remaining} craft day(s) remaining.`);
+                    ui.notifications.info(game.i18n.format("ionrift-respite.downtimeLedger.infoCraftDayResolved", { name: actor.name, day: nextCraft.day, activity: nextCraft.activityId, remaining }));
                 } else {
-                    ui.notifications.info(`${actor.name}: All craft activities resolved!`);
+                    ui.notifications.info(game.i18n.format("ionrift-respite.downtimeLedger.infoAllCraftsResolved", { name: actor.name }));
                 }
             },
             this._terrainTag
@@ -5135,8 +5136,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                     };
                 } else {
                     eventObj = {
-                        title: "Wilderness Disaster",
-                        description: `A critical disaster strikes the campsite in the ${this._terrainTag}!`,
+                        title: game.i18n.localize("ionrift-respite.downtimeLedger.wildernessDisaster"),
+                        description: game.i18n.format("ionrift-respite.downtimeLedger.criticalDisasterStrikes", { terrain: this._terrainTag }),
                         category: "disaster",
                         isDisaster: true,
                         terrainTag: this._terrainTag,
@@ -5146,7 +5147,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 }
                 await postRollAndSettle(roll, {
                     speaker: { alias: "Night Watch" },
-                    flavor: `<strong>Night check</strong> (${this._terrainTag}) threshold ${targetDC}<br><em style="color:#e74c3c;">Natural 1: Disaster strikes the camp! (${eventObj.title})</em>`,
+                    flavor: `<strong>${game.i18n.localize("ionrift-respite.downtimeLedger.nightCheck")}</strong> (${this._terrainTag}) threshold ${targetDC}<br><em style="color:#e74c3c;">Natural 1: Disaster strikes the camp! (${eventObj.title})</em>`,
                     whisper: game.users.filter(u => u.isGM).map(u => u.id)
                 });
             } else {
@@ -5172,15 +5173,15 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                     };
                     await postRollAndSettle(roll, {
                         speaker: { alias: "Night Watch" },
-                        flavor: `<strong>Night check</strong> (${this._terrainTag}) threshold ${targetDC}<br><em>${catalogEvent.name}</em> triggered (roll ${rollTotal} below threshold).`,
+                        flavor: `<strong>${game.i18n.localize("ionrift-respite.downtimeLedger.nightCheck")}</strong> (${this._terrainTag}) threshold ${targetDC}<br><em>${catalogEvent.name}</em> triggered (roll ${rollTotal} below threshold).`,
                         whisper: game.users.filter(u => u.isGM).map(u => u.id)
                     });
                 } else {
                     state = "amber";
                     category = "encounter";
                     eventObj = {
-                        title: "Improvised Encounter",
-                        description: `Night check threshold ${targetDC} not met (${rollTotal}). No events in curated pool for ${this._terrainTag}. Run your own scenario at the table.`,
+                        title: game.i18n.localize("ionrift-respite.downtimeLedger.improvisedEncounter"),
+                        description: game.i18n.format("ionrift-respite.downtimeLedger.improvisedEncounterNoEvents", { targetDC, rollTotal, terrain: this._terrainTag }),
                         category: "encounter",
                         isDisaster: false,
                         terrainTag: this._terrainTag,
@@ -5190,7 +5191,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                     };
                     await postRollAndSettle(roll, {
                         speaker: { alias: "Night Watch" },
-                        flavor: `<strong>Night check</strong> (${this._terrainTag}) threshold ${targetDC}<br><em>Roll ${rollTotal} below threshold. Run your own scenario at the table.</em>`,
+                        flavor: `<strong>${game.i18n.localize("ionrift-respite.downtimeLedger.nightCheck")}</strong> (${this._terrainTag}) threshold ${targetDC}<br><em>Roll ${rollTotal} below threshold. Run your own scenario at the table.</em>`,
                         whisper: game.users.filter(u => u.isGM).map(u => u.id)
                     });
                 }
@@ -5198,7 +5199,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         } else {
             await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Night check</strong> (${this._terrainTag}) threshold ${targetDC}<br>${rollTotal} meets or beats the threshold. The night passes without incident.`,
+                flavor: `<strong>${game.i18n.localize("ionrift-respite.downtimeLedger.nightCheck")}</strong> (${this._terrainTag}) threshold ${targetDC}<br>${rollTotal} meets or beats the threshold. The night passes without incident.`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
         }
@@ -5256,8 +5257,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             entry.triggered = true;
             entry.forcedSafe = false;
             entry.event = {
-                title: "Improvised Encounter",
-                description: `Improvised night check threshold ${targetDC} not met (${rollTotal}). Run your own scenario at the table.`,
+                title: game.i18n.localize("ionrift-respite.downtimeLedger.improvisedEncounter"),
+                description: game.i18n.format("ionrift-respite.downtimeLedger.improvisedThresholdNotMet", { targetDC, rollTotal }),
                 category: "encounter",
                 isDisaster: false,
                 terrainTag: this._terrainTag,
@@ -5307,8 +5308,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         entry.isDisaster = false;
         entry.category = "encounter";
         entry.event = {
-            title: "Improvised Encounter",
-            description: "Table-side scenario. Narrate and run your own encounter at the table.",
+            title: game.i18n.localize("ionrift-respite.downtimeLedger.improvisedEncounter"),
+            description: game.i18n.localize("ionrift-respite.downtimeLedger.tableSideScenario"),
             category: "encounter",
             isDisaster: false,
             terrainTag: this._terrainTag,
@@ -5414,8 +5415,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         } else if (state === "amber") {
             entry.category = "discovery";
             entry.event = {
-                title: "Nocturnal Encounter",
-                description: `Strange sounds, curious wildlife, or wanderers approach the campsite in the ${this._terrainTag}.`,
+                title: game.i18n.localize("ionrift-respite.downtimeLedger.nocturnalEncounter"),
+                description: game.i18n.format("ionrift-respite.downtimeLedger.strangeSoundsApproach", { terrain: this._terrainTag }),
                 category: "discovery",
                 isDisaster: false,
                 terrainTag: this._terrainTag,
@@ -5425,8 +5426,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         } else if (state === "red") {
             entry.category = "combat";
             entry.event = {
-                title: "Hostile Ambush",
-                description: `Hostile foes assault the campsite in the ${this._terrainTag}!`,
+                title: game.i18n.localize("ionrift-respite.downtimeLedger.hostileAmbush"),
+                description: game.i18n.format("ionrift-respite.downtimeLedger.hostileFoesAssault", { terrain: this._terrainTag }),
                 category: "encounter",
                 isDisaster: false,
                 terrainTag: this._terrainTag,
@@ -5801,10 +5802,10 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         await ChatMessage.create({
             content: cardHtml,
-            speaker: { alias: this._budgetDelegate?.haven === "civilized" ? "Respite 7-Day Safe Rest" : "Respite 7-Day Camp" }
+            speaker: { alias: this._budgetDelegate?.haven === "civilized" ? game.i18n.localize("ionrift-respite.downtimeLedger.respiteSevenDaySafeRest") : game.i18n.localize("ionrift-respite.downtimeLedger.respiteSevenDayCamp") }
         });
 
-        ui.notifications.info(`${this._budgetDelegate?.haven === "civilized" ? "7-Day Safe Rest" : "7-Day Camp"} resolved. Full recovery applied.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.downtimeLedger.infoSevenDayRestResolved", { type: this._budgetDelegate?.haven === "civilized" ? game.i18n.localize("ionrift-respite.downtimeLedger.sevenDaySafeRest") : game.i18n.localize("ionrift-respite.downtimeLedger.sevenDayCamp") }));
         if (this._detectMagic) {
             await purgeDetectMagicRestArtifacts(party);
         }
@@ -5819,12 +5820,16 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         const isCivilized = haven === "civilized";
         const terrainEntry = terrainTag ? TerrainRegistry.get(terrainTag) : null;
-        const terrainLabel = terrainEntry?.label ?? (terrainTag ? (terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1)) : (isCivilized ? "Civilized Haven" : "Wilderness"));
-        const comfortLabels = { safe: "Safe Spot", rough: "Rough Camp", hostile: "Hostile Ground" };
-        const comfortLabel = comfortLabels[campComfort] ?? "Camp";
+        const terrainLabel = terrainEntry?.label ?? (terrainTag ? (terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1)) : (isCivilized ? game.i18n.localize("ionrift-respite.downtimeLedger.civilizedHaven") : game.i18n.localize("ionrift-respite.downtimeLedger.wilderness")));
+        const comfortLabels = {
+            get safe() { return game.i18n.localize("ionrift-respite.downtimeLedger.safeSpot"); },
+            get rough() { return game.i18n.localize("ionrift-respite.downtimeLedger.roughCamp"); },
+            get hostile() { return game.i18n.localize("ionrift-respite.downtimeLedger.hostileGround"); }
+        };
+        const comfortLabel = comfortLabels[campComfort] ?? game.i18n.localize("ionrift-respite.downtimeLedger.campFallback");
         const subtitle = isCivilized
-            ? "Safe Rest · 7 Nights · Full Recovery"
-            : `${terrainLabel} · ${comfortLabel} · 7 Nights`;
+            ? game.i18n.localize("ionrift-respite.downtimeLedger.civilizedMasterSubtitle")
+            : game.i18n.format("ionrift-respite.downtimeLedger.wildernessMasterSubtitle", { terrain: terrainLabel, comfort: comfortLabel });
 
         const anySetback = result.characters.some(c =>
             c.notes?.some(n =>
@@ -5835,8 +5840,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         );
 
         const partyStatus = anySetback
-            ? { label: "Setbacks Incurred", icon: "fas fa-triangle-exclamation", class: "setback" }
-            : { label: "7-Day Rest Complete", icon: "fas fa-sparkles", class: "positive" };
+            ? { label: game.i18n.localize("ionrift-respite.downtimeLedger.setbacksIncurred"), icon: "fas fa-triangle-exclamation", class: "setback" }
+            : { label: game.i18n.localize("ionrift-respite.downtimeLedger.sevenDayRestComplete"), icon: "fas fa-sparkles", class: "positive" };
 
         const characters = result.characters.map(char => {
             let roleLabel = "Rest";
@@ -5874,8 +5879,8 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 n.toLowerCase().includes("dehydration")
             );
             const statusPill = hasSetback
-                ? { label: "Setback", icon: "fas fa-triangle-exclamation", class: "setback" }
-                : { label: "Full Recovery", icon: "fas fa-sparkles", class: "positive" };
+                ? { label: game.i18n.localize("ionrift-respite.downtimeLedger.setback"), icon: "fas fa-triangle-exclamation", class: "setback" }
+                : { label: game.i18n.localize("ionrift-respite.downtimeLedger.fullRecovery"), icon: "fas fa-sparkles", class: "positive" };
 
             const rollGroupsMap = new Map();
             for (const r of (char.rolls || [])) {
@@ -5955,11 +5960,11 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         const hasThreats = encounters.some(e => e.itemClass === "danger");
         const incidentsMeta = hasThreats
-            ? { badgeIcon: "fas fa-shield-halved", badgeLabel: `Incidents Resolved (${encounters.length})`, containerClass: "hostile" }
-            : { badgeIcon: "fas fa-sparkles", badgeLabel: `Discoveries Logged (${encounters.length})`, containerClass: "ambient" };
+            ? { badgeIcon: "fas fa-shield-halved", badgeLabel: game.i18n.format("ionrift-respite.downtimeLedger.incidentsResolved", { count: encounters.length }), containerClass: "hostile" }
+            : { badgeIcon: "fas fa-sparkles", badgeLabel: game.i18n.format("ionrift-respite.downtimeLedger.discoveriesLogged", { count: encounters.length }), containerClass: "ambient" };
 
         return {
-            title: "7-Day Downtime Complete",
+            title: game.i18n.localize("ionrift-respite.downtimeLedger.sevenDayDowntimeComplete"),
             subtitle,
             terrainBanner: bannerContext.terrainBanner,
             terrainBannerFallback: bannerContext.terrainBannerFallback,

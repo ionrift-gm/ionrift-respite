@@ -12,7 +12,7 @@ export function showRejoinNotification(app, rejoinFn) {
     const el = document.createElement("div");
     el.id = "respite-rejoin-bar";
     const awaitingCombat = app?._awaitingCombat;
-    const phaseLabel = awaitingCombat ? "Awaiting combat resolution" : (app?._phase ? `Phase: ${app._phase}` : "active");
+    const phaseLabel = awaitingCombat ? game.i18n.localize("ionrift-respite.rejoin.awaitingCombat") : (app?._phase ? game.i18n.format("ionrift-respite.rejoin.phaseLabel", { phase: app._phase }) : game.i18n.localize("ionrift-respite.rejoin.active"));
     const isActivity = app?._phase === "activity";
     const partySize = isActivity ? (getPartyActors().length || 0) : 0;
     const activitiesResolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
@@ -40,14 +40,14 @@ export function showRejoinNotification(app, rejoinFn) {
 
     const progressHtml = isActivity
         ? (viewerDone
-            ? `<span class="respite-bar-progress"><i class="fas fa-users"></i> ${membersReady} / ${partySize} party members ready</span>`
-            : `<span class="respite-bar-progress respite-bar-advisory"><i class="fas fa-hand-pointer"></i> Choose one activity${trackFood ? " and assign rations" : ""}</span>`)
+            ? `<span class="respite-bar-progress"><i class="fas fa-users"></i> ${game.i18n.format("ionrift-respite.rejoin.partyMembersReady", { ready: membersReady, total: partySize })}</span>`
+            : `<span class="respite-bar-progress respite-bar-advisory"><i class="fas fa-hand-pointer"></i> ${trackFood ? game.i18n.localize("ionrift-respite.rejoin.chooseActivityAndRations") : game.i18n.localize("ionrift-respite.rejoin.chooseActivity")}</span>`)
         : "";
     el.innerHTML = `
         <i class="fas fa-campground"></i>
-        <span>Rest in progress (${phaseLabel})</span>
+        <span>${game.i18n.format("ionrift-respite.rejoin.restInProgressWithPhase", { phase: phaseLabel })}</span>
         ${progressHtml}
-        <button type="button" id="respite-rejoin-btn"${allDone ? ' class="respite-resume-ready"' : ""}>${awaitingCombat ? "View" : "Resume"}</button>
+        <button type="button" id="respite-rejoin-btn"${allDone ? ' class="respite-resume-ready"' : ""}>${awaitingCombat ? game.i18n.localize("ionrift-respite.rejoin.btnView") : game.i18n.localize("ionrift-respite.rejoin.btnResume")}</button>
     `;
     el.querySelector("#respite-rejoin-btn").addEventListener("click", () => {
         removeRejoinNotification();
@@ -78,8 +78,8 @@ export function showShortRestRejoinNotification(rejoinFn) {
     el.id = "respite-short-rest-rejoin-bar";
     el.innerHTML = `
         <i class="fas fa-mug-hot"></i>
-        <span>A short rest is in progress.</span>
-        <button type="button" id="respite-short-rest-rejoin-btn">Rejoin</button>
+        <span>${game.i18n.localize("ionrift-respite.rejoin.shortRestInProgressDesc")}</span>
+        <button type="button" id="respite-short-rest-rejoin-btn">${game.i18n.localize("ionrift-respite.rejoin.btnRejoin")}</button>
     `;
     el.querySelector("#respite-short-rest-rejoin-btn").addEventListener("click", () => {
         rejoinFn();
@@ -103,7 +103,7 @@ export function showPrepNotification() {
     el.id = "respite-prep-bar";
     el.innerHTML = `
         <i class="fas fa-campground"></i>
-        <span>Your GM is preparing a rest...</span>
+        <span>${game.i18n.localize("ionrift-respite.rejoin.gmPreparingRest")}</span>
     `;
     document.body.appendChild(el);
 }
@@ -125,7 +125,7 @@ export function showGmRestIndicator(app) {
     const el = document.createElement("div");
     el.id = "respite-gm-rest-bar";
     const awaitingCombat = app?._awaitingCombat;
-    const phaseLabel = awaitingCombat ? "Awaiting combat resolution" : `Phase: ${app?._phase ?? "active"}`;
+    const phaseLabel = awaitingCombat ? game.i18n.localize("ionrift-respite.rejoin.awaitingCombat") : game.i18n.format("ionrift-respite.rejoin.phaseLabel", { phase: app?._phase ?? game.i18n.localize("ionrift-respite.rejoin.active") });
     const isActivity = app?._phase === "activity";
     const partySize = isActivity ? getPartyActors().length : 0;
     const activitiesResolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
@@ -145,13 +145,13 @@ export function showGmRestIndicator(app) {
     })() : 0;
     const allDone = isActivity && partySize > 0 && membersReady >= partySize;
     const progressHtml = isActivity
-        ? `<span class="respite-bar-progress"><i class="fas fa-users"></i> ${membersReady} / ${partySize} party members ready</span>`
+        ? `<span class="respite-bar-progress"><i class="fas fa-users"></i> ${game.i18n.format("ionrift-respite.rejoin.partyMembersReady", { ready: membersReady, total: partySize })}</span>`
         : "";
     el.innerHTML = `
         <i class="fas fa-campground"></i>
-        <span>Rest in progress (${phaseLabel})</span>
+        <span>${game.i18n.format("ionrift-respite.rejoin.restInProgressWithPhase", { phase: phaseLabel })}</span>
         ${progressHtml}
-        <button type="button" id="respite-gm-resume-btn"${allDone ? ' class="respite-resume-ready"' : ""}>${awaitingCombat ? "View" : "Resume"}</button>
+        <button type="button" id="respite-gm-resume-btn"${allDone ? ' class="respite-resume-ready"' : ""}>${awaitingCombat ? game.i18n.localize("ionrift-respite.rejoin.btnView") : game.i18n.localize("ionrift-respite.rejoin.btnResume")}</button>
     `;
     el.querySelector("#respite-gm-resume-btn").addEventListener("click", () => {
         removeGmRestIndicator();
@@ -191,7 +191,7 @@ export function refreshGmRestIndicator(app) {
         if (hasActivity && hasRations) membersReady++;
     }
     const partySize = actors.length;
-    span.textContent = `${membersReady} / ${partySize} party members ready`;
+    span.textContent = game.i18n.format("ionrift-respite.rejoin.partyMembersReady", { ready: membersReady, total: partySize });
     const btn = bar.querySelector("#respite-gm-resume-btn");
     if (btn) btn.classList.toggle("respite-resume-ready", partySize > 0 && membersReady >= partySize);
 }
@@ -225,10 +225,10 @@ export function refreshRejoinBar(app) {
     });
 
     if (viewerDone) {
-        span.textContent = `${membersReady} / ${partySize} party members ready`;
+        span.textContent = game.i18n.format("ionrift-respite.rejoin.partyMembersReady", { ready: membersReady, total: partySize });
         span.classList.remove("respite-bar-advisory");
     } else {
-        span.textContent = `Choose one activity${trackFood && !isTotM ? " and assign rations" : ""}`;
+        span.textContent = (trackFood && !isTotM) ? game.i18n.localize("ionrift-respite.rejoin.chooseActivityAndRations") : game.i18n.localize("ionrift-respite.rejoin.chooseActivity");
         span.classList.add("respite-bar-advisory");
     }
     const btn = bar.querySelector("#respite-rejoin-btn");
@@ -246,8 +246,8 @@ export function showGmShortRestIndicator(resumeFn) {
     el.id = "respite-gm-short-rest-bar";
     el.innerHTML = `
         <i class="fas fa-mug-hot"></i>
-        <span>Short rest in progress</span>
-        <button type="button" id="respite-gm-short-rest-resume-btn">Resume</button>
+        <span>${game.i18n.localize("ionrift-respite.rejoin.shortRestInProgress")}</span>
+        <button type="button" id="respite-gm-short-rest-resume-btn">${game.i18n.localize("ionrift-respite.rejoin.btnResume")}</button>
     `;
     el.querySelector("#respite-gm-short-rest-resume-btn").addEventListener("click", () => {
         removeGmShortRestIndicator();

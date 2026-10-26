@@ -86,7 +86,7 @@ export function registerLockdownHooks() {
                     const isDecrement = isConsumable && (newQty < oldQty);
 
                     if (!isDecrement) {
-                        ui.notifications.warn("Item quantities are managed by the GM.");
+                        ui.notifications.warn(game.i18n.localize("ionrift-respite.playerLockdown.warnItemQuantitiesManagedByGM"));
                         return false;
                     }
                 }
@@ -97,7 +97,7 @@ export function registerLockdownHooks() {
             try {
                 if (game.settings.get(MODULE_ID, "lockAttuneOutsideRest")) {
                     if (!isRestActive()) {
-                        ui.notifications.warn("Attunement can only be changed during a rest.");
+                        ui.notifications.warn(game.i18n.localize("ionrift-respite.playerLockdown.warnAttunementRestOnly"));
                         return false;
                     }
                 }

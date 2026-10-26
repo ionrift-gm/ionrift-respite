@@ -61,5 +61,5 @@ export async function writeFastFlipAfk(characterId, isAfk) {
 
 export const fastFlipAdapterMeta = {
     id: "fast-flip",
-    label: "Fast Flip! Token Tools"
+    get label() { return game.i18n.localize("ionrift-respite.afk.fastFlipLabel"); }
 };

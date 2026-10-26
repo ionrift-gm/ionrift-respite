@@ -127,7 +127,7 @@ export function createRespiteContext(runtime) {
                 return;
             }
             runtime.activeRestSetupApp._forceEncounter = true;
-            ui.notifications.info("Next event roll will force an encounter.");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.api.forceEncounterQueued"));
         },
         getActiveApp: () => runtime.activeRestSetupApp,
         clearActiveRestApp: () => {
@@ -203,14 +203,14 @@ export function createRespiteContext(runtime) {
             const file = new File(["LINK_PACKS"], "cmd.txt", { type: "text/plain" });
             const FP = game.ionrift?.library?.platform?.FP ?? FilePicker;
             await FP.upload("data", "ionrift_debug", file, { notify: false });
-            ui.notifications.info("LINK_PACKS command sent. Waiting for DevTools to execute...");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.api.linkPacksSent"));
         },
         unlinkPacks: async () => {
             if (!game.user.isGM) return;
             const file = new File(["UNLINK_PACKS"], "cmd.txt", { type: "text/plain" });
             const FP = game.ionrift?.library?.platform?.FP ?? FilePicker;
             await FP.upload("data", "ionrift_debug", file, { notify: false });
-            ui.notifications.info("UNLINK_PACKS command sent. Waiting for DevTools to execute...");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.api.unlinkPacksSent"));
         },
         resetFlowState: async () => {
             if (!game.user.isGM) { console.warn(`${MODULE_ID} | resetFlowState is GM-only.`); return; }
@@ -233,7 +233,7 @@ export function createRespiteContext(runtime) {
             await game.settings.set(MODULE_ID, "activeShortRest", {});
             await game.settings.set(MODULE_ID, "lastRestDate", "");
             emitForceReload();
-            ui.notifications.info("Rest state cleared. Reloading...");
+            ui.notifications.info(game.i18n.localize("ionrift-respite.api.restStateClearedReloading"));
             setTimeout(() => window.location.reload(), 500);
         },
         getItemEnrichment: (itemName) => game.ionrift?.library?.enrichment?.get(itemName) ?? null,

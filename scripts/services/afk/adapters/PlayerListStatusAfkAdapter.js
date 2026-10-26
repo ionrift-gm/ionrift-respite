@@ -70,5 +70,5 @@ export function removePlayerListStatusHooks() {
 
 export const playerListStatusAdapterMeta = {
     id: "player-list-status",
-    label: "Player Status (player list)"
+    get label() { return game.i18n.localize("ionrift-respite.afk.playerListStatusLabel"); }
 };
