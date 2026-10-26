@@ -184,7 +184,10 @@ export function buildEventPoolFilterGroups(allEvents) {
                 for (const pack of legacyPacks) {
                     options.push({
                         value: `${terrain}@${pack.packId}`,
-                        label: `${terrainLabel} · ${pack.label}`
+                        label: game.i18n.format("ionrift-respite.eventPackCatalog.terrainPackLabel", {
+                            terrain: terrainLabel,
+                            pack: pack.label
+                        })
                     });
                 }
             } else {

@@ -20,7 +20,7 @@ export class RollRequestPreviewApp extends HandlebarsApplicationMixin(Applicatio
         classes: ["ionrift-window", "glass-ui", "ionrift-roll-request-preview"],
         tag: "div",
         window: {
-            title: "Roll Request Preview",
+            title: "ionrift-respite.rollRequestPreview.windowTitle",
             icon: "fas fa-dice-d20",
             resizable: true
         },
@@ -50,11 +50,11 @@ export class RollRequestPreviewApp extends HandlebarsApplicationMixin(Applicatio
 
     static open(options = {}) {
         if (!game.user.isGM) {
-            ui.notifications.warn("Roll request preview is GM-only.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.rollRequestPreview.warnGmOnly"));
             return null;
         }
         if (!Handlebars.partials.rollRequest) {
-            ui.notifications.warn("Roll request partial not loaded yet. Reload the world.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.rollRequestPreview.warnPartialNotLoaded"));
             return null;
         }
         if (activePreview && !activePreview.rendered) activePreview = null;
@@ -68,7 +68,7 @@ export class RollRequestPreviewApp extends HandlebarsApplicationMixin(Applicatio
     async _prepareContext() {
         const api = game.ionrift?.respite?.rollRequest;
         const base = api?.buildMockContext?.(this._variant)
-            ?? { title: "Preview unavailable", skillName: "Survival", dc: 10, targets: [], flow: "preview", meta: {} };
+            ?? { title: game.i18n.localize("ionrift-respite.rollRequestPreview.previewUnavailable"), skillName: "Survival", dc: 10, targets: [], flow: "preview", meta: {} };
 
         const rollRequest = foundry.utils.deepClone(base);
         if (this._gmViewForced) {
@@ -104,7 +104,10 @@ export class RollRequestPreviewApp extends HandlebarsApplicationMixin(Applicatio
             const rolledCount = rollRequest.participants.filter((entry) => entry.rolled).length;
             rollRequest.rolledCount = rolledCount;
             rollRequest.progressLabel = rollRequest.participants.length > 1
-                ? `${rolledCount} / ${rollRequest.participants.length} rolled`
+                ? game.i18n.format("ionrift-respite.rollRequestPreview.progressRolled", {
+                    rolled: rolledCount,
+                    total: rollRequest.participants.length
+                })
                 : "";
             rollRequest.allRolled = rollRequest.participants.length > 0
                 && rolledCount === rollRequest.participants.length;
@@ -122,7 +125,10 @@ export class RollRequestPreviewApp extends HandlebarsApplicationMixin(Applicatio
             const rolledCount = rollRequest.participants.filter((entry) => entry.rolled).length;
             rollRequest.rolledCount = rolledCount;
             rollRequest.progressLabel = rollRequest.participants.length > 1
-                ? `${rolledCount} / ${rollRequest.participants.length} rolled`
+                ? game.i18n.format("ionrift-respite.rollRequestPreview.progressRolled", {
+                    rolled: rolledCount,
+                    total: rollRequest.participants.length
+                })
                 : "";
             rollRequest.allRolled = rolledCount === rollRequest.participants.length;
             rollRequest.state = rollRequest.allRolled ? "submitted" : (rolledCount > 0 ? "partial" : "pending");
@@ -177,7 +183,7 @@ export class RollRequestPreviewApp extends HandlebarsApplicationMixin(Applicatio
 
         const actor = RollRequestPreviewApp.#resolvePreviewActor(characterId);
         if (!actor) {
-            ui.notifications.warn("No party actor available for preview roll.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.rollRequestPreview.warnNoPartyActor"));
             return;
         }
 
@@ -188,12 +194,17 @@ export class RollRequestPreviewApp extends HandlebarsApplicationMixin(Applicatio
             ?? mock.actionTargets?.find((entry) => entry.id === characterId);
         const rollMode = targetEntry?.rollMode ?? "normal";
         const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
-        const flavor = `<strong>${actor.name}</strong> attempts ${mock.skillName} check (DC ${mock.dc}) [preview]${modeLabel}`;
+        const flavor = game.i18n.format("ionrift-respite.rollRequestPreview.flavorAttempt", {
+            actor: actor.name,
+            skill: mock.skillName,
+            dc: mock.dc,
+            mode: modeLabel
+        });
 
         await executePlayerRoll(actor, mock.skillKey, mock.dc, flavor, target, rollMode);
 
         this._stubRolled.add(characterId);
-        ui.notifications.info(`${actor.name} rolled for preview.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.rollRequestPreview.infoRolledPreview", { name: actor.name }));
         this.render();
     }
 

@@ -79,7 +79,10 @@ export class EventResolver {
         if (rawDie === 1) {
             await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em style="color:#e74c3c;">Natural 1. Worst possible night check. Pick an event from the disaster pool.</em>`,
+                flavor: game.i18n.format("ionrift-respite.eventResolver.flavorNat1", {
+                    terrain: terrainTag,
+                    dc: effectiveDC
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
 
@@ -145,7 +148,11 @@ export class EventResolver {
         if (rawDie >= effectiveDC) {
             await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br>${rawDie} meets or beats the threshold. The night passes without incident from this roll.`,
+                flavor: game.i18n.format("ionrift-respite.eventResolver.flavorQuiet", {
+                    terrain: terrainTag,
+                    dc: effectiveDC,
+                    roll: rawDie
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             return results;
@@ -163,7 +170,10 @@ export class EventResolver {
             console.warn(`[Respite:EventResolver] No events available for terrain "${terrainTag}". Check Content Packs settings.`);
             await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em>Roll is below threshold, but no events are in your pool for this terrain. Open <strong>Curate Event Pool</strong> in module settings to add events.</em>`,
+                flavor: game.i18n.format("ionrift-respite.eventResolver.flavorPoolEmpty", {
+                    terrain: terrainTag,
+                    dc: effectiveDC
+                }),
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             return results;
@@ -172,7 +182,11 @@ export class EventResolver {
         // Post event roll to chat (GM only)
         await postRollAndSettle(roll, {
             speaker: { alias: "Night Watch" },
-            flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em>${event.name}</em> triggered (roll below threshold).`,
+            flavor: game.i18n.format("ionrift-respite.eventResolver.flavorTriggered", {
+                terrain: terrainTag,
+                dc: effectiveDC,
+                name: event.name
+            }),
             whisper: game.users.filter(u => u.isGM).map(u => u.id)
         });
 

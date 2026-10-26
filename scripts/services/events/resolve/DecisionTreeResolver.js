@@ -349,9 +349,16 @@ export class DecisionTreeResolver {
                 total: roll.total, dc, passed
             });
 
+            const outcome = passed
+                ? game.i18n.localize("ionrift-respite.decisionTree.outcomeSuccess")
+                : game.i18n.localize("ionrift-respite.decisionTree.outcomeFailure");
             await roll.toMessage({
                 speaker: ChatMessage.getSpeaker({ actor }),
-                flavor: `${skill.toUpperCase()} check (DC ${dc}) -- ${passed ? "Success" : "Failure"}`
+                flavor: game.i18n.format("ionrift-respite.decisionTree.checkFlavor", {
+                    skill: skill.toUpperCase(),
+                    dc,
+                    outcome
+                })
             });
         }
 

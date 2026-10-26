@@ -36,7 +36,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
     static DEFAULT_OPTIONS = {
         id: "respite-event-browser",
         window: {
-            title: "Event Pool",
+            title: "ionrift-respite.eventBrowser.windowTitle",
             icon: "fas fa-book-open",
             resizable: true
         },
@@ -102,17 +102,25 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             .join("");
 
         const terrainCountLabel = context.activeFilter && context.terrainPoolCount !== null
-            ? ` · ${context.terrainPoolCount} in ${context.activeFilter}`
+            ? " " + game.i18n.format("ionrift-respite.eventBrowser.terrainCountLabel", {
+                count: context.terrainPoolCount,
+                filter: context.activeFilter
+            })
             : "";
+
+        const poolSummaryText = game.i18n.format("ionrift-respite.eventBrowser.poolSummary", {
+            poolCount: context.poolCount,
+            catalogCount: context.catalogCount
+        });
 
         let html = `
         <div class="event-browser-filter">
-            <label for="terrain-filter"><i class="fas fa-map-marker-alt"></i> Terrain</label>
+            <label for="terrain-filter"><i class="fas fa-map-marker-alt"></i> ${game.i18n.localize("ionrift-respite.eventBrowser.terrainLabel")}</label>
             <select id="terrain-filter" class="event-terrain-select">
-                <option value="">All terrains</option>
+                <option value="">${game.i18n.localize("ionrift-respite.eventBrowser.allTerrains")}</option>
                 ${terrainGroupHtml}
             </select>
-            <span class="event-pool-summary">${context.poolCount} in pool (${context.catalogCount} available)${terrainCountLabel}</span>
+            <span class="event-pool-summary">${poolSummaryText}${terrainCountLabel}</span>
         </div>`;
 
         if (context.poolCount === 0 && context.hasEvents) {
@@ -121,15 +129,15 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             <div class="art-nudge-content">
                 <i class="fas fa-book-open art-nudge-icon"></i>
                 <div class="art-nudge-text">
-                    <span class="art-nudge-title">Your camp event pool is empty.</span>
-                    <span class="art-nudge-subtitle">Tick the events you are willing to run at camp, then Save Pool. Use Import Custom Events to add community JSON packs.</span>
+                    <span class="art-nudge-title">${game.i18n.localize("ionrift-respite.eventBrowser.emptyPoolTitle")}</span>
+                    <span class="art-nudge-subtitle">${game.i18n.localize("ionrift-respite.eventBrowser.emptyPoolSubtitle")}</span>
                 </div>
             </div>
         </div>`;
         }
 
         html += `
-        <p class="event-pool-intro">Tick events you are willing to run at camp. Only selected events can appear on a night check roll. Import a custom JSON event pack with the button below.</p>`;
+        <p class="event-pool-intro">${game.i18n.localize("ionrift-respite.eventBrowser.intro")}</p>`;
 
         if (context.hasEvents) {
             let disasterDividerShown = false;
@@ -141,7 +149,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
                 if (isDisaster && !disasterDividerShown) {
                     disasterDividerShown = true;
                     divider = `
-                <div class="event-pool-group-divider"><i class="fas fa-triangle-exclamation"></i> Disasters</div>`;
+                <div class="event-pool-group-divider"><i class="fas fa-triangle-exclamation"></i> ${game.i18n.localize("ionrift-respite.eventBrowser.disastersDivider")}</div>`;
                 }
                 const disasterClass = isDisaster ? " disaster" : "";
                 return `${divider}
@@ -167,18 +175,18 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             html += `
             <div class="event-browser-empty">
                 <i class="fas fa-ghost"></i>
-                <p>No events match this filter.</p>
-                <p class="event-browser-empty-hint">Import a custom JSON pack, or clear the terrain filter to see the full catalog.</p>
+                <p>${game.i18n.localize("ionrift-respite.eventBrowser.emptyFilter")}</p>
+                <p class="event-browser-empty-hint">${game.i18n.localize("ionrift-respite.eventBrowser.emptyFilterHint")}</p>
             </div>`;
         }
 
         html += `
         <div class="event-pool-footer">
-            <button type="button" class="event-pool-import-btn" title="Import a custom JSON event pack">
-                <i class="fas fa-file-import"></i> Import Custom Events
+            <button type="button" class="event-pool-import-btn" title="${game.i18n.localize("ionrift-respite.eventBrowser.titleImportCustom")}">
+                <i class="fas fa-file-import"></i> ${game.i18n.localize("ionrift-respite.eventBrowser.btnImportCustom")}
             </button>
             <button type="button" class="event-pool-save-btn" ${context.dirty ? "" : "disabled"}>
-                <i class="fas fa-save"></i> Save Pool
+                <i class="fas fa-save"></i> ${game.i18n.localize("ionrift-respite.eventBrowser.btnSavePool")}
             </button>
         </div>`;
 
@@ -261,16 +269,30 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         let terrainHint = "";
         if (legacyBinding) {
             const parentLabel = TerrainRegistry.get(legacyBinding.parentTerrain)?.label ?? legacyBinding.parentTerrain;
-            terrainHint = ` Curate under ${parentLabel} · ${legacyBinding.label}.`;
+            terrainHint = " " + game.i18n.format("ionrift-respite.eventBrowser.hintCurateUnder", {
+                parent: parentLabel,
+                pack: legacyBinding.label
+            });
         } else if (coreTags) {
-            terrainHint = ` Terrain: ${coreTags}.`;
+            terrainHint = " " + game.i18n.format("ionrift-respite.eventBrowser.hintTerrain", { tags: coreTags });
         } else if (result.terrainTags?.custom?.length) {
-            terrainHint = ` Custom terrain: ${result.terrainTags.custom.map(t => t.label).join(", ")}.`;
+            terrainHint = " " + game.i18n.format("ionrift-respite.eventBrowser.hintCustomTerrain", {
+                tags: result.terrainTags.custom.map(t => t.label).join(", ")
+            });
         }
 
-        ui.notifications.info(
-            `Imported ${result.eventCount} event${result.eventCount === 1 ? "" : "s"} from "${result.packId}".${terrainHint} Save Pool to apply.`
-        );
+        const importMsg = result.eventCount === 1
+            ? game.i18n.format("ionrift-respite.eventBrowser.infoImportedSingle", {
+                count: result.eventCount,
+                pack: result.packId,
+                hint: terrainHint
+            })
+            : game.i18n.format("ionrift-respite.eventBrowser.infoImportedPlural", {
+                count: result.eventCount,
+                pack: result.packId,
+                hint: terrainHint
+            });
+        ui.notifications.info(importMsg);
         this.render({ force: true });
     }
 
@@ -279,7 +301,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         const sentiment = evt.sentiment ?? "neutral";
         const isDisaster = evt.tier === "disaster";
         const badgeClass = isDisaster ? "disaster" : sentiment;
-        const badgeLabel = isDisaster ? "Disaster" : sentiment.replace(/^\w/, c => c.toUpperCase());
+        const badgeLabel = isDisaster ? game.i18n.localize("ionrift-respite.eventBrowser.badgeDisaster") : sentiment.replace(/^\w/, c => c.toUpperCase());
         const categoryIcon = this.#getCategoryIcon(evt.category);
         const terrainBadges = (evt.terrainTags ?? [])
             .map(t => {
@@ -288,24 +310,24 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
                 const icon = terrain?.icon ?? "fas fa-map-marker-alt";
                 const label = terrain?.label ?? t;
                 const customClass = isCustom ? " custom" : "";
-                return `<span class="event-terrain-badge${customClass}" title="${isCustom ? (terrain?.customNote ?? "Custom imported terrain") : ""}"><i class="${icon}"></i> ${label}</span>`;
+                return `<span class="event-terrain-badge${customClass}" title="${isCustom ? (terrain?.customNote ?? game.i18n.localize("ionrift-respite.eventBrowser.customImportedTerrain")) : ""}"><i class="${icon}"></i> ${label}</span>`;
             }).join("");
 
         const packLabel = evt.pack
             ? evt.pack.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
-            : "Base Pack";
+            : game.i18n.localize("ionrift-respite.eventBrowser.basePack");
         const hasCustomTerrain = (evt.terrainTags ?? []).some(t => TerrainRegistry.isCustomTerrain(t));
         const customTerrainNote = hasCustomTerrain
-            ? `<p class="event-custom-terrain-note"><i class="fas fa-puzzle-piece"></i> Uses a custom terrain tag. Travel and forage stay off unless a full terrain pack is installed.</p>`
+            ? `<p class="event-custom-terrain-note"><i class="fas fa-puzzle-piece"></i> ${game.i18n.localize("ionrift-respite.eventBrowser.customTerrainNote")}</p>`
             : "";
 
         const mech = evt.mechanical ?? {};
         let outcomesHtml = "";
         const tiers = [
-            { key: "onTriumph", label: "Triumph", cls: "triumph" },
-            { key: "onSuccess", label: "Success", cls: "success" },
-            { key: "onMixed", label: "Mixed", cls: "mixed" },
-            { key: "onFailure", label: "Failure", cls: "failure" }
+            { key: "onTriumph", label: game.i18n.localize("ionrift-respite.eventBrowser.tierTriumph"), cls: "triumph" },
+            { key: "onSuccess", label: game.i18n.localize("ionrift-respite.eventBrowser.tierSuccess"), cls: "success" },
+            { key: "onMixed", label: game.i18n.localize("ionrift-respite.eventBrowser.tierMixed"), cls: "mixed" },
+            { key: "onFailure", label: game.i18n.localize("ionrift-respite.eventBrowser.tierFailure"), cls: "failure" }
         ];
         const hasTiers = tiers.some(t => mech[t.key]);
         if (hasTiers) {
@@ -326,7 +348,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         }
 
         const guidanceHtml = evt.gmGuidance
-            ? `<div class="event-gm-guidance"><span class="event-gm-guidance-label"><i class="fas fa-user-secret"></i> GM notes</span><p>${evt.gmGuidance}</p></div>`
+            ? `<div class="event-gm-guidance"><span class="event-gm-guidance-label"><i class="fas fa-user-secret"></i> ${game.i18n.localize("ionrift-respite.eventBrowser.gmNotes")}</span><p>${evt.gmGuidance}</p></div>`
             : "";
 
         const checked = inPool ? "checked" : "";
@@ -339,7 +361,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             </div>
             <label class="event-pool-card-toggle-row">
                 <input type="checkbox" class="event-pool-card-toggle" data-event-id="${evt.id}" ${checked} />
-                <span>In roll pool</span>
+                <span>${game.i18n.localize("ionrift-respite.eventBrowser.inRollPool")}</span>
             </label>
             <div class="event-card-meta">
                 <div class="event-terrain-list">${terrainBadges}</div>
@@ -353,7 +375,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             </div>
             <div class="event-card-footer">
                 <span class="event-category"><i class="${categoryIcon}"></i> ${evt.category ?? "general"}</span>
-                ${mech.groupCheck ? `<span class="event-dc"><i class="fas fa-dice-d20"></i> DC ${mech.groupCheck.dc ?? "?"} ${mech.groupCheck.skill ?? ""}</span>` : ""}
+                ${mech.groupCheck ? `<span class="event-dc"><i class="fas fa-dice-d20"></i> ${game.i18n.format("ionrift-respite.eventBrowser.dcSkill", { dc: mech.groupCheck.dc ?? "?", skill: mech.groupCheck.skill ?? "" })}</span>` : ""}
             </div>
         </div>`;
     }
@@ -385,12 +407,12 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
                 ? `<span class="event-decision-option-desc">${opt.description}</span>`
                 : "";
             const branchHtml = opt.onFailure?.options?.length
-                ? `<span class="event-decision-branch"><i class="fas fa-code-branch"></i> Failure leads to a follow-up choice.</span>`
+                ? `<span class="event-decision-branch"><i class="fas fa-code-branch"></i> ${game.i18n.localize("ionrift-respite.eventBrowser.failureFollowUp")}</span>`
                 : "";
             return `
                 <div class="event-decision-option">
                     <div class="event-decision-option-head">
-                        <span class="event-decision-option-label">${opt.label ?? opt.id ?? "Option"}</span>
+                        <span class="event-decision-option-label">${opt.label ?? opt.id ?? game.i18n.localize("ionrift-respite.eventBrowser.defaultOption")}</span>
                         ${dcHtml}
                     </div>
                     ${descHtml}
@@ -400,7 +422,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
 
         return `
             <div class="event-decision-tree">
-                <div class="event-decision-header"><i class="fas fa-code-branch"></i> Decision</div>
+                <div class="event-decision-header"><i class="fas fa-code-branch"></i> ${game.i18n.localize("ionrift-respite.eventBrowser.decisionHeader")}</div>
                 ${promptHtml}
                 <div class="event-decision-options">${optionRows}</div>
             </div>`;
@@ -410,7 +432,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
     async #savePool() {
         await game.settings.set(MODULE_ID, "eventPoolSelection", { ...this.#pendingSelection });
         this.#dirty = false;
-        ui.notifications.info("Event pool saved.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.eventBrowser.infoPoolSaved"));
 
         const instances = foundry.applications?.instances;
         if (instances) {

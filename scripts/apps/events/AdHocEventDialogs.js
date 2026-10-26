@@ -11,14 +11,14 @@ const CATEGORY_ICONS = {
 };
 
 const CATEGORY_LABELS = {
-    encounter: "Encounters",
-    complication: "Complications",
-    disaster: "Disasters",
-    creature: "Creatures",
-    discovery: "Discoveries",
-    environment: "Weather",
-    social: "Social",
-    other: "Other"
+    get encounter() { return game.i18n.localize("ionrift-respite.adHocEvents.categoryEncounter"); },
+    get complication() { return game.i18n.localize("ionrift-respite.adHocEvents.categoryComplication"); },
+    get disaster() { return game.i18n.localize("ionrift-respite.adHocEvents.categoryDisaster"); },
+    get creature() { return game.i18n.localize("ionrift-respite.adHocEvents.categoryCreature"); },
+    get discovery() { return game.i18n.localize("ionrift-respite.adHocEvents.categoryDiscovery"); },
+    get environment() { return game.i18n.localize("ionrift-respite.adHocEvents.categoryEnvironment"); },
+    get social() { return game.i18n.localize("ionrift-respite.adHocEvents.categorySocial"); },
+    get other() { return game.i18n.localize("ionrift-respite.adHocEvents.categoryOther"); }
 };
 
 const CATEGORY_ORDER = ["encounter", "complication", "disaster", "creature", "discovery", "environment", "social", "other"];
@@ -103,20 +103,21 @@ export async function pickPoolEvent(events, terrainLabel, terrainTag = null) {
     }
 
     const showSearch = events.length > 6;
+    const leadHtml = game.i18n.format("ionrift-respite.adHocEvents.chooseEventLead", { terrain: escapeAttr(terrainLabel) });
     const content = `
         <div class="adhoc-pick-dialog">
             <div class="adhoc-pick-header">
-                <p class="adhoc-pick-lead">Choose a camp event for <strong>${escapeAttr(terrainLabel)}</strong>.</p>
-                <button type="button" class="adhoc-pick-edit-btn" data-action="editPool" title="Edit the camp event pool">
-                    <i class="fas fa-pen-to-square"></i> Edit pool
+                <p class="adhoc-pick-lead">${leadHtml}</p>
+                <button type="button" class="adhoc-pick-edit-btn" data-action="editPool" title="${game.i18n.localize("ionrift-respite.adHocEvents.titleEditPool")}">
+                    <i class="fas fa-pen-to-square"></i> ${game.i18n.localize("ionrift-respite.adHocEvents.btnEditPool")}
                 </button>
             </div>
-            ${showSearch ? `<input type="search" class="adhoc-pick-search" placeholder="Filter events..." autocomplete="off">` : ""}
+            ${showSearch ? `<input type="search" class="adhoc-pick-search" placeholder="${game.i18n.localize("ionrift-respite.adHocEvents.placeholderFilter")}" autocomplete="off">` : ""}
             <div class="adhoc-pick-split" data-active-cat="${activeCats[0]}">
                 <div class="adhoc-pick-sidebar ionrift-list">${sidebarHtml}</div>
                 <div class="adhoc-pick-events ionrift-list">${eventsHtml}</div>
             </div>
-            <p class="adhoc-pick-empty" hidden>No events match.</p>
+            <p class="adhoc-pick-empty" hidden>${game.i18n.localize("ionrift-respite.adHocEvents.noEventsMatch")}</p>
         </div>`;
 
     return new Promise((resolve) => {
@@ -130,7 +131,7 @@ export async function pickPoolEvent(events, terrainLabel, terrainTag = null) {
 
         // lint-ignore: DialogV2. Branded picker for GM night-event selection.
         const dialog = new foundry.applications.api.DialogV2({
-            window: { title: "Pick event from pool", icon: "fas fa-book-open" },
+            window: { title: game.i18n.localize("ionrift-respite.adHocEvents.dialogTitle"), icon: "fas fa-book-open" },
             classes: ["ionrift-window", "dialog", "respite-adhoc-pick"],
             position: { width: 620, height: 640 },
             modal: true,
@@ -142,14 +143,14 @@ export async function pickPoolEvent(events, terrainLabel, terrainTag = null) {
                    layout/styling and attach real click handlers in capture phase below. */
                 {
                     action: "cancel",
-                    label: "Cancel",
+                    label: game.i18n.localize("ionrift-respite.adHocEvents.btnCancel"),
                     icon: "fas fa-times",
                     default: true,
                     callback: () => {}
                 },
                 {
                     action: "confirm",
-                    label: "Confirm",
+                    label: game.i18n.localize("ionrift-respite.adHocEvents.btnConfirm"),
                     icon: "fas fa-check",
                     callback: () => {}
                 }

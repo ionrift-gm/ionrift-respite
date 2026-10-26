@@ -132,12 +132,12 @@ function pickJsonFile() {
  */
 export async function importEventPackFromFile() {
     if (!game.user.isGM) {
-        ui.notifications.warn("Only the GM can import packs.");
+        ui.notifications.warn(game.i18n.localize("ionrift-respite.eventPackImport.warnGmOnly"));
         return null;
     }
 
     if (!game.ionrift?.library?.importJsonPack) {
-        ui.notifications.error("Ionrift Library v1.6.0+ is required for event pack imports.");
+        ui.notifications.error(game.i18n.localize("ionrift-respite.eventPackImport.errorLibraryRequired"));
         return null;
     }
 
@@ -148,7 +148,7 @@ export async function importEventPackFromFile() {
     try {
         data = JSON.parse(await file.text());
     } catch (error) {
-        const msg = `Failed to parse JSON: ${error.message}`;
+        const msg = game.i18n.format("ionrift-respite.eventPackImport.errorJsonParse", { error: error.message });
         ui.notifications.error(msg);
         return { success: false, packId: null, eventIds: [], eventCount: 0, errors: [msg], warnings: [], info: [] };
     }

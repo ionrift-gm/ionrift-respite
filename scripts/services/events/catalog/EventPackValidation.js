@@ -211,10 +211,10 @@ export function classifyPackTerrainTags(data) {
         if (manifest && !manifest.custom && !TerrainRegistry.isCustomTerrain(tag)) {
             core.push({ tag, label: manifest.label ?? tag });
         } else if (manifest?.custom || TerrainRegistry.isCustomTerrain(tag)) {
-            custom.push({ tag, label: manifest.label ?? `${tag} (custom)` });
+            custom.push({ tag, label: manifest.label ?? game.i18n.format("ionrift-respite.eventPackValidation.customLabel", { label: tag }) });
         } else {
             const label = tag.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-            custom.push({ tag, label: `${label} (custom)` });
+            custom.push({ tag, label: game.i18n.format("ionrift-respite.eventPackValidation.customLabel", { label }) });
         }
     }
 
@@ -325,11 +325,11 @@ function validateEffect(effect, path, errors, warnings, registryIndex) {
 export async function confirmEventPackImport(report) {
     const content = buildImportReportHtml(report, { confirm: true });
     return foundry.applications.api.DialogV2.confirm({
-        window: { title: "Import event pack?", icon: "fas fa-file-import" },
+        window: { title: game.i18n.localize("ionrift-respite.eventPackValidation.titleImportPack"), icon: "fas fa-file-import" },
         content,
         position: { width: 480, height: "auto" },
-        yes: { label: "Import", icon: "fas fa-file-import" },
-        no: { label: "Cancel", icon: "fas fa-times" }
+        yes: { label: game.i18n.localize("ionrift-respite.eventPackValidation.btnImport"), icon: "fas fa-file-import" },
+        no: { label: game.i18n.localize("ionrift-respite.eventPackValidation.btnCancel"), icon: "fas fa-times" }
     });
 }
 
@@ -340,10 +340,10 @@ export async function confirmEventPackImport(report) {
 export async function showEventPackImportFailure(report) {
     const content = buildImportReportHtml(report, { confirm: false });
     await foundry.applications.api.DialogV2.wait({
-        window: { title: "Import failed", icon: "fas fa-exclamation-triangle" },
+        window: { title: game.i18n.localize("ionrift-respite.eventPackValidation.titleImportFailed"), icon: "fas fa-exclamation-triangle" },
         content,
         position: { width: 480, height: "auto" },
-        buttons: [{ action: "close", label: "Close", icon: "fas fa-times", default: true }]
+        buttons: [{ action: "close", label: game.i18n.localize("ionrift-respite.eventPackValidation.btnClose"), icon: "fas fa-times", default: true }]
     });
 }
 
@@ -399,7 +399,7 @@ function renderReportSection(lines, heading) {
 
     const { items, omitted, total } = summarizeReportLines(lines);
     const omittedHtml = omitted > 0
-        ? `<li class="event-pack-import-omitted">${omitted} more issue type${omitted === 1 ? "" : "s"} (${total} total). Full list in the browser console.</li>`
+        ? `<li class="event-pack-import-omitted">${omitted === 1 ? game.i18n.format("ionrift-respite.eventPackValidation.omittedSingle", { omitted, total }) : game.i18n.format("ionrift-respite.eventPackValidation.omittedPlural", { omitted, total })}</li>`
         : "";
 
     return `<p><strong>${heading}</strong></p><ul>${items.map(line => `<li>${line}</li>`).join("")}${omittedHtml}</ul>`;
@@ -421,19 +421,19 @@ function buildImportReportHtml(report, opts = {}) {
 
     if (report.terrainTags?.core?.length) {
         const labels = report.terrainTags.core.map(t => t.label).join(", ");
-        bodyParts.push(`<p><strong>Core terrains</strong> ${labels}</p>`);
+        bodyParts.push(`<p><strong>${game.i18n.localize("ionrift-respite.eventPackValidation.coreTerrains")}</strong> ${labels}</p>`);
     }
     if (report.terrainTags?.custom?.length) {
         const labels = report.terrainTags.custom.map(t => t.label).join(", ");
-        bodyParts.push(`<p><strong>Custom terrains</strong> ${labels}</p>`);
+        bodyParts.push(`<p><strong>${game.i18n.localize("ionrift-respite.eventPackValidation.customTerrains")}</strong> ${labels}</p>`);
     }
 
-    bodyParts.push(renderReportSection(report.info, "Notes"));
-    bodyParts.push(renderReportSection(report.warnings, "Warnings"));
-    bodyParts.push(renderReportSection(report.errors, "Errors"));
+    bodyParts.push(renderReportSection(report.info, game.i18n.localize("ionrift-respite.eventPackValidation.sectionNotes")));
+    bodyParts.push(renderReportSection(report.warnings, game.i18n.localize("ionrift-respite.eventPackValidation.sectionWarnings")));
+    bodyParts.push(renderReportSection(report.errors, game.i18n.localize("ionrift-respite.eventPackValidation.sectionErrors")));
 
     const footer = (opts.confirm && report.valid)
-        ? `<p class="event-pack-import-report-footer">Import <strong>${report.eventCount ?? "?"}</strong> event${report.eventCount === 1 ? "" : "s"} from <strong>${report.packId ?? "pack"}</strong>?</p>`
+        ? `<p class="event-pack-import-report-footer">${report.eventCount === 1 ? game.i18n.format("ionrift-respite.eventPackValidation.importConfirmSingle", { count: report.eventCount ?? "?", pack: report.packId ?? "pack" }) : game.i18n.format("ionrift-respite.eventPackValidation.importConfirmPlural", { count: report.eventCount ?? "?", pack: report.packId ?? "pack" })}</p>`
         : "";
 
     return `<div class="event-pack-import-report">

@@ -257,14 +257,14 @@ export class TerrainRegistry {
         const label = tag.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase());
         return {
             id: tag,
-            label: `${label} (custom)`,
+            label: game.i18n.format("ionrift-respite.terrainRegistry.customLabel", { label }),
             category: "custom",
             icon: "fas fa-puzzle-piece",
             comfort: "rough",
             travelActivities: [],
             mealRules: { waterPerDay: 1, foodPerDay: 1 },
             custom: true,
-            customNote: "Imported event pack terrain. Travel and forage are off until a terrain pack is installed."
+            customNote: game.i18n.localize("ionrift-respite.terrainRegistry.customNote")
         };
     }
 

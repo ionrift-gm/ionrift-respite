@@ -1,7 +1,7 @@
 <div class="roll-request-preview">
     <details class="roll-request-preview__controls">
-        <summary class="roll-request-preview__controls-summary">Preview controls</summary>
-        <label class="roll-request-preview__label" for="roll-request-preview-variant">Variant</label>
+        <summary class="roll-request-preview__controls-summary">{{localize "ionrift-respite.rollRequestPreview.previewControls"}}</summary>
+        <label class="roll-request-preview__label" for="roll-request-preview-variant">{{localize "ionrift-respite.rollRequestPreview.variant"}}</label>
         <select id="roll-request-preview-variant" class="roll-request-preview__select" data-action="previewSelectVariant">
             {{#each variants}}
             <option value="{{id}}" {{#if (eq id ../currentVariant)}}selected{{/if}}>{{label}}</option>
@@ -9,7 +9,7 @@
         </select>
         <label class="roll-request-preview__toggle">
             <input type="checkbox" data-action="previewToggleGmView" {{#if gmViewForced}}checked{{/if}} />
-            Force player POV
+            {{localize "ionrift-respite.rollRequestPreview.forcePlayerPov"}}
         </label>
     </details>
     <div class="roll-request-preview__stage">

@@ -306,7 +306,7 @@ export class EventsPhaseDelegate {
             rollModes: this.activeTreeState.pendingRollModes ?? {}
         });
 
-        ui.notifications.info("Tree roll request re-sent to players.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.eventsPhase.infoTreeRollResent"));
     }
 
     
@@ -428,7 +428,7 @@ export class EventsPhaseDelegate {
             awaitingCombat: true
         });
 
-        ui.notifications.info("Set up and run the encounter. Reopen Respite and click 'Combat Complete' when done.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.eventsPhase.infoSetupEncounter"));
     }
 
         async completeEncounter() {
@@ -484,7 +484,7 @@ export class EventsPhaseDelegate {
             );
             if (buffs.partyWide.summary) lines.push(`<em>${buffs.partyWide.summary}</em>`);
             await ChatMessage.create({
-                content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>Combat Readiness</strong><br>${lines.join("<br>")}</div>`,
+                content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>${game.i18n.localize("ionrift-respite.eventsPhase.combatReadiness")}</strong><br>${lines.join("<br>")}</div>`,
                 speaker: { alias: "Respite" }
             });
         }
@@ -577,7 +577,7 @@ export class EventsPhaseDelegate {
                         items: ev.mechanical?.onSuccess?.items ?? [],
                         effects: ev.mechanical?.onFailure?.effects ?? []
                     }];
-                    ui.notifications.info(`Forced encounter: ${ev.name}`);
+                    ui.notifications.info(game.i18n.format("ionrift-respite.eventsPhase.infoForcedEncounter", { name: ev.name }));
                 } else {
                     app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._earlyResults);
                 }
@@ -628,7 +628,7 @@ export class EventsPhaseDelegate {
             });
             app._triggeredEvents = [{
                 id: `adhoc_${Date.now()}`,
-                name: "Improvised Encounter",
+                name: game.i18n.localize("ionrift-respite.eventsPhase.improvisedEncounter"),
                 category: "encounter",
                 description: "",
                 mechanical: null,
@@ -673,7 +673,7 @@ export class EventsPhaseDelegate {
                 awaitingCombat: true
             });
 
-        ui.notifications.info("Set up and run the encounter. Reopen Respite and click 'Combat Complete' when done.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.eventsPhase.infoSetupEncounter"));
 
         app.close();
     
@@ -712,7 +712,7 @@ export class EventsPhaseDelegate {
                 const lines = buffs.perCharacter.map(b => `<strong>${b.characterName}</strong> (${b.activityName}): ${b.summary}`);
                 if (buffs.partyWide.summary) lines.push(`<em>${buffs.partyWide.summary}</em>`);
                 await ChatMessage.create({
-                    content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>Combat Readiness</strong><br>${lines.join("<br>")}</div>`,
+                    content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>${game.i18n.localize("ionrift-respite.eventsPhase.combatReadiness")}</strong><br>${lines.join("<br>")}</div>`,
                     speaker: { alias: "Respite" }
                 });
             }
@@ -811,7 +811,7 @@ export class EventsPhaseDelegate {
                     resolvedRolls
                 });
 
-        ui.notifications.info("Tree roll request re-sent to players.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.eventsPhase.infoTreeRollResent"));
     
     }
 
@@ -845,7 +845,7 @@ export class EventsPhaseDelegate {
         const app = this._app;
 
         if (!app._forceEncounter && this._currentTerrainPoolCount() === 0) {
-            ui.notifications.warn("No events in the curated pool for this terrain. Curate the pool first.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.eventsPhase.warnCuratePoolFirst"));
             return;
         }
 
@@ -870,7 +870,7 @@ export class EventsPhaseDelegate {
                         items: ev.mechanical?.onSuccess?.items ?? [],
                         effects: ev.mechanical?.onFailure?.effects ?? []
                     }];
-                    ui.notifications.info(`Forced encounter: ${ev.name}`);
+                    ui.notifications.info(game.i18n.format("ionrift-respite.eventsPhase.infoForcedEncounter", { name: ev.name }));
                 } else {
                     app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._earlyResults);
                 }
@@ -907,7 +907,7 @@ export class EventsPhaseDelegate {
                 const lines = buffs.perCharacter.map(b => `<strong>${b.characterName}</strong> (${b.activityName}): ${b.summary}`);
                 if (buffs.partyWide.summary) lines.push(`<em>${buffs.partyWide.summary}</em>`);
                 await ChatMessage.create({
-                    content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>Combat Readiness</strong><br>${lines.join("<br>")}</div>`,
+                    content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>${game.i18n.localize("ionrift-respite.eventsPhase.combatReadiness")}</strong><br>${lines.join("<br>")}</div>`,
                     speaker: { alias: "Respite" }
                 });
             }
@@ -980,7 +980,7 @@ export class EventsPhaseDelegate {
             });
             app._triggeredEvents = [{
                 id: `adhoc_${Date.now()}`,
-                name: "Improvised Encounter",
+                name: game.i18n.localize("ionrift-respite.eventsPhase.improvisedEncounter"),
                 category: "encounter",
                 description: "",
                 mechanical: null,
@@ -1017,7 +1017,7 @@ export class EventsPhaseDelegate {
         try {
             await ChatMessage.create({
                 speaker: { alias: "Night Watch" },
-                content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>Night Watch</strong><br>The night passes without incident.</div>`,
+                content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>${game.i18n.localize("ionrift-respite.eventsPhase.nightWatchHeading")}</strong><br>${game.i18n.localize("ionrift-respite.eventsPhase.nightWatchQuiet")}</div>`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             app._triggeredEvents = [];
@@ -1039,7 +1039,7 @@ export class EventsPhaseDelegate {
         } catch { /* settings not ready */ }
         app._triggeredEvents = [{
             id: `adhoc_${Date.now()}`,
-            name: "Improvised Encounter",
+            name: game.i18n.localize("ionrift-respite.eventsPhase.improvisedEncounter"),
             category: "encounter",
             description: "",
             mechanical: null,
@@ -1064,7 +1064,7 @@ export class EventsPhaseDelegate {
         const terrainTag = app._engine.terrainTag ?? app._selectedTerrain ?? "forest";
         const poolEvents = listPoolEventsForTerrain(app._eventResolver, terrainTag);
         if (!poolEvents.length) {
-            ui.notifications.warn("No events in the curated pool for app terrain. Curate the pool first.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.eventsPhase.warnCuratePoolFirstApp"));
             return;
         }
 
@@ -1075,7 +1075,7 @@ export class EventsPhaseDelegate {
 
         const catalogEvent = app._eventResolver.events.get(eventId);
         if (!catalogEvent) {
-            ui.notifications.error("Selected event is no longer in the pool.");
+            ui.notifications.error(game.i18n.localize("ionrift-respite.eventsPhase.errorEventNotInPool"));
             return;
         }
 
@@ -1146,7 +1146,7 @@ export class EventsPhaseDelegate {
                 awaitingCombat: true
             });
 
-        ui.notifications.info("Set up and run the encounter. Reopen Respite and click 'Combat Complete' when done.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.eventsPhase.infoSetupEncounter"));
 
         app.close();
     
@@ -1203,7 +1203,7 @@ export class EventsPhaseDelegate {
                 const lines = buffs.perCharacter.map(b => `<strong>${b.characterName}</strong> (${b.activityName}): ${b.summary}`);
                 if (buffs.partyWide.summary) lines.push(`<em>${buffs.partyWide.summary}</em>`);
                 await ChatMessage.create({
-                    content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>Combat Readiness</strong><br>${lines.join("<br>")}</div>`,
+                    content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>${game.i18n.localize("ionrift-respite.eventsPhase.combatReadiness")}</strong><br>${lines.join("<br>")}</div>`,
                     speaker: { alias: "Respite" }
                 });
             }
@@ -1372,7 +1372,7 @@ export class EventsPhaseDelegate {
                     resolvedRolls
                 });
 
-        ui.notifications.info("Tree roll request re-sent to players.");
+        ui.notifications.info(game.i18n.localize("ionrift-respite.eventsPhase.infoTreeRollResent"));
     
     }
 
@@ -1420,7 +1420,7 @@ export class EventsPhaseDelegate {
         const characterId = button.dataset.characterId;
         const eventIndex = Number.parseInt(button.dataset.eventIndex, 10);
         if (!Number.isFinite(eventIndex)) {
-            ui.notifications.warn("Could not resolve which event check to roll for.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.eventsPhase.warnCouldNotResolveCheck"));
             return;
         }
         const pendingKey = `${eventIndex}:${characterId}`;
@@ -1429,11 +1429,12 @@ export class EventsPhaseDelegate {
 
         const triggeredEvent = app._triggeredEvents?.[eventIndex];
         if (!triggeredEvent?.awaitingRolls || !characterId) {
-            ui.notifications.warn("This event is not waiting for that roll.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.eventsPhase.warnNotWaitingForRoll"));
             return;
         }
         if (triggeredEvent.resolvedRolls?.some(r => r.characterId === characterId)) {
-            ui.notifications.info(`${triggeredEvent.resolvedRolls.find(r => r.characterId === characterId)?.name ?? "That character"} already rolled.`);
+            const rolledCharName = triggeredEvent.resolvedRolls.find(r => r.characterId === characterId)?.name ?? game.i18n.localize("ionrift-respite.eventsPhase.defaultThatCharacter");
+            ui.notifications.info(game.i18n.format("ionrift-respite.eventsPhase.infoAlreadyRolled", { character: rolledCharName }));
             return;
         }
 
@@ -1461,7 +1462,7 @@ export class EventsPhaseDelegate {
         } catch (err) {
 
             console.error("[Respite] GM event roll for player failed:", err);
-            ui.notifications.error(`Failed to roll for ${actor.name}.`);
+            ui.notifications.error(game.i18n.format("ionrift-respite.eventsPhase.errorFailedToRoll", { name: actor.name }));
             app.render();
         } finally {
             app._eventGmRollPending.delete(pendingKey);
@@ -1659,7 +1660,7 @@ export class EventsPhaseDelegate {
             flyout.className = "tree-gm-sidebar";
             flyout.innerHTML = `
                 <div class="tree-gm-sidebar-header">
-                    <span><i class="fas fa-book-reader"></i> GM Guidance</span>
+                    <span><i class="fas fa-book-reader"></i> ${game.i18n.localize("ionrift-respite.eventsPhase.gmGuidance")}</span>
                     <button type="button" class="tree-gm-sidebar-close"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="tree-gm-sidebar-body"></div>
@@ -1719,7 +1720,7 @@ export class EventsPhaseDelegate {
 
         // Verify this player owns this actor
         if (!actor.isOwner) {
-            ui.notifications.warn("You do not own this character.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.eventsPhase.warnDoNotOwnCharacter"));
             return;
         }
 
@@ -1728,7 +1729,12 @@ export class EventsPhaseDelegate {
 
         const rollMode = pending.rollModes?.[characterId] ?? "normal";
         const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
-        const flavor = `<strong>${actor.name}</strong> attempts ${pending.skillName} check (DC ${pending.dc})${modeLabel}`;
+        const flavor = game.i18n.format("ionrift-respite.eventsPhase.rollFlavorAttempt", {
+            actor: actor.name,
+            skill: pending.skillName,
+            dc: pending.dc,
+            mode: modeLabel
+        });
 
         const { total } = await executePlayerRoll(
             actor,
@@ -1754,7 +1760,11 @@ export class EventsPhaseDelegate {
                     total
                 });
 
-        ui.notifications.info(`${actor.name} rolled ${total} for ${pending.skillName}.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.eventsPhase.infoRolledForSkill", {
+            actor: actor.name,
+            total,
+            skill: pending.skillName
+        }));
         app.render();
     
     }
@@ -1782,8 +1792,12 @@ export class EventsPhaseDelegate {
         button.classList.toggle("adv", next === "advantage");
         button.classList.toggle("dis", next === "disadvantage");
         const name = button.getAttribute("data-tooltip")?.split(" \u00b7 ")[0] ?? "";
-        const modeLabel = next === "advantage" ? "Advantage" : next === "disadvantage" ? "Disadvantage" : "Normal";
-        button.setAttribute("data-tooltip", `${name} \u00b7 ${modeLabel} (click to change)`);
+        const modeLabel = next === "advantage"
+            ? game.i18n.localize("ionrift-respite.eventsPhase.modeAdvantage")
+            : next === "disadvantage"
+                ? game.i18n.localize("ionrift-respite.eventsPhase.modeDisadvantage")
+                : game.i18n.localize("ionrift-respite.eventsPhase.modeNormal");
+        button.setAttribute("data-tooltip", game.i18n.format("ionrift-respite.eventsPhase.avatarModeTooltip", { name, mode: modeLabel }));
         button.querySelector(".check-avatar-mode")?.remove();
         if (next !== "normal") {
             const badge = document.createElement("span");
@@ -1826,7 +1840,10 @@ export class EventsPhaseDelegate {
                 }
             });
 
-        ui.notifications.info(`Roll request sent to ${entry.characterName} for ${entry.activityName}.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.eventsPhase.infoRollRequestSent", {
+            character: entry.characterName,
+            activity: entry.activityName
+        }));
         app.render();
     
     }
@@ -1846,7 +1863,7 @@ export class EventsPhaseDelegate {
         const actorId = select?.value;
 
         if (!actorId || !itemRef) {
-            ui.notifications.warn("Select a character to receive the items.");
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.eventsPhase.warnSelectCharacter"));
             return;
         }
 
@@ -1858,12 +1875,19 @@ export class EventsPhaseDelegate {
                 ledger: app._grantLedger,
                 slotKey: GrantLedger.discoverySlotKey(eventId, ref)
             });
-            ui.notifications.info(`Granted ${result.rolled}x ${result.itemName} to ${result.actorName}.`);
+            ui.notifications.info(game.i18n.format("ionrift-respite.eventsPhase.infoGrantedItem", {
+            rolled: result.rolled,
+            item: result.itemName,
+            actor: result.actorName
+        }));
             app.render();
         } catch (e) {
 
             console.error(`[Respite] Failed to grant item:`, e);
-            ui.notifications.error(`Failed to grant ${itemRef}: ${e.message}`);
+            ui.notifications.error(game.i18n.format("ionrift-respite.eventsPhase.errorFailedToGrant", {
+            item: itemRef,
+            error: e.message
+        }));
         }
     
     }
@@ -1986,16 +2010,19 @@ export class EventsPhaseDelegate {
                 }
             }
             if (ungrantedCount > 0) {
+                const ungrantedText = ungrantedCount > 1
+                    ? game.i18n.format("ionrift-respite.eventsPhase.ungrantedPlural", { count: ungrantedCount })
+                    : game.i18n.format("ionrift-respite.eventsPhase.ungrantedSingle", { count: ungrantedCount });
                 const overlay = document.createElement("div");
                 overlay.classList.add("ionrift-armor-modal-overlay");
                 overlay.innerHTML = `
                     <div class="ionrift-armor-modal">
-                        <h3><i class="fas fa-gem"></i> Ungranted Discoveries</h3>
-                        <p>${ungrantedCount} discovered item${ungrantedCount > 1 ? "s have" : " has"} not been granted to anyone.</p>
-                        <p>Close anyway and lose these items?</p>
+                        <h3><i class="fas fa-gem"></i> ${game.i18n.localize("ionrift-respite.eventsPhase.ungrantedDiscoveriesTitle")}</h3>
+                        <p>${ungrantedText}</p>
+                        <p>${game.i18n.localize("ionrift-respite.eventsPhase.ungrantedPrompt")}</p>
                         <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-times"></i> Close Anyway</button>
-                            <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
+                            <button class="btn-armor-confirm"><i class="fas fa-times"></i> ${game.i18n.localize("ionrift-respite.eventsPhase.btnCloseAnyway")}</button>
+                            <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> ${game.i18n.localize("ionrift-respite.eventsPhase.btnGoBack")}</button>
                         </div>
                     </div>`;
                 document.body.appendChild(overlay);
@@ -2059,7 +2086,12 @@ export class EventsPhaseDelegate {
 
         if (pending.rolledCharacters?.has(characterId)) return;
 
-        const flavor = `<strong>${actor.name}</strong> - ${activityEntry.activityName} (${activityEntry.skillName}) DC ${activityEntry.dc}`;
+        const flavor = game.i18n.format("ionrift-respite.eventsPhase.rollFlavorCamp", {
+            actor: actor.name,
+            activity: activityEntry.activityName,
+            skill: activityEntry.skillName,
+            dc: activityEntry.dc
+        });
         const { total } = await executePlayerRoll(
             actor,
             activityEntry.skill,
@@ -2078,7 +2110,11 @@ export class EventsPhaseDelegate {
                     total
                 });
 
-        ui.notifications.info(`${actor.name} rolled ${total} for ${activityEntry.activityName}.`);
+        ui.notifications.info(game.i18n.format("ionrift-respite.eventsPhase.infoRolledForActivity", {
+            actor: actor.name,
+            total,
+            activity: activityEntry.activityName
+        }));
         app.render();
     
     }
