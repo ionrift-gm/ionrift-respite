@@ -483,12 +483,11 @@ export class ForageTableSync {
             }
 
             if (notify && synced > 0) {
-                ui.notifications.info(`Respite: Synced ${synced} forage roll table(s).`);
+                ui.notifications.info(game.i18n.format("ionrift-respite.forageTableSync.syncedTables", { count: synced }));
             }
             if (totalTruncated > 0) {
                 ui.notifications.warn(
-                    `Respite: Some forage tables exceeded ${FORAGE_TABLE_MAX_ENTRIES} items.`
-                    + ` Rarer entries were kept; common rows were omitted.`
+                    game.i18n.format("ionrift-respite.forageTableSync.warnTruncated", { max: FORAGE_TABLE_MAX_ENTRIES })
                 );
             }
 
@@ -651,7 +650,7 @@ export class ForageTableSync {
         if (!table) {
             table = await RollTable.create({
                 name: tableName,
-                description: `Forage results for ${terrainTag} terrain. Edit rows here or add items to Forage compendium folders.`,
+                description: game.i18n.format("ionrift-respite.forageTableSync.tableDescription", { terrainTag }),
                 formula: "1d1",
                 replacement: true,
                 displayRoll: true,

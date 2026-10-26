@@ -103,9 +103,9 @@ export class TravelMishapHandler {
     }
 
     static _formatConditionName(condition, level) {
-        if (!condition) return "Condition";
+        if (!condition) return game.i18n.localize("ionrift-respite.travelMishap.condition");
         const base = condition.charAt(0).toUpperCase() + condition.slice(1);
-        if (condition === "exhaustion" && level != null) return `Exhaustion ${level}`;
+        if (condition === "exhaustion" && level != null) return game.i18n.format("ionrift-respite.travelMishap.exhaustionLevel", { level });
         return base;
     }
 
@@ -123,11 +123,11 @@ export class TravelMishapHandler {
         }
 
         await ChatMessage.create({
-            content: `<div class="respite-recovery-chat"><strong>${actor.name}</strong> gains <strong>${levels}</strong> level(s) of exhaustion from a travel mishap.</div>`,
+            content: game.i18n.format("ionrift-respite.travelMishap.chatGainsExhaustion", { name: actor.name, levels }),
             speaker: ChatMessage.getSpeaker({ actor })
         });
 
-        return [`+${levels} exhaustion`];
+        return [game.i18n.format("ionrift-respite.travelMishap.exhaustionDeltaBadge", { levels })];
     }
 
     static async _consumeResource(actor, effect) {
@@ -137,9 +137,13 @@ export class TravelMishapHandler {
         const totalQty = holdings.reduce((s, h) => s + h.qty, 0);
         if (totalQty === 0) {
             await this._whisperGMAdvisory(
-                `Travel mishap: ${actor.name} had no ${resource} to lose (${effect.description ?? "resource loss"}).`
+                game.i18n.format("ionrift-respite.travelMishap.whisperNoResource", {
+                    name: actor.name,
+                    resource,
+                    reason: effect.description ?? game.i18n.localize("ionrift-respite.travelMishap.resourceLoss")
+                })
             );
-            return [`No ${resource} to lose`];
+            return [game.i18n.format("ionrift-respite.travelMishap.noResourceToLose", { resource })];
         }
 
         const lost = await ResourceSink._distributeResourceLoss(holdings, Math.min(amount, totalQty));
@@ -147,23 +151,27 @@ export class TravelMishapHandler {
             return [];
         }
 
-        const label = resource === "rations" ? "Rations"
-            : resource === "water" ? "Water"
-                : "Supplies";
+        const label = resource === "rations" ? game.i18n.localize("ionrift-respite.travelMishap.labelRations")
+            : resource === "water" ? game.i18n.localize("ionrift-respite.travelMishap.labelWater")
+                : game.i18n.localize("ionrift-respite.travelMishap.labelSupplies");
         await ChatMessage.create({
-            content: `<div class="respite-recovery-chat">Travel mishap: <strong>${actor.name}</strong> lost <strong>${lost}</strong> ${label.toLowerCase()}.</div>`,
+            content: game.i18n.format("ionrift-respite.travelMishap.chatLostResource", {
+                name: actor.name,
+                lost,
+                label: label.toLowerCase()
+            }),
             speaker: ChatMessage.getSpeaker({ actor })
         });
-        return [`${label} -${lost}`];
+        return [game.i18n.format("ionrift-respite.travelMishap.resourceLossBadge", { label, lost })];
     }
 
     static async _applySupplyLossRandom(actor, effect) {
         const holdings = ResourceSink._findResourceItems([actor], "supplies");
         if (!holdings.length) {
             await this._whisperGMAdvisory(
-                `Travel mishap: ${actor.name} had no adventuring supplies to lose.`
+                game.i18n.format("ionrift-respite.travelMishap.whisperNoAdventuringSupplies", { name: actor.name })
             );
-            return ["No supplies to lose"];
+            return [game.i18n.localize("ionrift-respite.travelMishap.noSuppliesToLose")];
         }
         const pick = holdings[Math.floor(Math.random() * holdings.length)];
         const item = pick.item;
@@ -180,24 +188,27 @@ export class TravelMishapHandler {
         }
 
         await ChatMessage.create({
-            content: `<div class="respite-recovery-chat">Travel mishap: <strong>${actor.name}</strong> lost a pack item: <strong>${item.name}</strong>.</div>`,
+            content: game.i18n.format("ionrift-respite.travelMishap.chatLostPackItem", {
+                name: actor.name,
+                item: item.name
+            }),
             speaker: ChatMessage.getSpeaker({ actor })
         });
 
-        return [`Lost: ${item.name}`];
+        return [game.i18n.format("ionrift-respite.travelMishap.lostItemBadge", { name: item.name })];
     }
 
     static _applyEncounterMod(engine, effect) {
         if (!engine) {
             Logger.warn("Travel encounter_mod: no engine (rest flow not initialised).");
-            return ["Encounter (engine missing)"];
+            return [game.i18n.localize("ionrift-respite.travelMishap.encounterEngineMissing")];
         }
         if (!engine._encounterBreakdown) engine._encounterBreakdown = {};
         const delta = effect.encounterDCDelta ?? 0;
         const prev = engine._encounterBreakdown.travelMishap ?? 0;
         engine._encounterBreakdown.travelMishap = prev + delta;
 
-        return [`Night threshold ${delta >= 0 ? "+" : ""}${delta} (mishap)`];
+        return [game.i18n.format("ionrift-respite.travelMishap.nightThresholdBadge", { sign: delta >= 0 ? "+" : "", delta })];
     }
 
     static async _applyRecoveryPenalty(actor, effect) {
@@ -208,9 +219,9 @@ export class TravelMishapHandler {
         await actor.setFlag(MODULE_ID, "travelMishapRecovery", next);
 
         await this._whisperGMAdvisory(
-            `Travel mishap: <strong>${actor.name}</strong> has reduced HP recovery this rest (x${mult} multiplier).`
+            game.i18n.format("ionrift-respite.travelMishap.whisperReducedHpRecovery", { name: actor.name, mult })
         );
-        return [`HP recovery x${mult}`];
+        return [game.i18n.format("ionrift-respite.travelMishap.hpRecoveryBadge", { mult })];
     }
 
     static async _applyTravelPenalty(actor, effect, mishapDescription) {
@@ -218,18 +229,18 @@ export class TravelMishapHandler {
         if (penalty === "activity_disadvantage") {
             await actor.setFlag(MODULE_ID, "travelMishapPenalty", "activity_disadvantage");
             await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><strong>${actor.name}</strong> is shaken from a travel mishap. Their camp activity will be at <strong>disadvantage</strong> if the activity uses a check.</div>`,
+                content: game.i18n.format("ionrift-respite.travelMishap.chatActivityDisadvantage", { name: actor.name }),
                 speaker: { alias: "Respite" }
             });
-            return ["Activity check: disadvantage"];
+            return [game.i18n.localize("ionrift-respite.travelMishap.activityDisadvantageBadge")];
         }
         if (penalty === "lose_activity") {
             await actor.setFlag(MODULE_ID, "travelMishapPenalty", "lose_activity");
             await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><strong>${actor.name}</strong> is hurt during travel and cannot use a rest activity this night. They are set to <strong>Other</strong>.</div>`,
+                content: game.i18n.format("ionrift-respite.travelMishap.chatLoseActivity", { name: actor.name }),
                 speaker: { alias: "Respite" }
             });
-            return ["No rest activity (Other)"];
+            return [game.i18n.localize("ionrift-respite.travelMishap.noActivityOtherBadge")];
         }
         return [];
     }

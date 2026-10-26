@@ -441,34 +441,36 @@ export class TravelResolver {
         const actor = game.actors.get(result.actorId);
         if (!actor) return;
 
-        const label = result.activity === "forage" ? "Foraging" : "Hunting";
+        const label = result.activity === "forage"
+            ? game.i18n.localize("ionrift-respite.travelResolver.foraging")
+            : game.i18n.localize("ionrift-respite.travelResolver.hunting");
         const icon = result.activity === "forage" ? "fa-seedling" : "fa-crosshairs";
-        const dcLabel = `DC ${result.dc}`;
+        const dcLabel = game.i18n.format("ionrift-respite.travelResolver.dcLabel", { dc: result.dc });
 
         let outcomeLabel;
-        if (result.nat20) outcomeLabel = `<span style="color: #4CAF50; font-weight: bold;">Natural 20!</span>`;
-        else if (result.nat1) outcomeLabel = `<span style="color: #f44336; font-weight: bold;">Natural 1!</span>`;
-        else if (result.exceptional) outcomeLabel = `<span style="color: #4CAF50;">Exceptional success</span>`;
-        else if (result.success) outcomeLabel = `<span style="color: #8BC34A;">Success</span>`;
-        else outcomeLabel = `<span style="color: #FF9800;">Failure</span>`;
+        if (result.nat20) outcomeLabel = `<span style="color: #4CAF50; font-weight: bold;">${game.i18n.localize("ionrift-respite.travelResolver.outcomeNat20")}</span>`;
+        else if (result.nat1) outcomeLabel = `<span style="color: #f44336; font-weight: bold;">${game.i18n.localize("ionrift-respite.travelResolver.outcomeNat1")}</span>`;
+        else if (result.exceptional) outcomeLabel = `<span style="color: #4CAF50;">${game.i18n.localize("ionrift-respite.travelResolver.outcomeExceptional")}</span>`;
+        else if (result.success) outcomeLabel = `<span style="color: #8BC34A;">${game.i18n.localize("ionrift-respite.travelResolver.outcomeSuccess")}</span>`;
+        else outcomeLabel = `<span style="color: #FF9800;">${game.i18n.localize("ionrift-respite.travelResolver.outcomeFailure")}</span>`;
 
         let content = `<div style="border-left: 3px solid rgba(155,89,182,0.5); padding: 4px 8px;">`;
         content += `<p><strong><i class="fas ${icon}"></i> ${label}</strong> (${dcLabel})</p>`;
-        content += `<p>${outcomeLabel} (rolled <strong>${result.total}</strong>)</p>`;
+        content += `<p>${outcomeLabel} (${game.i18n.format("ionrift-respite.travelResolver.rolledTotal", { total: result.total })})</p>`;
 
         if (result.items?.length) {
-            content += `<p><strong>Found:</strong></p><ul>`;
+            content += `<p><strong>${game.i18n.localize("ionrift-respite.travelResolver.foundHeader")}</strong></p><ul>`;
             for (const item of result.items) {
                 const name = item.itemData?.name ?? item.itemRef;
-                content += `<li>${item.quantity}x ${name}</li>`;
+                content += `<li>${game.i18n.format("ionrift-respite.travelResolver.itemQuantityEntry", { quantity: item.quantity, name })}</li>`;
             }
             content += `</ul>`;
         } else if (result.warningKey === "FORAGE_POOL_EMPTY" && result.success) {
-            content += `<p><em>Nothing found.</em></p>`;
+            content += `<p><em>${game.i18n.localize("ionrift-respite.travelResolver.nothingFound")}</em></p>`;
         }
 
         if (result.mishap) {
-            content += `<p style="color: #f44336;"><i class="fas fa-exclamation-triangle"></i> <strong>Mishap:</strong> ${result.mishap.description}</p>`;
+            content += `<p style="color: #f44336;"><i class="fas fa-exclamation-triangle"></i> <strong>${game.i18n.localize("ionrift-respite.travelResolver.mishapHeader")}</strong> ${result.mishap.description}</p>`;
         }
 
         content += `</div>`;
@@ -901,110 +903,110 @@ export class TravelResolver {
             forest: [
                 {
                     type: "condition",
-                    description: "Touched something toxic. Poisoned until end of rest (Con save DC 12 to shrug it off early).",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.forest.toxic"),
                     effects: [{ type: "condition", condition: "poisoned", duration: "next_rest" }]
                 },
                 {
                     type: "economy",
-                    description: "A waterskin punctured on thorns. Lost 1 waterskin.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.forest.waterskin"),
                     effects: [{ type: "consume_resource", resource: "water", amount: 1 }]
                 },
                 {
                     type: "rest_penalty",
-                    description: "Got turned around in the brush. Disadvantage on rest activity check.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.forest.turnedAround"),
                     effects: [{ type: "travel_penalty", penalty: "activity_disadvantage" }]
                 },
                 {
                     type: "escalation",
-                    description: "Disturbed a nest. Something followed the forager back to camp.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.forest.nest"),
                     effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
                 }
             ],
             swamp: [
                 {
                     type: "condition",
-                    description: "Waded through something foul. Diseased (persists beyond rest, requires Lesser Restoration).",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.swamp.diseased"),
                     effects: [{ type: "condition", condition: "diseased", duration: "permanent" }]
                 },
                 {
                     type: "economy",
-                    description: "Rations fell in the muck. Lost 1 rations.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.swamp.rations"),
                     effects: [{ type: "consume_resource", resource: "rations", amount: 1 }]
                 },
                 {
                     type: "rest_penalty",
-                    description: "Sank waist-deep in a bog. Reduced rest recovery for this character.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.swamp.bog"),
                     effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
                 },
                 {
                     type: "slot_loss",
-                    description: "Spent hours finding a way back. No rest activity for this character.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.swamp.lost"),
                     effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
                 }
             ],
             desert: [
                 {
                     type: "condition",
-                    description: "Heat exhaustion from wandering too far. +1 exhaustion level.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.desert.heatExhaustion"),
                     effects: [{ type: "exhaustion_delta", levels: 1 }]
                 },
                 {
                     type: "economy",
-                    description: "A waterskin cracked in the heat. Lost 1 waterskin.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.desert.waterskin"),
                     effects: [{ type: "consume_resource", resource: "water", amount: 1 }]
                 },
                 {
                     type: "escalation",
-                    description: "Stumbled into a sand viper's territory. Something stirs near camp.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.desert.viper"),
                     effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
                 },
                 {
                     type: "rest_penalty",
-                    description: "Sunstroke. Reduced rest recovery for this character.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.desert.sunstroke"),
                     effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
                 }
             ],
             mountain: [
                 {
                     type: "rest_penalty",
-                    description: "Twisted an ankle on loose scree. Disadvantage on rest activity check.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.mountain.ankle"),
                     effects: [{ type: "travel_penalty", penalty: "activity_disadvantage" }]
                 },
                 {
                     type: "economy",
-                    description: "Pack tore on a rock face. Lost 1 random supply item.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.mountain.pack"),
                     effects: [{ type: "supply_loss", amount: 1 }]
                 },
                 {
                     type: "escalation",
-                    description: "Dislodged rocks drew attention. Something watches from above.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.mountain.rocks"),
                     effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
                 },
                 {
                     type: "rest_penalty",
-                    description: "Altitude sickness. Reduced rest recovery for this character.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.mountain.altitude"),
                     effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
                 }
             ],
             arctic: [
                 {
                     type: "condition",
-                    description: "Frostbite setting in. +1 exhaustion level.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.arctic.frostbite"),
                     effects: [{ type: "exhaustion_delta", levels: 1 }]
                 },
                 {
                     type: "economy",
-                    description: "Supplies exposed to wind. Lost 1 rations.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.arctic.wind"),
                     effects: [{ type: "consume_resource", resource: "rations", amount: 1 }]
                 },
                 {
                     type: "rest_penalty",
-                    description: "Hypothermia risk. Reduced rest recovery for this character.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.arctic.hypothermia"),
                     effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
                 },
                 {
                     type: "slot_loss",
-                    description: "Whiteout conditions. Returned too late for rest activities.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.forage.arctic.whiteout"),
                     effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
                 }
             ]
@@ -1019,125 +1021,125 @@ export class TravelResolver {
             forest: [
                 {
                     type: "escalation",
-                    description: "The prey escaped and drew attention. Something follows.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.forest.escaped"),
                     effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
                 },
                 {
                     type: "economy",
-                    description: "Bowstring snapped. Disadvantage on the next attack roll (repair the weapon in fiction when it fits).",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.forest.bowstring"),
                     effects: [{
                         type: "condition",
                         condition: "disadvantage_attack",
                         duration: "1_attack",
-                        label: "Disadvantage on next attack"
+                        label: game.i18n.localize("ionrift-respite.travelResolver.disadvantageNextAttack")
                     }]
                 },
                 {
                     type: "slot_loss",
-                    description: "The chase led too far afield. No rest activity for this character.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.forest.chase"),
                     effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
                 },
                 {
                     type: "condition",
-                    description: "Gored by a cornered animal. Poisoned until end of rest.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.forest.gored"),
                     effects: [{ type: "condition", condition: "poisoned", duration: "next_rest" }]
                 }
             ],
             swamp: [
                 {
                     type: "escalation",
-                    description: "Disturbed something large in the water. Encounter risk increased.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.swamp.waterMonster"),
                     effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
                 },
                 {
                     type: "condition",
-                    description: "Bitten by something venomous. Poisoned until end of rest.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.swamp.bitten"),
                     effects: [{ type: "condition", condition: "poisoned", duration: "next_rest" }]
                 },
                 {
                     type: "rest_penalty",
-                    description: "Wading through muck for hours. Reduced rest recovery.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.swamp.muck"),
                     effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
                 },
                 {
                     type: "slot_loss",
-                    description: "Lost in fog. Returned too late for rest activities.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.swamp.fog"),
                     effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
                 }
             ],
             desert: [
                 {
                     type: "escalation",
-                    description: "The prey's death cry echoed across the dunes. Something heard it.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.desert.deathCry"),
                     effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
                 },
                 {
                     type: "condition",
-                    description: "Heatstroke from extended pursuit. +1 exhaustion level.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.desert.heatstroke"),
                     effects: [{ type: "exhaustion_delta", levels: 1 }]
                 },
                 {
                     type: "economy",
-                    description: "Spear shaft cracked on stone. Disadvantage on the next attack roll (repair the weapon in fiction when it fits).",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.desert.spear"),
                     effects: [{
                         type: "condition",
                         condition: "disadvantage_attack",
                         duration: "1_attack",
-                        label: "Disadvantage on next attack"
+                        label: game.i18n.localize("ionrift-respite.travelResolver.disadvantageNextAttack")
                     }]
                 },
                 {
                     type: "rest_penalty",
-                    description: "Dehydrated from the chase. Reduced rest recovery.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.desert.dehydrated"),
                     effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
                 }
             ],
             mountain: [
                 {
                     type: "escalation",
-                    description: "A rockslide drew a predator's attention. Encounter risk increased.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.mountain.rockslide"),
                     effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
                 },
                 {
                     type: "rest_penalty",
-                    description: "Slipped on a ledge. Disadvantage on rest activity check.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.mountain.scree"),
                     effects: [{ type: "travel_penalty", penalty: "activity_disadvantage" }]
                 },
                 {
                     type: "economy",
-                    description: "Equipment lost over a cliff edge. Disadvantage on the next attack roll (replace gear in fiction when it fits).",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.mountain.equipment"),
                     effects: [{
                         type: "condition",
                         condition: "disadvantage_attack",
                         duration: "1_attack",
-                        label: "Disadvantage on next attack"
+                        label: game.i18n.localize("ionrift-respite.travelResolver.disadvantageNextAttack")
                     }]
                 },
                 {
                     type: "slot_loss",
-                    description: "The trail led up a dead-end ridge. No rest activity for this character.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.mountain.deadEnd"),
                     effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
                 }
             ],
             arctic: [
                 {
                     type: "escalation",
-                    description: "Blood on the snow. Predators are circling.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.arctic.blood"),
                     effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
                 },
                 {
                     type: "condition",
-                    description: "Frostbite from extended exposure. +1 exhaustion level.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.arctic.frostbite"),
                     effects: [{ type: "exhaustion_delta", levels: 1 }]
                 },
                 {
                     type: "rest_penalty",
-                    description: "Hypothermia risk after falling through thin ice. Reduced rest recovery.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.arctic.thinIce"),
                     effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
                 },
                 {
                     type: "slot_loss",
-                    description: "Blizzard rolled in. Returned too late for rest activities.",
+                    description: game.i18n.localize("ionrift-respite.travelResolver.mishap.hunt.arctic.blizzard"),
                     effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
                 }
             ]

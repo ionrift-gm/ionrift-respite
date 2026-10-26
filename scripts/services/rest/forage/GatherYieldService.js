@@ -229,7 +229,7 @@ export class GatherYieldService {
         const items = described?.items ?? [];
         return {
             tableLabel: described?.tableLabel ?? "",
-            outcome: items.length ? GatherYieldService.describeItems(items) : "Nothing on this row"
+            outcome: items.length ? GatherYieldService.describeItems(items) : game.i18n.localize("ionrift-respite.gather.nothingOnThisRow")
         };
     }
 

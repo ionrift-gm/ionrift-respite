@@ -200,7 +200,7 @@ export class ActivityResolver {
                 result: "invalid",
                 items: [],
                 effects: [],
-                narrative: "No valid activity found."
+                narrative: game.i18n.localize("ionrift-respite.activityResolver.noValidActivity")
             };
         }
 
@@ -243,7 +243,7 @@ export class ActivityResolver {
                 result: "invalid",
                 items: [],
                 effects: [],
-                narrative: "Could not evaluate activity check."
+                narrative: game.i18n.localize("ionrift-respite.activityResolver.couldNotEvaluate")
             };
         }
 
@@ -283,8 +283,8 @@ export class ActivityResolver {
         }
 
         const rollModNote = hadTravelDis
-            ? " (disadvantage)"
-            : (rollAdvantage ? " (advantage)" : "");
+            ? ` (${game.i18n.localize("ionrift-respite.activityResolver.disadvantage")})`
+            : (rollAdvantage ? ` (${game.i18n.localize("ionrift-respite.activityResolver.advantage")})` : "");
 
         // Determine outcome tier
         let resultTier;
@@ -298,16 +298,18 @@ export class ActivityResolver {
             // Hostile comfort: failure triggers complication (not in safe rest spot)
             if (!safeRestSpot && (comfort === "hostile" || comfort === "rough")) {
                 const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
+                const failedNarrative = activity.outcomes.failure?.narrative ?? game.i18n.localize("ionrift-respite.activityResolver.attemptFails");
+                const failedFlavor = `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:#e88;">${game.i18n.localize("ionrift-respite.activityResolver.failed")}</em> ${failedNarrative}`;
                 if (!preEvaluated && roll) {
                     await roll.toMessage({
                         speaker: ChatMessage.getSpeaker({ actor }),
-                        flavor: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:#e88;">Failed.</em> ${activity.outcomes.failure?.narrative ?? "The attempt fails."}`,
+                        flavor: failedFlavor,
                         whisper: ownerIds
                     });
                 } else if (preEvaluated) {
                     await ChatMessage.create({
                         speaker: ChatMessage.getSpeaker({ actor }),
-                        content: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:#e88;">Failed.</em> ${activity.outcomes.failure?.narrative ?? "The attempt fails."}`,
+                        content: failedFlavor,
                         whisper: ownerIds
                     });
                 }
@@ -318,9 +320,9 @@ export class ActivityResolver {
                     result: "failure_complication",
                     items: [],
                     effects: activity.outcomes.failure?.effects ?? [
-                        { type: "complication", description: "Your activity draws unwanted attention." }
+                        { type: "complication", description: game.i18n.localize("ionrift-respite.activityResolver.complicationAttention") }
                     ],
-                    narrative: activity.outcomes.failure?.narrative ?? "The attempt fails.",
+                    narrative: failedNarrative,
                     complication: comfort === "hostile"
                 };
             }
@@ -357,12 +359,16 @@ export class ActivityResolver {
             if (gathered.mishap) narrativeParts.push(gathered.mishap);
             const haulDesc = gathered.fromTable
                 ? GatherYieldService.describeItems(gathered.items)
-                : (gathered.rations > 0 ? `${gathered.rations} rations` : "");
-            if (haulDesc) narrativeParts.push(`Yield: ${haulDesc}`);
+                : (gathered.rations > 0 ? game.i18n.format("ionrift-respite.activityResolver.rationsCount", { count: gathered.rations }) : "");
+            if (haulDesc) narrativeParts.push(game.i18n.format("ionrift-respite.activityResolver.yieldPrefix", { yield: haulDesc }));
 
-            const tierLabel = resultTier === "exceptional" ? "Exceptional!" : resultTier === "success" ? "Success" : "Failed";
+            const tierLabel = resultTier === "exceptional"
+                ? game.i18n.localize("ionrift-respite.activityResolver.tierExceptional")
+                : resultTier === "success"
+                    ? game.i18n.localize("ionrift-respite.activityResolver.tierSuccess")
+                    : game.i18n.localize("ionrift-respite.activityResolver.tierFailed");
             const tierColor = resultTier === "exceptional" ? "#ffd700" : resultTier === "success" ? "#7eb8da" : "#e88";
-            const yieldSuffix = haulDesc ? `<br><strong>Yield:</strong> ${haulDesc}` : "";
+            const yieldSuffix = haulDesc ? `<br>${game.i18n.format("ionrift-respite.activityResolver.yieldBoldPrefix", { yield: haulDesc })}` : "";
             const mishapSuffix = gathered.mishap ? `<br><em style="color:#e88;">${gathered.mishap}</em>` : "";
 
             const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
@@ -391,7 +397,11 @@ export class ActivityResolver {
         }
 
         // Whisper roll + outcome to actor owner and GM
-        const tierLabel = resultTier === "exceptional" ? "Exceptional!" : resultTier === "success" ? "Success" : "Failed";
+        const tierLabel = resultTier === "exceptional"
+            ? game.i18n.localize("ionrift-respite.activityResolver.tierExceptional")
+            : resultTier === "success"
+                ? game.i18n.localize("ionrift-respite.activityResolver.tierSuccess")
+                : game.i18n.localize("ionrift-respite.activityResolver.tierFailed");
         const tierColor = resultTier === "exceptional" ? "#ffd700" : resultTier === "success" ? "#7eb8da" : "#e88";
         const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
         const fletchYieldPending = activityId === "act_fletch"
@@ -444,7 +454,7 @@ export class ActivityResolver {
                             healRoll = await new Roll(`1d6 + 4 + ${targetLevel}`).evaluate();
                             healed = Math.min(Math.max(healRoll.total, 1), missing);
                             healLabel = `1d6+4+${targetLevel} = ${healRoll.total}`;
-                            chatParts.push("Healer feat");
+                            chatParts.push(game.i18n.localize("ionrift-respite.activityResolver.healerFeat"));
                         } else {
                             // Standard: target's largest HD + target's CON mod
                             const classes = target.items.filter(i => i.type === "class");
@@ -463,7 +473,7 @@ export class ActivityResolver {
                                 healRoll = await new Roll(`${die} + ${conMod} + 1d4`).evaluate();
                                 healed = Math.min(Math.max(healRoll.total, 1), missing);
                                 healLabel = `${die}+${conMod}+1d4 = ${healRoll.total}`;
-                                chatParts.push("Healer's Kit");
+                                chatParts.push(game.i18n.localize("ionrift-respite.activityResolver.healersKit"));
                             } else {
                                 healRoll = await new Roll(`${die} + ${conMod}`).evaluate();
                                 healed = Math.min(Math.max(healRoll.total, 1), missing);
@@ -475,8 +485,10 @@ export class ActivityResolver {
                         const wisMod = Math.max(1, actor.system?.abilities?.wis?.mod ?? 1);
                         const kitBonus = hasKit ? 2 : 0;
                         healed = Math.min(wisMod + kitBonus, missing);
-                        healLabel = hasKit ? `WIS ${wisMod} + kit 2` : `WIS mod (${wisMod})`;
-                        if (hasKit) chatParts.push("Healer's Kit");
+                        healLabel = hasKit
+                            ? game.i18n.format("ionrift-respite.activityResolver.healWisKit", { wis: wisMod })
+                            : game.i18n.format("ionrift-respite.activityResolver.healWisMod", { wis: wisMod });
+                        if (hasKit) chatParts.push(game.i18n.localize("ionrift-respite.activityResolver.healersKit"));
                     }
 
                     // Spend one kit charge on any outcome (success or failure)
@@ -488,7 +500,7 @@ export class ActivityResolver {
                             if (newQty <= 0) await healerKit.delete();
                             else await healerKit.update({ "system.quantity": newQty });
                         }
-                        chatParts.push(`${kitCharges - 1} charges remaining`);
+                        chatParts.push(game.i18n.format("ionrift-respite.activityResolver.chargesRemaining", { count: kitCharges - 1 }));
                     }
 
                     if (healed > 0) {
@@ -496,7 +508,7 @@ export class ActivityResolver {
                         if (healRoll) {
                             await postRollAndSettle(healRoll, {
                                 speaker: ChatMessage.getSpeaker({ actor }),
-                                flavor: `<strong>${actor.name}</strong> tends <strong>${target.name}</strong>`,
+                                flavor: game.i18n.format("ionrift-respite.activityResolver.tendsFlavor", { actor: actor.name, target: target.name }),
                                 whisper: chatWhisper
                             });
                         }
@@ -509,7 +521,13 @@ export class ActivityResolver {
                         const suffix = chatParts.length ? ` (${chatParts.join(", ")})` : "";
                         await ChatMessage.create({
                             speaker: ChatMessage.getSpeaker({ actor }),
-                            content: `<div class="respite-recovery-chat"><strong>${actor.name}</strong> tends to <strong>${target.name}</strong>.<br>Immediate healing: <strong>${healed} HP</strong> (${healLabel})${suffix}.</div>`,
+                            content: game.i18n.format("ionrift-respite.activityResolver.tendsContent", {
+                                actor: actor.name,
+                                target: target.name,
+                                healed,
+                                healLabel,
+                                suffix
+                            }),
                             whisper: chatWhisper
                         });
                     }
@@ -624,11 +642,19 @@ export class ActivityResolver {
                 actorUuid: actor.uuid,
                 type: "formula",
                 formula,
-                title: `How many ${noun}`,
+                title: bolts
+                    ? game.i18n.localize("ionrift-respite.activityResolver.howManyBolts")
+                    : game.i18n.localize("ionrift-respite.activityResolver.howManyArrows"),
                 tableLabel: formula,
                 describeOutcome: async ({ total }) => {
                     const made = grant(total);
-                    return `${made} ${made === 1 ? one : noun}`;
+                    return bolts
+                        ? (made === 1
+                            ? game.i18n.format("ionrift-respite.activityResolver.yieldBoltOne", { count: made })
+                            : game.i18n.format("ionrift-respite.activityResolver.yieldBoltMany", { count: made }))
+                        : (made === 1
+                            ? game.i18n.format("ionrift-respite.activityResolver.yieldArrowOne", { count: made })
+                            : game.i18n.format("ionrift-respite.activityResolver.yieldArrowMany", { count: made }));
                 }
             });
             return grant(result?.total);
@@ -762,16 +788,22 @@ export class ActivityResolver {
                 const ownerIds = game.users
                     .filter(u => actor.testUserPermission(u, "OWNER") || u.isGM)
                     .map(u => u.id);
+                const missSuffix = ` (${game.i18n.localize("ionrift-respite.activityResolver.miss")})`;
                 const segments = cleanRolls
-                    .map(r => `<strong style="color:${r.passed ? "#1c6ea4" : "#a83232"};">${r.total}${r.passed ? "" : " (miss)"}</strong>`)
+                    .map(r => `<strong style="color:${r.passed ? "#1c6ea4" : "#a83232"};">${r.total}${r.passed ? "" : missSuffix}</strong>`)
                     .join(" &bull; ");
                 const reductionNote = xpReduction > 0
-                    ? `<br><span style="opacity:0.8;font-size:0.9em;">Diminishing returns reduced the haul by ${xpReduction} XP.</span>`
+                    ? `<br><span style="opacity:0.8;font-size:0.9em;">${game.i18n.format("ionrift-respite.activityResolver.diminishingReturnsNote", { xp: xpReduction })}</span>`
                     : "";
+                const landedNote = game.i18n.format("ionrift-respite.activityResolver.trainingLanded", {
+                    successes,
+                    total: numRolls,
+                    xp: awardedXP
+                });
                 await ChatMessage.create({
                     speaker: ChatMessage.getSpeaker({ actor }),
                     whisper: ownerIds,
-                    flavor: `<strong>${activity.name}</strong> (${context.rollLabel}) - DC ${context.adjustedDc}<br>Sets: ${segments}<br><strong style="color:#6b4f00;">${successes}/${numRolls} landed. +${awardedXP} XP.</strong>${reductionNote}`,
+                    flavor: `<strong>${activity.name}</strong> (${context.rollLabel}) - DC ${context.adjustedDc}<br>Sets: ${segments}<br><strong style="color:#6b4f00;">${landedNote}</strong>${reductionNote}`,
                     flags: { "ionrift-respite": { type: "trainingResult" } }
                 });
             } catch (e) {
@@ -791,8 +823,12 @@ export class ActivityResolver {
                     baseValue: baseXP,
                     reduction: xpReduction,
                     description: awardedXP > 0
-                        ? `Gained ${awardedXP} XP from training (${successes}/${numRolls} sets landed).`
-                        : `No XP this rest. Diminishing returns have caught up; try a different activity.`
+                        ? game.i18n.format("ionrift-respite.activityResolver.trainingXpAwarded", {
+                            xp: awardedXP,
+                            successes,
+                            total: numRolls
+                        })
+                        : game.i18n.localize("ionrift-respite.activityResolver.trainingNoXp")
                 }
             ],
             narrative,
