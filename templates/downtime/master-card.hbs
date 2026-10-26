@@ -3,7 +3,7 @@
     {{!-- Shared Terrain / Resolution Banner --}}
     {{#if showBanner}}
     <div class="master-card-banner {{bannerFireClass}}">
-        <img src="{{terrainBanner}}" alt="{{subtitle}} banner" style="object-position: {{terrainBannerPos}};" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
+        <img src="{{terrainBanner}}" alt="{{localize "ionrift-respite.downtimeMasterCard.bannerAlt" subtitle=(concat subtitle "")}}" style="object-position: {{terrainBannerPos}};" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
         <div class="master-banner-fade"></div>
         {{#if partyStatus}}
         <span class="master-banner-badge {{partyStatus.class}}" title="{{partyStatus.label}}">
@@ -46,7 +46,7 @@
             {{#each encounters}}
             <li class="encounter-item {{itemClass}}">
                 <div class="encounter-item-header">
-                    <strong class="encounter-night"><i class="{{icon}}"></i> Night {{nightIndex}}:</strong>
+                    <strong class="encounter-night"><i class="{{icon}}"></i> {{localize "ionrift-respite.downtimeMasterCard.nightColon" nightIndex=nightIndex}}</strong>
                     <span class="encounter-title {{#if isRewarding}}positive{{/if}}">{{title}}</span>
                 </div>
                 {{#if description}}
@@ -97,7 +97,7 @@
                 {{#if hasRolls}}
                 <details class="master-char-rolls-details">
                     <summary class="master-rolls-summary">
-                        <i class="fas fa-dice-d20"></i> Daily Checks ({{totalRollCount}})
+                        <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.downtimeMasterCard.dailyChecksCount" count=totalRollCount}}
                     </summary>
                     <div class="master-rolls-section">
                         {{#each groupedRolls}}
@@ -105,7 +105,7 @@
                             <span class="roll-activity-label">{{activity}}:</span>
                             <div class="roll-chips-row">
                                 {{#each checks}}
-                                <span class="roll-chip {{#if success}}success{{/if}}" data-tooltip="Day {{day}}: Total {{total}}{{#if yield}}, Yield: {{yield}} rations{{/if}}{{#if detail}} ({{detail}}){{/if}}">
+                                <span class="roll-chip {{#if success}}success{{/if}}" data-tooltip="{{localize "ionrift-respite.downtimeMasterCard.dayTotal" day=day total=total}}{{#if yield}}{{localize "ionrift-respite.downtimeMasterCard.dayYield" yield=yield}}{{/if}}{{#if detail}} ({{detail}}){{/if}}">
                                     [{{total}}]{{#if yield}} <i class="fas fa-seedling"></i>+{{yield}}{{/if}}
                                 </span>
                                 {{/each}}

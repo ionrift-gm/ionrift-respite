@@ -18,8 +18,8 @@
         {{!-- 1A. Single-Night 4-Watch Rotation Ribbon --}}
         <div class="pacing-timeline-deck pacing-watch-deck">
             <div class="pacing-timeline-header">
-                <span class="timeline-title"><i class="fas fa-shield-halved"></i> 8-Hour Watch Rotation</span>
-                <span class="timeline-subtitle">Target DC {{currentNightEntry.effectiveDC}} · {{#if currentNightEntry.isRolled}}{{#if currentNightEntry.isResolvedCombat}}Combat Resolved{{else if currentNightEntry.isRed}}Hostile Ambush{{else if currentNightEntry.isAmber}}Nocturnal Event{{else}}Quiet Rest{{/if}}{{else}}Awaiting Night Check{{/if}}</span>
+                <span class="timeline-title"><i class="fas fa-shield-halved"></i> {{localize "ionrift-respite.downtimeLedger.watchRotation8Hour"}}</span>
+                <span class="timeline-subtitle">{{localize "ionrift-respite.downtimeLedger.targetDc" dc=currentNightEntry.effectiveDC}} · {{#if currentNightEntry.isRolled}}{{#if currentNightEntry.isResolvedCombat}}{{localize "ionrift-respite.downtimeLedger.combatResolved"}}{{else if currentNightEntry.isRed}}{{localize "ionrift-respite.downtimeLedger.hostileAmbush"}}{{else if currentNightEntry.isAmber}}{{localize "ionrift-respite.downtimeLedger.nocturnalEvent"}}{{else}}{{localize "ionrift-respite.downtimeLedger.quietRest"}}{{/if}}{{else}}{{localize "ionrift-respite.downtimeLedger.awaitingNightCheck"}}{{/if}}</span>
             </div>
             <div class="pacing-watch-grid">
                 {{#each watchRotation}}
@@ -28,17 +28,17 @@
                     <div class="watch-card-meta">
                         <span class="watch-slot-label"><i class="fas {{icon}}"></i> {{label}} ({{hours}})</span>
                         <strong class="watch-sentry-name">{{actorName}}</strong>
-                        <span class="watch-pp-pill" data-tooltip="Passive Perception">PP {{passivePerception}}</span>
+                        <span class="watch-pp-pill" data-tooltip="{{localize "ionrift-respite.downtimeLedger.passivePerception"}}">{{localize "ionrift-respite.downtimeLedger.ppVal" pp=passivePerception}}</span>
                     </div>
                     <div class="watch-status-tag">
                         {{#if ../currentNightEntry.isRolled}}
                             {{#if isSurprised}}
-                            <span class="status-badge surprised"><i class="fas fa-triangle-exclamation"></i> Surprised</span>
+                            <span class="status-badge surprised"><i class="fas fa-triangle-exclamation"></i> {{localize "ionrift-respite.downtimeLedger.surprised"}}</span>
                             {{else}}
-                            <span class="status-badge alert"><i class="fas fa-check"></i> Vigilant</span>
+                            <span class="status-badge alert"><i class="fas fa-check"></i> {{localize "ionrift-respite.downtimeLedger.vigilant"}}</span>
                             {{/if}}
                         {{else}}
-                            <span class="status-badge ready"><i class="fas fa-eye"></i> Staked</span>
+                            <span class="status-badge ready"><i class="fas fa-eye"></i> {{localize "ionrift-respite.downtimeLedger.staked"}}</span>
                         {{/if}}
                     </div>
                 </div>
@@ -49,16 +49,16 @@
         {{!-- 1B. Multi-Night Scrubber Timeline Deck with Progressive Fog of War --}}
         <div class="pacing-timeline-deck">
             <div class="pacing-timeline-header">
-                <span class="timeline-title"><i class="fas fa-shield-moon"></i> Nightly Watch Rotation</span>
-                <span class="timeline-subtitle">{{#if isDawnCheck}}Dawn · Final Check & Exhaustion Resolution{{else}}Select a night to review or adjudicate{{/if}}</span>
+                <span class="timeline-title"><i class="fas fa-shield-moon"></i> {{localize "ionrift-respite.downtimeLedger.nightlyWatchRotation"}}</span>
+                <span class="timeline-subtitle">{{#if isDawnCheck}}{{{localize "ionrift-respite.downtimeLedger.dawnSubtitle"}}}{{else}}{{localize "ionrift-respite.downtimeLedger.selectNightSubtitle"}}{{/if}}</span>
             </div>
             <div class="pacing-scrubber-grid">
                 {{#each pacingDraft}}
                 <div class="pacing-scrubber-item {{#if isCurrentNight}}is-active-night{{/if}} {{#if isDawnStep}}is-dawn-step{{/if}} {{#if isVeiled}}veiled{{else if isRed}}red{{else if isAmber}}amber{{else if isRolled}}green{{else}}unrolled{{/if}} {{#if isResolvedCombat}}combat-resolved{{/if}}"
                      data-action="setPacingNight" data-night="{{nightIndex}}"
-                     data-tooltip="{{#if isDawnStep}}{{tooltip}}{{else}}Night {{nightIndex}}: {{#if isVeiled}}Veiled in darkness{{else if isResolvedCombat}}Combat Resolved{{else if isRolled}}{{statusLabel}} (d20: {{rollTotal}} vs DC {{effectiveDC}}){{else}}Awaiting Night Check (DC {{effectiveDC}}){{/if}}{{/if}}">
+                     data-tooltip="{{#if isDawnStep}}{{tooltip}}{{else}}{{localize "ionrift-respite.downtimeLedger.nightPrefix" nightIndex=nightIndex}} {{#if isVeiled}}{{localize "ionrift-respite.downtimeLedger.veiledInDarkness"}}{{else if isResolvedCombat}}{{localize "ionrift-respite.downtimeLedger.combatResolved"}}{{else if isRolled}}{{statusLabel}} ({{localize "ionrift-respite.downtimeLedger.d20RollVsDc" rollTotal=rollTotal dc=effectiveDC}}){{else}}{{localize "ionrift-respite.downtimeLedger.awaitingNightCheckDc" dc=effectiveDC}}{{/if}}{{/if}}">
                     <div class="scrubber-item-top">
-                        <span class="scrubber-night-num">{{#if isDawnStep}}Dawn{{else}}N{{nightIndex}}{{/if}}</span>
+                        <span class="scrubber-night-num">{{#if isDawnStep}}{{localize "ionrift-respite.downtimeLedger.dawn"}}{{else}}{{localize "ionrift-respite.downtimeLedger.nightShort" nightIndex=nightIndex}}{{/if}}</span>
                         <i class="fas {{#if isVeiled}}fa-cloud{{else if isResolvedCombat}}fa-check-circle{{else if isRolled}}{{statusIcon}}{{else if isDawnStep}}fa-sun{{else}}fa-hourglass-half{{/if}} scrubber-state-icon"></i>
                     </div>
                     <div class="scrubber-roll-pill">
@@ -70,15 +70,15 @@
                         <span>{{rollTotal}}</span>
                         <span class="scrubber-dc-hint">/{{effectiveDC}}</span>
                         {{else}}
-                        <span class="scrubber-unrolled-hint">DC {{effectiveDC}}</span>
+                        <span class="scrubber-unrolled-hint">{{localize "ionrift-respite.downtimeLedger.dcHint" dc=effectiveDC}}</span>
                         {{/if}}
                     </div>
                     <div class="scrubber-mods">
                         {{#if isDawnStep}}
-                        <i class="fas fa-sparkles" data-tooltip="Exhaustion Adjudication"></i>
+                        <i class="fas fa-sparkles" data-tooltip="{{localize "ionrift-respite.downtimeLedger.exhaustionAdjudication"}}"></i>
                         {{else}}
-                        {{#if hasFortify}}<i class="fas fa-shield-alt" data-tooltip="Fortified (-2 DC)"></i>{{/if}}
-                        {{#if hasGuard}}<i class="fas fa-eye" data-tooltip="Guard on Watch"></i>{{/if}}
+                        {{#if hasFortify}}<i class="fas fa-shield-alt" data-tooltip="{{localize "ionrift-respite.downtimeLedger.fortifiedDcTooltip"}}"></i>{{/if}}
+                        {{#if hasGuard}}<i class="fas fa-eye" data-tooltip="{{localize "ionrift-respite.downtimeLedger.guardOnWatchTooltip"}}"></i>{{/if}}
                         {{/if}}
                     </div>
                 </div>
@@ -101,8 +101,8 @@
                 <div class="dawn-lead-group">
                     <div class="dawn-sun-emblem"><i class="fas fa-sun-cloud"></i></div>
                     <div class="dawn-copy-block">
-                        <div class="dawn-lead-title">The Vigil Breaks · Morning Over Camp</div>
-                        <div class="dawn-lead-hint">Adjudicate environmental exposure & Constitution saves before concluding the rest.</div>
+                        <div class="dawn-lead-title">{{localize "ionrift-respite.downtimeLedger.dawnLeadTitle"}}</div>
+                        <div class="dawn-lead-hint">{{{localize "ionrift-respite.downtimeLedger.dawnLeadHint"}}}</div>
                     </div>
                 </div>
 
@@ -111,16 +111,16 @@
                 <div class="dawn-batch-cluster">
                     {{#if exhaustionSummary.pending}}
                     <button type="button" class="btn-dawn-batch roll-all" data-action="rollAllExhaustionSaves"
-                            data-tooltip="Roll 3D Constitution saves for all {{exhaustionSummary.pending}} pending characters">
-                        <i class="fas fa-dice-d20"></i> Roll All Pending ({{exhaustionSummary.pending}})
+                            data-tooltip="{{localize "ionrift-respite.downtimeLedger.rollAllExhaustionTooltip" count=exhaustionSummary.pending}}">
+                        <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.downtimeLedger.rollAllPending" count=exhaustionSummary.pending}}
                     </button>
                     <button type="button" class="btn-dawn-batch waive-all" data-action="waiveAllExhaustionSaves"
-                            data-tooltip="Waive exhaustion checks for the entire party (Safe Rest)">
-                        <i class="fas fa-shield-check"></i> Waive All
+                            data-tooltip="{{localize "ionrift-respite.downtimeLedger.waiveAllTooltip"}}">
+                        <i class="fas fa-shield-check"></i> {{localize "ionrift-respite.downtimeLedger.waiveAll"}}
                     </button>
                     {{else}}
                     <div class="dawn-settled-pill">
-                        <i class="fas fa-check-double"></i> All Saves Settled
+                        <i class="fas fa-check-double"></i> {{localize "ionrift-respite.downtimeLedger.allSavesSettled"}}
                     </div>
                     {{/if}}
                 </div>
@@ -139,9 +139,9 @@
                         <div class="actor-name-group">
                             <span class="actor-name">{{actorName}}</span>
                             <div class="actor-badges">
-                                <span class="pill-con" data-tooltip="Constitution Save Modifier">CON {{conModString}}</span>
-                                <span class="pill-exh {{#if currentExhaustion}}has-exh{{/if}}" data-tooltip="Current Exhaustion Level">
-                                    Exh {{currentExhaustion}}
+                                <span class="pill-con" data-tooltip="{{localize "ionrift-respite.downtimeLedger.conSaveModTooltip"}}">{{localize "ionrift-respite.downtimeLedger.conMod" mod=conModString}}</span>
+                                <span class="pill-exh {{#if currentExhaustion}}has-exh{{/if}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.currentExhaustionTooltip"}}">
+                                    {{localize "ionrift-respite.downtimeLedger.exhLevel" level=currentExhaustion}}
                                 </span>
                             </div>
                         </div>
@@ -156,12 +156,12 @@
                     {{!-- Computed Target & Roll Mode Indicator --}}
                     <div class="actor-target-col">
                         {{#if mustRoll}}
-                        <span class="target-dc-chip" data-tooltip="Constitution Save Target DC">DC <strong>{{dc}}</strong></span>
-                        <span class="target-mode-chip mode-{{advMode}}" data-tooltip="Roll Mode: {{advMode}}">
-                            {{#if (eq advMode 'adv')}}ADV{{else if (eq advMode 'dis')}}DIS{{else}}NORM{{/if}}
+                        <span class="target-dc-chip" data-tooltip="{{localize "ionrift-respite.downtimeLedger.conSaveDcTooltip"}}">{{localize "ionrift-respite.downtimeLedger.dcLabel"}} <strong>{{dc}}</strong></span>
+                        <span class="target-mode-chip mode-{{advMode}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.rollModeTooltip" mode=advMode}}">
+                            {{#if (eq advMode 'adv')}}{{localize "ionrift-respite.downtimeLedger.adv"}}{{else if (eq advMode 'dis')}}{{localize "ionrift-respite.downtimeLedger.dis"}}{{else}}{{localize "ionrift-respite.downtimeLedger.norm"}}{{/if}}
                         </span>
                         {{else}}
-                        <span class="target-exempt-chip"><i class="fas fa-check"></i> Exempt</span>
+                        <span class="target-exempt-chip"><i class="fas fa-check"></i> {{localize "ionrift-respite.downtimeLedger.exempt"}}</span>
                         {{/if}}
                     </div>
 
@@ -169,19 +169,19 @@
                     <div class="actor-action-col">
                         {{#if rolled}}
                             {{#if passed}}
-                            <div class="result-badge passed" data-tooltip="Rolled {{rollTotal}} vs DC {{dc}}">
-                                <i class="fas fa-check-circle"></i> Saved ({{rollTotal}})
+                            <div class="result-badge passed" data-tooltip="{{localize "ionrift-respite.downtimeLedger.rolledVsDc" roll=rollTotal dc=dc}}">
+                                <i class="fas fa-check-circle"></i> {{localize "ionrift-respite.downtimeLedger.savedRoll" roll=rollTotal}}
                                 {{#if ../isGM}}
-                                <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Reroll Save">
+                                <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.rerollSaveTooltip"}}">
                                     <i class="fas fa-rotate-right"></i>
                                 </button>
                                 {{/if}}
                             </div>
                             {{else}}
-                            <div class="result-badge failed" data-tooltip="Rolled {{rollTotal}} vs DC {{dc}} (+1 Exhaustion)">
-                                <i class="fas fa-skull"></i> Failed (+1 Exh) ({{rollTotal}})
+                            <div class="result-badge failed" data-tooltip="{{localize "ionrift-respite.downtimeLedger.rolledVsDcExh" roll=rollTotal dc=dc}}">
+                                <i class="fas fa-skull"></i> {{localize "ionrift-respite.downtimeLedger.failedExhRoll" roll=rollTotal}}
                                 {{#if ../isGM}}
-                                <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Reroll Save">
+                                <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.rerollSaveTooltip"}}">
                                     <i class="fas fa-rotate-right"></i>
                                 </button>
                                 {{/if}}
@@ -190,14 +190,14 @@
                         {{else if mustRoll}}
                             {{#if ../isGM}}
                             <button type="button" class="btn-dawn-roll-trigger" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}"
-                                    data-tooltip="Roll Constitution Save (DC {{dc}})">
-                                <i class="fas fa-dice-d20"></i> Roll DC {{dc}}
+                                    data-tooltip="{{localize "ionrift-respite.downtimeLedger.rollConSaveDcTooltip" dc=dc}}">
+                                <i class="fas fa-dice-d20"></i> {{localize "ionrift-respite.downtimeLedger.rollDc" dc=dc}}
                             </button>
                             {{else}}
-                            <span class="badge-waiting-gm"><i class="fas fa-hourglass-half"></i> Pending GM</span>
+                            <span class="badge-waiting-gm"><i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.downtimeLedger.pendingGm"}}</span>
                             {{/if}}
                         {{else}}
-                            <span class="badge-waived-pill"><i class="fas fa-shield-heart"></i> Waived</span>
+                            <span class="badge-waived-pill"><i class="fas fa-shield-heart"></i> {{localize "ionrift-respite.downtimeLedger.waived"}}</span>
                         {{/if}}
                     </div>
 
@@ -206,7 +206,7 @@
                     <div class="actor-override-col">
                         <button type="button" class="btn-gear-override {{#if isOverrideOpen}}active{{/if}}"
                                 data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}"
-                                data-tooltip="GM Adjustments (Override DC, Roll Mode, or Waive Save)">
+                                data-tooltip="{{localize "ionrift-respite.downtimeLedger.gmAdjustmentsTooltip"}}">
                             <i class="fas fa-sliders"></i>
                         </button>
                     </div>
@@ -215,17 +215,17 @@
                     {{!-- Inline Progressive Disclosure Drawer (Hidden until ⚙ is toggled) --}}
                     {{#if (and ../isGM isOverrideOpen)}}
                     <div class="dawn-override-drawer">
-                        <div class="override-drawer-title"><i class="fas fa-sliders"></i> Adjustments: {{actorName}}</div>
+                        <div class="override-drawer-title"><i class="fas fa-sliders"></i> {{localize "ionrift-respite.downtimeLedger.adjustmentsFor" name=actorName}}</div>
                         <div class="override-drawer-controls">
                             {{!-- Waive / Require Toggle --}}
                             <label class="override-checkbox-label">
                                 <input type="checkbox" class="dawn-toggle-must-roll" data-actor-id="{{actorId}}" {{#if mustRoll}}checked{{/if}}>
-                                <span>Require Save</span>
+                                <span>{{localize "ionrift-respite.downtimeLedger.requireSave"}}</span>
                             </label>
 
                             {{!-- DC Stepper --}}
                             <div class="override-dc-stepper">
-                                <span class="stepper-label">DC</span>
+                                <span class="stepper-label">{{localize "ionrift-respite.downtimeLedger.dcLabel"}}</span>
                                 <button type="button" class="btn-step" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="-1">−</button>
                                 <input type="number" class="dawn-dc-input" data-actor-id="{{actorId}}" value="{{dc}}" min="5" max="30">
                                 <button type="button" class="btn-step" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="1">+</button>
@@ -234,16 +234,16 @@
                             {{!-- Roll Mode Segment --}}
                             <div class="override-mode-segment" role="group">
                                 <button type="button" class="btn-mode adv {{#if (eq advMode 'adv')}}active{{/if}}"
-                                        data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="adv">ADV</button>
+                                        data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="adv">{{localize "ionrift-respite.downtimeLedger.adv"}}</button>
                                 <button type="button" class="btn-mode norm {{#if (eq advMode 'norm')}}active{{/if}}"
-                                        data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="norm">NORM</button>
+                                        data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="norm">{{localize "ionrift-respite.downtimeLedger.norm"}}</button>
                                 <button type="button" class="btn-mode dis {{#if (eq advMode 'dis')}}active{{/if}}"
-                                        data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="dis">DIS</button>
+                                        data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="dis">{{localize "ionrift-respite.downtimeLedger.dis"}}</button>
                             </div>
 
                             {{!-- Close Drawer Shortcut --}}
-                            <button type="button" class="btn-close-override" data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}" data-tooltip="Close adjustments">
-                                <i class="fas fa-check"></i> Done
+                            <button type="button" class="btn-close-override" data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.closeAdjustmentsTooltip"}}">
+                                <i class="fas fa-check"></i> {{localize "ionrift-respite.downtimeLedger.done"}}
                             </button>
                         </div>
                     </div>
@@ -263,32 +263,32 @@
                     <span class="spotlight-kicker {{#if currentNightEntry.isRolled}}{{#if currentNightEntry.isRed}}kicker-combat{{else if currentNightEntry.isAmber}}kicker-event{{else}}kicker-safe{{/if}}{{else}}kicker-unrolled{{/if}}">
                         <i class="fas {{#if currentNightEntry.isRed}}fa-swords{{else if currentNightEntry.isAmber}}fa-compass{{else if currentNightEntry.isRolled}}fa-moon{{else}}fa-hourglass-half{{/if}}"></i>
                         {{#if currentNightEntry.isRolled}}
-                            {{#if currentNightEntry.isDisaster}}Disaster{{else if currentNightEntry.isRed}}Hostile Ambush{{else if currentNightEntry.isAmber}}Wilderness Event{{else}}Quiet Rest{{/if}}
+                            {{#if currentNightEntry.isDisaster}}{{localize "ionrift-respite.downtimeLedger.disaster"}}{{else if currentNightEntry.isRed}}{{localize "ionrift-respite.downtimeLedger.hostileAmbush"}}{{else if currentNightEntry.isAmber}}{{localize "ionrift-respite.downtimeLedger.wildernessEvent"}}{{else}}{{localize "ionrift-respite.downtimeLedger.quietRest"}}{{/if}}
                         {{else}}
-                            Awaiting Check
+                            {{localize "ionrift-respite.downtimeLedger.awaitingCheck"}}
                         {{/if}}
                     </span>
                     {{#if currentNightEntry.isResolvedCombat}}
                     <span class="spotlight-status-pill resolved-pill">
-                        <i class="fas fa-circle-check"></i> Combat Resolved
+                        <i class="fas fa-circle-check"></i> {{localize "ionrift-respite.downtimeLedger.combatResolved"}}
                     </span>
                     {{/if}}
                 </div>
 
                 {{!-- Transparent DC Derivation & Co-located Stepper (GM Only) --}}
                 {{#if isGM}}
-                <div class="spotlight-metrics-equation" data-tooltip="Encounter DC Breakdown: Base + Hearth − Defenses">
-                    <span class="eq-token">Base <strong>{{dangerDC}}</strong></span>
-                    {{#if currentNightEntry.hearthDelta}}<span class="eq-op">+</span><span class="eq-token fire">Fire <strong>{{currentNightEntry.hearthDeltaLabel}}</strong></span>{{/if}}
-                    {{#if currentNightEntry.hasFortify}}<span class="eq-op">-</span><span class="eq-token fortify">Def <strong>{{currentNightEntry.fortifyDeltaLabel}}</strong></span>{{/if}}
+                <div class="spotlight-metrics-equation" data-tooltip="{{localize "ionrift-respite.downtimeLedger.encounterDcBreakdown"}}">
+                    <span class="eq-token">{{localize "ionrift-respite.downtimeLedger.baseLabel"}} <strong>{{dangerDC}}</strong></span>
+                    {{#if currentNightEntry.hearthDelta}}<span class="eq-op">+</span><span class="eq-token fire">{{localize "ionrift-respite.downtimeLedger.fireLabel"}} <strong>{{currentNightEntry.hearthDeltaLabel}}</strong></span>{{/if}}
+                    {{#if currentNightEntry.hasFortify}}<span class="eq-op">-</span><span class="eq-token fortify">{{localize "ionrift-respite.downtimeLedger.defLabel"}} <strong>{{currentNightEntry.fortifyDeltaLabel}}</strong></span>{{/if}}
                     <span class="eq-op">=</span>
                     <div class="spotlight-dc-stepper">
-                        <button type="button" class="btn-stepper" data-action="adjustNightDC" data-night="{{activePacingNight}}" data-delta="-1" data-tooltip="Decrease DC">−</button>
-                        <span class="stepper-val">DC {{currentNightEntry.effectiveDC}}</span>
-                        <button type="button" class="btn-stepper" data-action="adjustNightDC" data-night="{{activePacingNight}}" data-delta="1" data-tooltip="Increase DC">+</button>
+                        <button type="button" class="btn-stepper" data-action="adjustNightDC" data-night="{{activePacingNight}}" data-delta="-1" data-tooltip="{{localize "ionrift-respite.downtimeLedger.decreaseDc"}}">−</button>
+                        <span class="stepper-val">{{localize "ionrift-respite.downtimeLedger.dcVal" dc=currentNightEntry.effectiveDC}}</span>
+                        <button type="button" class="btn-stepper" data-action="adjustNightDC" data-night="{{activePacingNight}}" data-delta="1" data-tooltip="{{localize "ionrift-respite.downtimeLedger.increaseDc"}}">+</button>
                     </div>
                     {{#if currentNightEntry.isRolled}}
-                    <span class="eq-roll-pill {{#if currentNightEntry.isRed}}red{{else if currentNightEntry.isAmber}}amber{{else}}green{{/if}}" data-tooltip="d20 Danger Check vs DC {{currentNightEntry.effectiveDC}}">
+                    <span class="eq-roll-pill {{#if currentNightEntry.isRed}}red{{else if currentNightEntry.isAmber}}amber{{else}}green{{/if}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.d20DangerCheckTooltip" dc=currentNightEntry.effectiveDC}}">
                         <i class="fas fa-dice-d20"></i> {{currentNightEntry.rollTotal}}
                     </span>
                     {{/if}}
@@ -304,14 +304,14 @@
                         {{#if currentNightEntry.event}}
                             {{currentNightEntry.event.title}}
                         {{else}}
-                            Quiet Night Under the Canopy
+                            {{localize "ionrift-respite.downtimeLedger.quietNightTitle"}}
                         {{/if}}
                     </h3>
                     <p class="spotlight-event-description">
                         {{#if currentNightEntry.event}}
                             {{currentNightEntry.event.description}}
                         {{else}}
-                            The campfire burns steadily and the wilderness remains quiet through the night. The party rests peacefully without incident or disturbance.
+                            {{localize "ionrift-respite.downtimeLedger.quietNightDesc"}}
                         {{/if}}
                     </p>
 
@@ -319,14 +319,14 @@
                     <div class="spotlight-sentry-strip">
                         <img class="sentry-strip-avatar" src="{{#if currentNightEntry.sentryImg}}{{currentNightEntry.sentryImg}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="{{currentNightEntry.sentryName}}">
                         <div class="sentry-info">
-                            <span class="sentry-label">Watch on Duty:</span>
+                            <span class="sentry-label">{{localize "ionrift-respite.downtimeLedger.watchOnDuty"}}</span>
                             <strong class="sentry-name">{{currentNightEntry.sentryName}}</strong>
-                            <span class="sentry-pp-badge" data-tooltip="Passive Perception">PP {{currentNightEntry.sentryPP}}</span>
+                            <span class="sentry-pp-badge" data-tooltip="{{localize "ionrift-respite.downtimeLedger.passivePerception"}}">{{localize "ionrift-respite.downtimeLedger.ppVal" pp=currentNightEntry.sentryPP}}</span>
                             {{#if currentNightEntry.hasActiveGuard}}
-                            <span class="sentry-badge alert" data-tooltip="Dedicated Guard active: Sentry is on watch"><i class="fas fa-shield-alt"></i> Camp guard on watch</span>
+                            <span class="sentry-badge alert" data-tooltip="{{localize "ionrift-respite.downtimeLedger.guardActiveTooltip"}}"><i class="fas fa-shield-alt"></i> {{localize "ionrift-respite.downtimeLedger.campGuardOnWatch"}}</span>
                             {{else}}
-                            <span class="sentry-badge {{#if currentNightEntry.sentrySurprised}}surprised{{else}}alert{{/if}}" data-tooltip="Passive Perception vs Stealth DC 12">
-                                {{#if currentNightEntry.sentrySurprised}}<i class="fas fa-triangle-exclamation"></i> Surprised!{{else}}<i class="fas fa-check"></i> Alert{{/if}}
+                            <span class="sentry-badge {{#if currentNightEntry.sentrySurprised}}surprised{{else}}alert{{/if}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.ppVsStealthDc12"}}">
+                                {{#if currentNightEntry.sentrySurprised}}<i class="fas fa-triangle-exclamation"></i> {{localize "ionrift-respite.downtimeLedger.surprisedExclamation"}}{{else}}<i class="fas fa-check"></i> {{localize "ionrift-respite.downtimeLedger.alert"}}{{/if}}
                             </span>
                             {{/if}}
                         </div>
@@ -340,32 +340,32 @@
                     <div class="adjudication-tactical-cluster">
                         {{#if currentNightEntry.isResolvedCombat}}
                         <div class="adjudication-complete-tag">
-                            <i class="fas fa-check-double text-emerald"></i> Combat Concluded
+                            <i class="fas fa-check-double text-emerald"></i> {{localize "ionrift-respite.downtimeLedger.combatConcluded"}}
                         </div>
                         {{else}}
-                        <button type="button" class="btn-tactical-action btn-combat-canvas" data-action="minimizeForCombat" data-tooltip="Minimize rest window to status bar and run tactical combat on the canvas">
-                            <i class="fas fa-window-minimize"></i> Run Combat on Canvas
+                        <button type="button" class="btn-tactical-action btn-combat-canvas" data-action="minimizeForCombat" data-tooltip="{{localize "ionrift-respite.downtimeLedger.minimizeForCombatTooltip"}}">
+                            <i class="fas fa-window-minimize"></i> {{localize "ionrift-respite.downtimeLedger.runCombatOnCanvas"}}
                         </button>
-                        <button type="button" class="btn-tactical-action btn-combat-quick-resolve" data-action="completeCombatForNight" data-tooltip="Mark combat completed at table or theater of mind without canvas battle">
-                            <i class="fas fa-circle-check"></i> Mark Resolved
+                        <button type="button" class="btn-tactical-action btn-combat-quick-resolve" data-action="completeCombatForNight" data-tooltip="{{localize "ionrift-respite.downtimeLedger.completeCombatNightTooltip"}}">
+                            <i class="fas fa-circle-check"></i> {{localize "ionrift-respite.downtimeLedger.markResolved"}}
                         </button>
                         {{/if}}
                     </div>
                     {{/if}}
 
                     <div class="adjudication-overrides-cluster">
-                        <span class="cluster-label">Overrides:</span>
-                        <button type="button" class="btn-spotlight-curate" data-action="pickPoolNightEvent" data-night="{{activePacingNight}}" data-tooltip="Choose a specific event from your curated terrain pool to replace tonight's outcome">
-                            <i class="fas fa-book-open"></i> Pool
+                        <span class="cluster-label">{{localize "ionrift-respite.downtimeLedger.overridesLabel"}}</span>
+                        <button type="button" class="btn-spotlight-curate" data-action="pickPoolNightEvent" data-night="{{activePacingNight}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.pickPoolEventTooltip"}}">
+                            <i class="fas fa-book-open"></i> {{localize "ionrift-respite.downtimeLedger.pool"}}
                         </button>
-                        <button type="button" class="btn-spotlight-curate" data-action="improviseNightOverride" data-night="{{activePacingNight}}" data-tooltip="Switch to an improvised scenario to narrate table-side">
-                            <i class="fas fa-hat-wizard"></i> Improvise
+                        <button type="button" class="btn-spotlight-curate" data-action="improviseNightOverride" data-night="{{activePacingNight}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.improviseScenarioTooltip"}}">
+                            <i class="fas fa-hat-wizard"></i> {{localize "ionrift-respite.downtimeLedger.improvise"}}
                         </button>
-                        <button type="button" class="btn-spotlight-curate safe" data-action="setNightQuiet" data-night="{{activePacingNight}}" data-tooltip="Override to a peaceful night with no event">
-                            <i class="fas fa-moon"></i> Quiet Rest
+                        <button type="button" class="btn-spotlight-curate safe" data-action="setNightQuiet" data-night="{{activePacingNight}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.quietNightOverrideTooltip"}}">
+                            <i class="fas fa-moon"></i> {{localize "ionrift-respite.downtimeLedger.quietRest"}}
                         </button>
-                        <button type="button" class="btn-spotlight-curate reroll" data-action="rerollNight" data-night="{{activePacingNight}}" data-tooltip="Reroll 1d20 danger check against Target DC {{currentNightEntry.effectiveDC}}">
-                            <i class="fas fa-dice"></i> Reroll
+                        <button type="button" class="btn-spotlight-curate reroll" data-action="rerollNight" data-night="{{activePacingNight}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.rerollDangerCheckTooltip" dc=currentNightEntry.effectiveDC}}">
+                            <i class="fas fa-dice"></i> {{localize "ionrift-respite.downtimeLedger.reroll"}}
                         </button>
                     </div>
                 </div>
@@ -377,42 +377,42 @@
                     <div class="ceremony-lead">
                         <img class="ceremony-sentry-img" src="{{#if currentNightEntry.sentryImg}}{{currentNightEntry.sentryImg}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="{{currentNightEntry.sentryName}}">
                         <div class="ceremony-narrative">
-                            <h3 class="ceremony-title">The Night Vigil Begins</h3>
+                            <h3 class="ceremony-title">{{localize "ionrift-respite.downtimeLedger.nightVigilBegins"}}</h3>
                             <p class="ceremony-prompt">
-                                <strong>{{currentNightEntry.sentryName}}</strong> stands watch with Passive Perception <strong>{{currentNightEntry.sentryPP}}</strong>. Target DC <strong>{{currentNightEntry.effectiveDC}}</strong>.
+                                {{{localize "ionrift-respite.downtimeLedger.vigilPrompt" sentry=currentNightEntry.sentryName pp=currentNightEntry.sentryPP dc=currentNightEntry.effectiveDC}}}
                             </p>
                         </div>
                     </div>
 
                     {{#if isGM}}
                     <div class="spotlight-roll-ceremony-deck">
-                        <div class="nw-mode-selector" role="tablist" aria-label="How does the night unfold?">
+                        <div class="nw-mode-selector" role="tablist" aria-label="{{localize "ionrift-respite.downtimeLedger.vigilAriaLabel"}}">
                             <button type="button" class="nw-mode-tab" data-action="rollNightCheck" data-night="{{activePacingNight}}"
-                                    data-tooltip="Roll a d20 against Target DC {{currentNightEntry.effectiveDC}}. Meet or beat it for a quiet night. Rolls below pull a random event from the curated terrain pool.">
+                                    data-tooltip="{{localize "ionrift-respite.downtimeLedger.randomCheckTooltip" dc=currentNightEntry.effectiveDC}}">
                                 <i class="fas fa-dice-d20 nw-mode-icon"></i>
-                                <span class="nw-mode-label">Random Check</span>
+                                <span class="nw-mode-label">{{localize "ionrift-respite.downtimeLedger.randomCheck"}}</span>
                             </button>
                             <button type="button" class="nw-mode-tab" data-action="improviseNightCheck" data-night="{{activePacingNight}}"
-                                    data-tooltip="Roll 1d20 against Target DC {{currentNightEntry.effectiveDC}}. If an event triggers, run your own scenario at the table.">
+                                    data-tooltip="{{localize "ionrift-respite.downtimeLedger.improviseCheckTooltip" dc=currentNightEntry.effectiveDC}}">
                                 <i class="fas fa-hat-wizard nw-mode-icon"></i>
-                                <span class="nw-mode-label">Improvise</span>
+                                <span class="nw-mode-label">{{localize "ionrift-respite.downtimeLedger.improvise"}}</span>
                             </button>
                             <button type="button" class="nw-mode-tab" data-action="pickPoolNightEvent" data-night="{{activePacingNight}}"
-                                    data-tooltip="Choose a specific event from your curated terrain pool. Bypasses the threshold check.">
+                                    data-tooltip="{{localize "ionrift-respite.downtimeLedger.pickFromPoolTooltip"}}">
                                 <i class="fas fa-book-open nw-mode-icon"></i>
-                                <span class="nw-mode-label">Pick from Pool</span>
+                                <span class="nw-mode-label">{{localize "ionrift-respite.downtimeLedger.pickFromPool"}}</span>
                             </button>
                             <button type="button" class="nw-mode-tab safe-bypass" data-action="setNightQuiet" data-night="{{activePacingNight}}"
-                                    data-tooltip="GM override: skip the check and declare a quiet night with no event.">
+                                    data-tooltip="{{localize "ionrift-respite.downtimeLedger.quietRestOverrideTooltip"}}">
                                 <i class="fas fa-moon nw-mode-icon"></i>
-                                <span class="nw-mode-label">Quiet Rest</span>
+                                <span class="nw-mode-label">{{localize "ionrift-respite.downtimeLedger.quietRest"}}</span>
                             </button>
                         </div>
                     </div>
                     {{else}}
                     <div class="player-pacing-waiting">
                         <i class="fas fa-hourglass-half"></i>
-                        <span>The GM is preparing the night vigil check...</span>
+                        <span>{{localize "ionrift-respite.downtimeLedger.gmPreparingCheck"}}</span>
                     </div>
                     {{/if}}
                 </div>
@@ -426,109 +426,109 @@
             {{#if isSingleNight}}
             {{#if isDawnCheck}}
             {{!-- Single Night Dawn Footer --}}
-            <button type="button" class="btn-pacing-nav prev" data-action="previousPacingNight" data-tooltip="Return to the Overnight Vigil">
-                <i class="fas fa-arrow-left"></i> Back to Vigil
+            <button type="button" class="btn-pacing-nav prev" data-action="previousPacingNight" data-tooltip="{{localize "ionrift-respite.downtimeLedger.returnToOvernightVigil"}}">
+                <i class="fas fa-arrow-left"></i> {{localize "ionrift-respite.downtimeLedger.backToVigil"}}
             </button>
             <div class="pacing-footer-status">
-                <span>Dawn · Final Adjudication</span>
+                <span>{{localize "ionrift-respite.downtimeLedger.dawnFinalAdjudication"}}</span>
             </div>
             {{#if isGM}}
                 {{#if exhaustionSummary.pending}}
-                <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="Roll or waive each exhaustion save before completing the rest">
-                    <i class="fas fa-hourglass-half"></i> Awaiting Exhaustion Saves
+                <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="{{localize "ionrift-respite.downtimeLedger.awaitingExhaustionTooltip"}}">
+                    <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.downtimeLedger.awaitingExhaustionSaves"}}
                 </button>
                 {{else}}
-                <button type="button" class="btn-resolve-downtime btn-pacing-finalize" data-action="resolveDowntime" data-tooltip="Complete rest, apply recovery and conclude downtime">
-                    <i class="fas fa-check-double"></i> Complete Rest
+                <button type="button" class="btn-resolve-downtime btn-pacing-finalize" data-action="resolveDowntime" data-tooltip="{{localize "ionrift-respite.downtimeLedger.completeRestTooltip"}}">
+                    <i class="fas fa-check-double"></i> {{localize "ionrift-respite.downtimeLedger.completeRest"}}
                 </button>
                 {{/if}}
             {{else}}
-            <div class="player-pacing-footer-note"><span>Waiting for GM...</span></div>
+            <div class="player-pacing-footer-note"><span>{{localize "ionrift-respite.downtimeLedger.waitingForGm"}}</span></div>
             {{/if}}
 
             {{else}}
             {{!-- Single Night Vigil Footer --}}
             {{#if canReturnToPlanning}}
-            <button type="button" class="btn-pacing-nav prev" data-action="returnToPlanning" data-tooltip="Return to camp planning overview">
-                <i class="fas fa-arrow-left"></i> Camp Planning
+            <button type="button" class="btn-pacing-nav prev" data-action="returnToPlanning" data-tooltip="{{localize "ionrift-respite.downtimeLedger.returnToPlanningTooltip"}}">
+                <i class="fas fa-arrow-left"></i> {{localize "ionrift-respite.downtimeLedger.campPlanning"}}
             </button>
             {{else}}
             <div class="pacing-footer-spacer"></div>
             {{/if}}
             <div class="pacing-footer-status">
-                <span>8-Hour Overnight Rest</span>
+                <span>{{localize "ionrift-respite.downtimeLedger.eightHourOvernightRest"}}</span>
             </div>
             {{#if isGM}}
                 {{#if currentNightEntry.isRolled}}
-                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="Advance to Dawn Finalization & Exhaustion Resolution">
-                    <span>Dawn Finalization</span> <i class="fas fa-sun"></i>
+                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="{{localize "ionrift-respite.downtimeLedger.advanceToDawnTooltip"}}">
+                    <span>{{localize "ionrift-respite.downtimeLedger.dawnFinalization"}}</span> <i class="fas fa-sun"></i>
                 </button>
                 {{else}}
-                <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="Roll the night check first">
-                    <i class="fas fa-hourglass-half"></i> Awaiting Night Check
+                <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="{{localize "ionrift-respite.downtimeLedger.rollNightCheckFirstTooltip"}}">
+                    <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.downtimeLedger.awaitingNightCheck"}}
                 </button>
                 {{/if}}
             {{else}}
             <div class="player-pacing-footer-note">
-                <span>Waiting for GM...</span>
+                <span>{{localize "ionrift-respite.downtimeLedger.waitingForGm"}}</span>
             </div>
             {{/if}}
             {{/if}}
 
             {{else}}
             {{!-- Multi-Night Footer --}}
-            <button type="button" class="btn-pacing-nav prev" data-action="previousPacingNight" {{#unless prevPacingNight}}disabled{{/unless}} data-tooltip="{{#if prevPacingNight}}Inspect Night {{prevPacingNight}}{{else}}Already on first night{{/if}}">
-                <i class="fas fa-chevron-left"></i> Previous {{#if prevPacingNight}}(N{{prevPacingNight}}){{else}}Night{{/if}}
+            <button type="button" class="btn-pacing-nav prev" data-action="previousPacingNight" {{#unless prevPacingNight}}disabled{{/unless}} data-tooltip="{{#if prevPacingNight}}{{localize "ionrift-respite.downtimeLedger.inspectNightTooltip" night=prevPacingNight}}{{else}}{{localize "ionrift-respite.downtimeLedger.alreadyFirstNight"}}{{/if}}">
+                <i class="fas fa-chevron-left"></i> {{#if prevPacingNight}}{{localize "ionrift-respite.downtimeLedger.prevNightShort" night=prevPacingNight}}{{else}}{{localize "ionrift-respite.downtimeLedger.previousNight"}}{{/if}}
             </button>
 
             <div class="pacing-footer-status">
                 {{#if isDawnCheck}}
-                <span>Dawn · Final Check</span>
+                <span>{{localize "ionrift-respite.downtimeLedger.dawnFinalCheck"}}</span>
                 {{else}}
-                <span>Night {{activePacingNight}} of {{totalNights}}</span>
+                <span>{{localize "ionrift-respite.downtimeLedger.nightOfTotal" current=activePacingNight total=totalNights}}</span>
                 {{/if}}
             </div>
 
             {{#if isGM}}
                 {{#if isDawnCheck}}
                     {{#if exhaustionSummary.pending}}
-                    <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="Roll or waive each exhaustion save before completing the rest">
-                        <i class="fas fa-hourglass-half"></i> Awaiting Exhaustion Saves
+                    <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="{{localize "ionrift-respite.downtimeLedger.awaitingExhaustionTooltip"}}">
+                        <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.downtimeLedger.awaitingExhaustionSaves"}}
                     </button>
                     {{else}}
-                    <button type="button" class="btn-resolve-downtime btn-pacing-finalize" data-action="resolveDowntime" data-tooltip="Complete downtime rest, apply full recovery and post Master Chat Card">
-                        <i class="fas fa-check-double"></i> Complete Rest
+                    <button type="button" class="btn-resolve-downtime btn-pacing-finalize" data-action="resolveDowntime" data-tooltip="{{localize "ionrift-respite.downtimeLedger.completeMultiNightTooltip"}}">
+                        <i class="fas fa-check-double"></i> {{localize "ionrift-respite.downtimeLedger.completeRest"}}
                     </button>
                     {{/if}}
                 {{else if isFinalPacingNight}}
-                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="Advance to Dawn Finalization & Exhaustion Checks">
-                    <span>Dawn Finalization</span> <i class="fas fa-sun"></i>
+                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="{{localize "ionrift-respite.downtimeLedger.advanceToDawnExhaustionTooltip"}}">
+                    <span>{{localize "ionrift-respite.downtimeLedger.dawnFinalization"}}</span> <i class="fas fa-sun"></i>
                 </button>
                 {{else if sendoffOpen}}
                     {{#if mealBuffPending}}
-                    <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="Apply each meal and drink before the last watch">
-                        <i class="fas fa-hourglass-half"></i> Apply the send-off
+                    <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="{{localize "ionrift-respite.downtimeLedger.applySendoffTooltip"}}">
+                        <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.downtimeLedger.applyTheSendoff"}}
                     </button>
                     {{else}}
-                    <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="The send-off is in place. Open the last watch.">
-                        <span>Last watch</span> <i class="fas fa-moon"></i>
+                    <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="{{localize "ionrift-respite.downtimeLedger.sendoffReadyTooltip"}}">
+                        <span>{{localize "ionrift-respite.downtimeLedger.lastWatch"}}</span> <i class="fas fa-moon"></i>
                     </button>
                     {{/if}}
                 {{else if sendoffReady}}
-                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="Apply each meal and drink before the last watch">
-                    <span>Send-off</span> <i class="fas fa-utensils"></i>
+                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="{{localize "ionrift-respite.downtimeLedger.applySendoffTooltip"}}">
+                    <span>{{localize "ionrift-respite.downtimeLedger.sendoff"}}</span> <i class="fas fa-utensils"></i>
                 </button>
                 {{else}}
-                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="Advance to next night">
-                    <span>Next Night (N{{nextPacingNight}})</span> <i class="fas fa-chevron-right"></i>
+                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="{{localize "ionrift-respite.downtimeLedger.advanceToNextNightTooltip"}}">
+                    <span>{{localize "ionrift-respite.downtimeLedger.nextNightN" night=nextPacingNight}}</span> <i class="fas fa-chevron-right"></i>
                 </button>
                 {{/if}}
             {{else}}
             <div class="player-pacing-footer-note">
                 {{#if sendoffOpen}}
-                <span>{{#if mealBuffPending}}Apply your meal or drink{{else}}Waiting on the last watch{{/if}}</span>
+                <span>{{#if mealBuffPending}}{{localize "ionrift-respite.downtimeLedger.applyMealOrDrink"}}{{else}}{{localize "ionrift-respite.downtimeLedger.waitingOnLastWatch"}}{{/if}}</span>
                 {{else}}
-                <span>Waiting for GM...</span>
+                <span>{{localize "ionrift-respite.downtimeLedger.waitingForGm"}}</span>
                 {{/if}}
             </div>
             {{/if}}
@@ -540,17 +540,17 @@
     {{!-- Safe Rest Haven Strip (Civilized / Safe Haven) --}}
     {{#if (or isCivilized campConditionsBar.safeRestSpot)}}
     <div class="downtime-haven-strip haven-civilized">
-        <div class="downtime-conditions-indicator" role="status" aria-label="Camp conditions">
+        <div class="downtime-conditions-indicator" role="status" aria-label="{{localize "ionrift-respite.downtimeLedger.campConditionsAria"}}">
             <span class="camp-status-chip terrain-chip" data-tooltip="{{campConditionsBar.terrainTooltip}}">
                 <i class="{{campConditionsBar.terrainIcon}}" aria-hidden="true"></i> {{campConditionsBar.terrainLabel}}
             </span>
-            <span class="camp-status-chip comfort-safe" data-tooltip="No comfort penalties or night events.">
-                <i class="fas fa-shield-halved" aria-hidden="true"></i> Safe rest spot
+            <span class="camp-status-chip comfort-safe" data-tooltip="{{localize "ionrift-respite.downtimeLedger.comfortSafeTooltip"}}">
+                <i class="fas fa-shield-halved" aria-hidden="true"></i> {{localize "ionrift-respite.downtimeLedger.safeRestSpot"}}
             </span>
         </div>
         <div class="downtime-commissary-strip">
-            <div class="commissary-pill civilized" data-tooltip="All party meals and lodging covered by settlement lifestyle expenses.">
-                <i class="fas fa-utensils"></i> Lodgings & Meals Covered (0 Rations Needed)
+            <div class="commissary-pill civilized" data-tooltip="{{localize "ionrift-respite.downtimeLedger.lifestyleCoveredTooltip"}}">
+                <i class="fas fa-utensils"></i> {{{localize "ionrift-respite.downtimeLedger.lodgingsMealsCovered"}}}
             </div>
         </div>
     </div>
@@ -579,7 +579,7 @@
 
                     <div class="downtime-tier-card tier-examine">
                         <div class="examine-diegetic">
-                            <div class="sust-section-label">EXAMINE</div>
+                            <div class="sust-section-label">{{localize "ionrift-respite.downtimeLedger.examineSection"}}</div>
                             {{#if workbenchEmbed}}
                             {{#with workbenchEmbed}}
                             {{> workbenchIdentifyPanel}}
@@ -587,8 +587,8 @@
                             {{else}}
                             <div class="rest-night-card sel">
                                 <span class="rest-night-main">
-                                    <strong>Examine is off</strong>
-                                    <span>Turn it on in rest settings to identify, focus, and taste.</span>
+                                    <strong>{{localize "ionrift-respite.downtimeLedger.examineIsOff"}}</strong>
+                                    <span>{{localize "ionrift-respite.downtimeLedger.examineTurnOnHint"}}</span>
                                 </span>
                             </div>
                             {{/if}}
@@ -597,34 +597,34 @@
 
                     {{!-- TIER 1: Station Activities --}}
                     <div class="downtime-tier-card tier-activities">
-                        <div class="sust-section-label">ACTIVITIES</div>
+                        <div class="sust-section-label">{{localize "ionrift-respite.downtimeLedger.activitiesSection"}}</div>
                         <div class="act-planner">
                             <div class="sust-planner-head">
                                 <span class="sust-grow"></span>
-                                <span class="sust-budget{{#if isCommitted}} done{{/if}}">{{#if isCommitted}}Locked{{else if budget.isComplete}}Ready to lock{{else}}{{budget.unallocatedDays}}d unallocated{{/if}}</span>
+                                <span class="sust-budget{{#if isCommitted}} done{{/if}}">{{#if isCommitted}}{{localize "ionrift-respite.downtimeLedger.locked"}}{{else if budget.isComplete}}{{localize "ionrift-respite.downtimeLedger.readyToLock"}}{{else}}{{localize "ionrift-respite.downtimeLedger.daysUnallocatedShort" days=budget.unallocatedDays}}{{/if}}</span>
                             </div>
                         <div class="tier-card-header">
-                            <span class="tier-title"><i class="fas fa-hammer"></i> Activities</span>
+                            <span class="tier-title"><i class="fas fa-hammer"></i> {{localize "ionrift-respite.downtimeLedger.activities"}}</span>
                             <div class="tier-header-badges">
                                 {{#if (and (or ../workbenchIdentifyUiEnabled workbenchIdentifyUiEnabled) canInteract)}}
                                 <button type="button" class="btn-tier-override btn-identify-toggle {{#if isIdentifyOpen}}active{{/if}}"
                                     data-action="toggleIdentifyDrawer" data-actor-id="{{id}}"
-                                    data-tooltip="{{#if isIdentifyOpen}}Close Identify workbench{{else}}Open Identify workbench (Focus: {{focusRemaining}}/{{focusBudget}} left){{/if}}">
-                                    <i class="fas fa-magnifying-glass"></i> Identify{{#if identifyDays}} ({{identifyDays}}d){{/if}}
+                                    data-tooltip="{{#if isIdentifyOpen}}{{localize "ionrift-respite.downtimeLedger.closeIdentifyWorkbench"}}{{else}}{{localize "ionrift-respite.downtimeLedger.openIdentifyWorkbench" remaining=focusRemaining budget=focusBudget}}{{/if}}">
+                                    <i class="fas fa-magnifying-glass"></i> {{localize "ionrift-respite.downtimeLedger.identify"}}{{#if identifyDays}} ({{identifyDays}}d){{/if}}
                                 </button>
                                 {{/if}}
                                 {{#if isCommitted}}
-                                <span class="tier-status-pill complete" data-tooltip="Activities are committed and locked in">
-                                    <i class="fas fa-lock"></i> Choices Locked
+                                <span class="tier-status-pill complete" data-tooltip="{{localize "ionrift-respite.downtimeLedger.activitiesCommittedTooltip"}}">
+                                    <i class="fas fa-lock"></i> {{localize "ionrift-respite.downtimeLedger.choicesLocked"}}
                                 </span>
                                 {{#if isGM}}
-                                <button type="button" class="btn-tier-override" data-action="unlockActivities" data-actor-id="{{id}}" data-tooltip="GM: Reset to allow re-allocation">
-                                    <i class="fas fa-rotate-left"></i> Reset
+                                <button type="button" class="btn-tier-override" data-action="unlockActivities" data-actor-id="{{id}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.gmResetAllocationTooltip"}}">
+                                    <i class="fas fa-rotate-left"></i> {{localize "ionrift-respite.downtimeLedger.reset"}}
                                 </button>
                                 {{/if}}
                                 {{else}}
                                 <span class="tier-status-pill pending">
-                                    {{#if budget.isComplete}}Ready to lock{{else}}{{budget.unallocatedDays}}d unallocated{{/if}}
+                                    {{#if budget.isComplete}}{{localize "ionrift-respite.downtimeLedger.readyToLock"}}{{else}}{{localize "ionrift-respite.downtimeLedger.daysUnallocatedShort" days=budget.unallocatedDays}}{{/if}}
                                 </span>
                                 {{/if}}
                             </div>
@@ -656,8 +656,8 @@
                             {{!-- Locked State: Clean Itinerary Docket --}}
                             <div class="tier-content-zone locked-activities-docket">
                                 <div class="locked-docket-header">
-                                    <span class="docket-title"><i class="fas fa-calendar-check"></i> Itinerary</span>
-                                    <span class="docket-total">All Days Assigned</span>
+                                    <span class="docket-title"><i class="fas fa-calendar-check"></i> {{localize "ionrift-respite.downtimeLedger.itinerary"}}</span>
+                                    <span class="docket-total">{{localize "ionrift-respite.downtimeLedger.allDaysAssigned"}}</span>
                                 </div>
                                 <div class="locked-docket-items">
                                     {{#each activeActivities}}
@@ -688,22 +688,22 @@
                                         {{#if (or isGM ../isGM)}}
                                         <button type="button" class="btn-tier-override"
                                             data-action="rollAllActivities" data-roll-kind="defense" data-actor-id="{{id}}"
-                                            data-tooltip="GM: Reroll all defense checks">
+                                            data-tooltip="{{localize "ionrift-respite.downtimeLedger.gmRerollDefensesTooltip"}}">
                                             <i class="fas fa-redo"></i>
-                                            <span>Reroll</span>
+                                            <span>{{localize "ionrift-respite.downtimeLedger.reroll"}}</span>
                                         </button>
                                         {{/if}}
                                     {{else}}
                                         {{#if canInteract}}
                                         <button type="button" class="btn-tier-action btn-roll-defenses"
                                             data-action="rollAllActivities" data-roll-kind="defense" data-actor-id="{{id}}"
-                                            data-tooltip="Roll all unrolled defense checks">
+                                            data-tooltip="{{localize "ionrift-respite.downtimeLedger.rollUnrolledDefensesTooltip"}}">
                                             <i class="fas fa-dice-d20"></i>
-                                            <span>Roll Defenses{{#if fortifySummary.unrolledCount}} ({{fortifySummary.unrolledCount}}d){{/if}}</span>
+                                            <span>{{localize "ionrift-respite.downtimeLedger.rollDefenses"}}{{#if fortifySummary.unrolledCount}} ({{fortifySummary.unrolledCount}}d){{/if}}</span>
                                         </button>
                                         {{else}}
                                         <span class="tier-action-placeholder">
-                                            <i class="fas fa-hourglass-half"></i> Awaiting Roll
+                                            <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.downtimeLedger.awaitingRoll"}}
                                         </span>
                                         {{/if}}
                                     {{/if}}
@@ -718,9 +718,9 @@
                                         {{#if (or isGM ../isGM)}}
                                         <button type="button" class="btn-tier-override"
                                             data-action="rollAllActivities" data-roll-kind="skill" data-actor-id="{{id}}"
-                                            data-tooltip="GM: Reroll these activity checks">
+                                            data-tooltip="{{localize "ionrift-respite.downtimeLedger.gmRerollSkillChecksTooltip"}}">
                                             <i class="fas fa-redo"></i>
-                                            <span>Reroll</span>
+                                            <span>{{localize "ionrift-respite.downtimeLedger.reroll"}}</span>
                                         </button>
                                         {{/if}}
                                     {{else}}
@@ -729,11 +729,11 @@
                                             data-action="rollAllActivities" data-roll-kind="skill" data-actor-id="{{id}}"
                                             data-tooltip="{{skillCheckSummary.tooltip}}">
                                             <i class="fas fa-dice-d20"></i>
-                                            <span>Roll {{skillCheckSummary.label}}{{#if skillCheckSummary.unrolledCount}} ({{skillCheckSummary.unrolledCount}}d){{/if}}</span>
+                                            <span>{{localize "ionrift-respite.downtimeLedger.rollSkillCheck" label=skillCheckSummary.label}}{{#if skillCheckSummary.unrolledCount}} ({{skillCheckSummary.unrolledCount}}d){{/if}}</span>
                                         </button>
                                         {{else}}
                                         <span class="tier-action-placeholder">
-                                            <i class="fas fa-hourglass-half"></i> Awaiting Roll
+                                            <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.downtimeLedger.awaitingRoll"}}
                                         </span>
                                         {{/if}}
                                     {{/if}}
@@ -742,32 +742,32 @@
                                     {{#if hasCraftingActivities}}
                                     {{#if isAllCraftsResolved}}
                                     <div class="badge-tier-resolved craft"
-                                        data-tooltip="All {{craftDaysCount}} craft days resolved">
+                                        data-tooltip="{{localize "ionrift-respite.downtimeLedger.allCraftDaysResolvedTooltip" count=craftDaysCount}}">
                                         <i class="fas fa-check-double"></i>
-                                        <span>Crafts Complete ({{craftDaysCount}}d)</span>
+                                        <span>{{localize "ionrift-respite.downtimeLedger.craftsCompleteDays" count=craftDaysCount}}</span>
                                     </div>
                                     {{else}}
                                     {{#if canChangeCraftPlan}}
                                     <button type="button" class="btn-tier-action"
                                         data-action="unlockActivities" data-actor-id="{{id}}"
-                                        data-tooltip="No recipe can be made. Unlock the plan and assign those days to something else.">
+                                        data-tooltip="{{localize "ionrift-respite.downtimeLedger.changePlanTooltip"}}">
                                         <i class="fas fa-rotate-left"></i>
-                                        <span>Change plan</span>
+                                        <span>{{localize "ionrift-respite.downtimeLedger.changePlan"}}</span>
                                     </button>
                                     {{/if}}
                                     <button type="button" class="btn-tier-action btn-resolve-crafts in-progress"
                                         data-action="openCraftQueue" data-actor-id="{{id}}"
                                         {{#unless canInteract}}disabled{{/unless}}
-                                        data-tooltip="Resolve {{craftDaysRemaining}} craft days (Click to pick recipe, Shift+Click to quick-roll DC 12)">
+                                        data-tooltip="{{localize "ionrift-respite.downtimeLedger.resolveCraftsTooltip" count=craftDaysRemaining}}">
                                         <i class="fas fa-utensils"></i>
-                                        <span>Resolve Crafts ({{craftDaysRemaining}}d)</span>
+                                        <span>{{localize "ionrift-respite.downtimeLedger.resolveCraftsDays" count=craftDaysRemaining}}</span>
                                     </button>
                                     {{/if}}
                                     {{/if}}
 
                                     {{#unless (or hasRollableActivities hasCraftingActivities)}}
                                     <span class="tier-action-placeholder">
-                                        <i class="fas fa-check"></i> <span>No Checks Required</span>
+                                        <i class="fas fa-check"></i> <span>{{localize "ionrift-respite.downtimeLedger.noChecksRequired"}}</span>
                                     </span>
                                     {{/unless}}
                                 {{else}}
@@ -775,13 +775,13 @@
                                     <button type="button" class="btn-tier-action btn-commit"
                                         data-action="commitActivities" data-actor-id="{{id}}"
                                         {{#unless canInteract}}disabled{{/unless}}
-                                        data-tooltip="Lock in your downtime plan and proceed to rolling checks">
-                                        <i class="fas fa-lock"></i> <span>Lock In Choices</span>
+                                        data-tooltip="{{localize "ionrift-respite.downtimeLedger.lockInChoicesTooltip"}}">
+                                        <i class="fas fa-lock"></i> <span>{{localize "ionrift-respite.downtimeLedger.lockInChoices"}}</span>
                                     </button>
                                     {{else}}
                                     <button type="button" class="btn-tier-action btn-commit" disabled
-                                        data-tooltip="Assign all days to lock in choices">
-                                        <i class="fas fa-lock"></i> <span>Assign All Days</span>
+                                        data-tooltip="{{localize "ionrift-respite.downtimeLedger.assignAllDaysTooltip"}}">
+                                        <i class="fas fa-lock"></i> <span>{{localize "ionrift-respite.downtimeLedger.assignAllDays"}}</span>
                                     </button>
                                     {{/if}}
                                 {{/if}}
@@ -791,7 +791,7 @@
                         {{#if (or isCommitted budget.isComplete)}}
                         <div class="rest-step-pacing">
                             <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="sustenance">
-                                <span>Next: Sustenance</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                                <span>{{localize "ionrift-respite.downtimeLedger.nextSustenance"}}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
                             </button>
                         </div>
                         {{/if}}
@@ -799,7 +799,7 @@
                         </div>
                         {{#if (and isIdentifyOpen workbenchEmbed)}}
                         <div class="downtime-workbench-drawer examine-diegetic">
-                            <div class="sust-section-label">EXAMINE</div>
+                            <div class="sust-section-label">{{localize "ionrift-respite.downtimeLedger.examineSection"}}</div>
                             {{#with workbenchEmbed}}
                             {{> workbenchIdentifyPanel}}
                             {{/with}}
@@ -810,29 +810,29 @@
                     {{!-- TIER 2: Gathering [Wilderness Only] --}}
                     {{#if ../isWilderness}}
                     <div class="downtime-tier-card tier-gathering">
-                        <div class="sust-section-label">GATHER PROVISIONS</div>
+                        <div class="sust-section-label">{{localize "ionrift-respite.downtimeLedger.gatherProvisionsSection"}}</div>
                         <div class="act-planner">
                             <div class="sust-planner-head">
                                 {{#if gatheringSummary.isAllRolled}}
-                                <span class="harvest-done"><i class="fas fa-check" aria-hidden="true"></i> Harvested</span>
+                                <span class="harvest-done"><i class="fas fa-check" aria-hidden="true"></i> {{localize "ionrift-respite.downtimeLedger.harvested"}}</span>
                                 {{/if}}
                                 <span class="sust-grow"></span>
-                                <span class="gather-dc-pill">Forage DC {{forageDC}}</span>
-                                <span class="gather-dc-pill hunt">Hunt DC {{huntDC}}</span>
-                                <span class="gather-surv-pill">Survival {{survivalModFormatted}}</span>
+                                <span class="gather-dc-pill">{{localize "ionrift-respite.downtimeLedger.forageDc" dc=forageDC}}</span>
+                                <span class="gather-dc-pill hunt">{{localize "ionrift-respite.downtimeLedger.huntDc" dc=huntDC}}</span>
+                                <span class="gather-surv-pill">{{localize "ionrift-respite.downtimeLedger.survivalMod" mod=survivalModFormatted}}</span>
                             </div>
                         <div class="tier-card-header">
-                            <span class="tier-title"><i class="fas fa-seedling"></i> Gathering</span>
+                            <span class="tier-title"><i class="fas fa-seedling"></i> {{localize "ionrift-respite.downtimeLedger.gathering"}}</span>
                             {{#if gatheringSummary.isAllRolled}}
-                            <span class="tier-status-pill complete" data-tooltip="All gathering days resolved">
-                                <i class="fas fa-check"></i> Harvested
+                            <span class="tier-status-pill complete" data-tooltip="{{localize "ionrift-respite.downtimeLedger.allGatheringDaysResolvedTooltip"}}">
+                                <i class="fas fa-check"></i> {{localize "ionrift-respite.downtimeLedger.harvested"}}
                             </span>
                             {{else}}
                             <div class="gathering-dc-readouts">
-                                <span class="gathering-dc-badge forage" data-tooltip="Survival DC to forage wild roots, berries, and water"><i class="fas fa-leaf"></i> DC {{forageDC}}</span>
-                                <span class="gathering-dc-badge hunt" data-tooltip="Survival DC to track and harvest wild game"><i class="fas fa-crosshairs"></i> DC {{huntDC}}</span>
+                                <span class="gathering-dc-badge forage" data-tooltip="{{localize "ionrift-respite.downtimeLedger.forageDcTooltip"}}"><i class="fas fa-leaf"></i> {{localize "ionrift-respite.downtimeLedger.dcVal" dc=forageDC}}</span>
+                                <span class="gathering-dc-badge hunt" data-tooltip="{{localize "ionrift-respite.downtimeLedger.huntDcTooltip"}}"><i class="fas fa-crosshairs"></i> {{localize "ionrift-respite.downtimeLedger.dcVal" dc=huntDC}}</span>
                             </div>
-                            <span class="tier-status-pill survival" data-tooltip="Survival Check Modifier">Survival {{survivalModFormatted}}</span>
+                            <span class="tier-status-pill survival" data-tooltip="{{localize "ionrift-respite.downtimeLedger.survivalModTooltip"}}">{{localize "ionrift-respite.downtimeLedger.survivalMod" mod=survivalModFormatted}}</span>
                             {{/if}}
                         </div>
                         <div class="tier-card-body tier-gathering-body">
@@ -846,7 +846,7 @@
                                         {{#if rolled}}
                                         {{#unless isSkip}}
                                         <span class="day-yield {{#if success}}pass{{else}}fail{{/if}}">
-                                            {{#if success}}<i class="fas fa-check"></i> found{{else}}<i class="fas fa-xmark"></i> nothing{{/if}}
+                                            {{#if success}}<i class="fas fa-check"></i> {{localize "ionrift-respite.downtimeLedger.found"}}{{else}}<i class="fas fa-xmark"></i> {{localize "ionrift-respite.downtimeLedger.nothing"}}{{/if}}
                                         </span>
                                         {{/unless}}
                                         {{/if}}
@@ -859,13 +859,13 @@
                             {{#unless gatheringSummary.isAllRolled}}
                             <div class="tier-action-rail">
                                 {{#if canInteract}}
-                                <button type="button" class="btn-tier-action btn-roll-all-gathering" data-action="rollAllGathering" data-actor-id="{{id}}" data-tooltip="Roll all unrolled days">
+                                <button type="button" class="btn-tier-action btn-roll-all-gathering" data-action="rollAllGathering" data-actor-id="{{id}}" data-tooltip="{{localize "ionrift-respite.downtimeLedger.rollAllDaysTooltip"}}">
                                     <i class="fas fa-dice-d20"></i>
-                                    <span>Roll All ({{gatheringSummary.unrolledCount}}d)</span>
+                                    <span>{{localize "ionrift-respite.downtimeLedger.rollAllDays" count=gatheringSummary.unrolledCount}}</span>
                                 </button>
                                 {{else}}
                                 <span class="tier-action-placeholder">
-                                    <i class="fas fa-hourglass-half"></i> Awaiting Roll
+                                    <i class="fas fa-hourglass-half"></i> {{localize "ionrift-respite.downtimeLedger.awaitingRoll"}}
                                 </span>
                                 {{/if}}
                             </div>
@@ -894,7 +894,7 @@
                                 {{else}}
                                 <div class="gather-empty-report">
                                     <i class="fas fa-seedling"></i>
-                                    <span>No provisions gathered from this week's foraging or hunting.</span>
+                                    <span>{{{localize "ionrift-respite.downtimeLedger.noProvisionsGathered"}}}</span>
                                 </div>
                                 {{/if}}
                                 {{#if gatheringSummary.reportLine}}
@@ -908,7 +908,7 @@
                         </div>
                         <div class="rest-step-pacing">
                             <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="activities">
-                                <span>Next: Activity</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                                <span>{{localize "ionrift-respite.downtimeLedger.nextActivity"}}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
                             </button>
                         </div>
                         </div>
@@ -925,27 +925,27 @@
                         {{!-- Compact summary on non-sustenance tabs --}}
                         <div class="tier-card-header">
                             <div class="tier-title-cluster">
-                                <span class="tier-title"><i class="fas fa-utensils"></i> Sustenance</span>
+                                <span class="tier-title"><i class="fas fa-utensils"></i> {{localize "ionrift-respite.downtimeLedger.sustenance"}}</span>
                                 {{#if climateLabel}}
                                 <span class="tier-climate-pill {{#if isTraitPill}}tier-trait-pill{{/if}}" data-tooltip="{{climateTooltip}}">{{climateLabel}}</span>
                                 {{/if}}
                             </div>
                             <div class="tier-header-badges">
                                 <span class="tier-status-pill {{#if hasStarvationRisk}}shortfall starvation{{else}}complete{{/if}}" data-tooltip="{{foodTooltip}}">
-                                    <i class="fas {{#if hasStarvationRisk}}fa-triangle-exclamation{{else}}fa-check{{/if}}"></i> {{#if hasStarvationRisk}}Food: {{foodFlow.shortfallDays}}d Short{{else}}Food: Fed{{/if}}
+                                    <i class="fas {{#if hasStarvationRisk}}fa-triangle-exclamation{{else}}fa-check{{/if}}"></i> {{#if hasStarvationRisk}}{{localize "ionrift-respite.downtimeLedger.foodShortfall" days=foodFlow.shortfallDays}}{{else}}{{localize "ionrift-respite.downtimeLedger.foodFed"}}{{/if}}
                                 </span>
                                 {{#if isWilderness}}
                                 <span class="tier-status-pill {{#if hasDehydrationRisk}}shortfall dehydration{{else}}complete{{/if}}" data-tooltip="{{autoWaterTooltip}}">
-                                    <i class="fas {{#if hasDehydrationRisk}}fa-droplet-slash{{else}}fa-droplet{{/if}}"></i> {{#if hasDehydrationRisk}}Water: {{waterFlow.shortfallDays}}d Short{{else}}Water: Hydrated{{/if}}
+                                    <i class="fas {{#if hasDehydrationRisk}}fa-droplet-slash{{else}}fa-droplet{{/if}}"></i> {{#if hasDehydrationRisk}}{{localize "ionrift-respite.downtimeLedger.waterShortfall" days=waterFlow.shortfallDays}}{{else}}{{localize "ionrift-respite.downtimeLedger.waterHydrated"}}{{/if}}
                                 </span>
                                 {{/if}}
                                 {{#if selectedDepartureMeal.hasBuff}}
-                                <span class="tier-status-pill buff-active" data-tooltip="Departure Send-off: {{selectedDepartureMeal.name}}, {{selectedDepartureMeal.buffSummary}}">
+                                <span class="tier-status-pill buff-active" data-tooltip="{{localize "ionrift-respite.downtimeLedger.departureSendoffTooltip" name=selectedDepartureMeal.name buff=selectedDepartureMeal.buffSummary}}">
                                     <i class="fas fa-wand-magic-sparkles"></i> {{selectedDepartureMeal.buffSummary}}
                                 </span>
                                 {{/if}}
                                 {{#if selectedDepartureDrink.hasBuff}}
-                                <span class="tier-status-pill buff-active" data-tooltip="Departure Drink: {{selectedDepartureDrink.name}}, {{selectedDepartureDrink.buffSummary}}">
+                                <span class="tier-status-pill buff-active" data-tooltip="{{localize "ionrift-respite.downtimeLedger.departureDrinkTooltip" name=selectedDepartureDrink.name buff=selectedDepartureDrink.buffSummary}}">
                                     <i class="fas fa-wine-glass"></i> {{selectedDepartureDrink.buffSummary}}
                                 </span>
                                 {{/if}}
@@ -976,40 +976,40 @@
         <button type="button"
             class="btn-gm-logistics{{#if logisticsDrawerOpen}} active{{/if}}"
             data-action="toggleLogisticsDrawer"
-            data-tooltip="{{#if logisticsDrawerOpen}}Close camp logistics{{else}}{{{logisticsTooltip}}}{{/if}}">
-            <i class="fas fa-sliders"></i> Logistics
+            data-tooltip="{{#if logisticsDrawerOpen}}{{localize "ionrift-respite.downtimeLedger.closeCampLogistics"}}{{else}}{{{logisticsTooltip}}}{{/if}}">
+            <i class="fas fa-sliders"></i> {{localize "ionrift-respite.downtimeLedger.logistics"}}
         </button>
 
-        {{> encounterDcStepper dc=dangerDC adjustAction="adjustDraftDC" tooltip="Encounter DC. Rolls below this threshold trigger night encounters."}}
+        {{> encounterDcStepper dc=dangerDC adjustAction="adjustDraftDC" tooltip=(localize "ionrift-respite.downtimeLedger.encounterDcTooltip")}}
         {{/if}}
 
         <span class="rest-footer-ready" data-tooltip="{{partyReadiness.unreadyTooltip}}">
             <i class="fas fa-hourglass-half"></i>
-            {{partyReadiness.readyCount}} / {{partyReadiness.totalCount}} ready
+            {{localize "ionrift-respite.downtimeLedger.readyCountTally" ready=(concat partyReadiness.readyCount "") total=(concat partyReadiness.totalCount "")}}
         </span>
 
         {{#if partyReadiness.isAllComplete}}
             {{#if isWilderness}}
-            <button type="button" class="rest-footer-proceed" data-action="proceedToResolutionFlow" data-tooltip="Advance to nightly watches">
-                <i class="fas fa-play"></i> Proceed to the nights
+            <button type="button" class="rest-footer-proceed" data-action="proceedToResolutionFlow" data-tooltip="{{localize "ionrift-respite.downtimeLedger.advanceToNightlyWatchesTooltip"}}">
+                <i class="fas fa-play"></i> {{localize "ionrift-respite.downtimeLedger.proceedToTheNights"}}
             </button>
             {{else}}
-            <button type="button" class="btn-primary-green" data-action="resolveDowntime" data-tooltip="Complete the rest">
-                <i class="fas fa-check-double"></i> Complete Rest
+            <button type="button" class="btn-primary-green" data-action="resolveDowntime" data-tooltip="{{localize "ionrift-respite.downtimeLedger.completeTheRestTooltip"}}">
+                <i class="fas fa-check-double"></i> {{localize "ionrift-respite.downtimeLedger.completeRest"}}
             </button>
             {{/if}}
         {{else}}
         <button type="button" class="rest-footer-proceed" disabled data-tooltip="{{partyReadiness.unreadyTooltip}}">
-            <i class="fas fa-play"></i> {{#if isWilderness}}Proceed to the nights{{else}}Complete Rest{{/if}}
+            <i class="fas fa-play"></i> {{#if isWilderness}}{{localize "ionrift-respite.downtimeLedger.proceedToTheNights"}}{{else}}{{localize "ionrift-respite.downtimeLedger.completeRest"}}{{/if}}
         </button>
         {{/if}}
 
         {{else}}
         <span class="rest-footer-ready">
             <i class="fas fa-hourglass-half"></i>
-            {{partyReadiness.readyCount}} / {{partyReadiness.totalCount}} ready
+            {{localize "ionrift-respite.downtimeLedger.readyCountTally" ready=(concat partyReadiness.readyCount "") total=(concat partyReadiness.totalCount "")}}
         </span>
-        <span class="rest-footer-waiting">Waiting for the GM</span>
+        <span class="rest-footer-waiting">{{localize "ionrift-respite.downtimeLedger.waitingForTheGm"}}</span>
         {{/if}}
     </div>
     {{/if}}
