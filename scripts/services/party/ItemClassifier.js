@@ -41,7 +41,7 @@ export const PROVISION_ITEM_TYPES = Object.freeze(new Set(["consumable", "loot",
 
 /**
  * Storage types and preservation multipliers for containers.
- * Multiplier extends base spoilage duration. Custom covers any other factor, including 0 (no spoilage).
+ * Multiplier extends base spoilage duration. Stasis stores 0, which disables spoilage entirely.
  * @type {Readonly<Array<{ id: string, label: string, multiplier: number|null, badge: string, description: string }>>}
  */
 export const STORAGE_TYPES = Object.freeze([
@@ -72,6 +72,13 @@ export const STORAGE_TYPES = Object.freeze([
         multiplier: 3.0,
         badge: "3×",
         get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageDeepChillDesc") : "Packed in salt and ice, tripling shelf life."; }
+    },
+    {
+        id: "stasis",
+        get label() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageStasisLabel") : "Stasis"; },
+        multiplier: 0,
+        badge: "STASIS",
+        get description() { return game.i18n?.localize ? game.i18n.localize("ionrift-respite.itemClassifier.storageStasisDesc") : "Magical or extradimensional storage. Food inside never spoils."; }
     },
     {
         id: "custom",

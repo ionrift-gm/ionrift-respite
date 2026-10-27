@@ -202,7 +202,9 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
 
             const storagePresets = STORAGE_TYPES.map(preset => ({
                 id: preset.id,
-                label: preset.multiplier !== null ? game.i18n.format("ionrift-respite.itemProvisions.storagePresetLabel", { label: preset.label, badge: preset.badge }) : preset.label,
+                label: preset.multiplier === 0
+                    ? game.i18n.localize("ionrift-respite.itemProvisions.stasisNoSpoilage")
+                    : preset.multiplier !== null ? game.i18n.format("ionrift-respite.itemProvisions.storagePresetLabel", { label: preset.label, badge: preset.badge }) : preset.label,
                 multiplier: preset.multiplier,
                 description: preset.description
             }));
