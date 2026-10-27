@@ -1,6 +1,5 @@
-import { CraftingEngine } from "../../services/crafting/engine/CraftingEngine.js";
+import { CraftingEngine, matchesRecipeIngredient } from "../../services/crafting/engine/CraftingEngine.js";
 import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
-import { matchesRecipeIngredient } from "../../services/crafting/engine/CraftingEngine.js";
 import { buildCraftRecipeListContext } from "../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
 import { getPartyActors } from "../../services/party/partyActors.js";
