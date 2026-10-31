@@ -452,6 +452,26 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
     RespiteLog.log(`${MODULE_ID} | Overlay content changed: ${detail.overlayId} (active=${detail.active})`);
 });
 
+// Players read overlays through the GM-published index. When it changes,
+// drop everything discovered from it so terrains and packs match the GM.
+Hooks.on("ionrift.overlayIndexChanged", async () => {
+    try {
+        const { OverlayProfessionLoader } = await import("./services/packs/overlays/OverlayProfessionLoader.js");
+        OverlayProfessionLoader.invalidate();
+    } catch { /* loader not available */ }
+    try {
+        const { OverlayEventLoader } = await import("./services/packs/overlays/OverlayEventLoader.js");
+        OverlayEventLoader.invalidate();
+    } catch { /* loader not available */ }
+    try {
+        const { TerrainRegistry } = await import("./services/events/resolve/TerrainRegistry.js");
+        TerrainRegistry.reset();
+        await TerrainRegistry.init();
+    } catch (e) {
+        console.warn(`${MODULE_ID} | Terrain registry reset failed:`, e);
+    }
+});
+
 // Scene Controls: Campfire button in the token controls group
 Hooks.on("getSceneControlButtons", (controls) => {
     if (!game.user?.isGM || !controls) return;
