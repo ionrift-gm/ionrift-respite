@@ -2435,6 +2435,41 @@
     border-color: rgba(168, 85, 247, 0.4);
 }
 
+/* Snowflake on a dnd5e inventory portrait. The tile is a fixed square, so the
+   mark stays inside the image instead of hanging into the currency row. */
+.containers > .container:has(> .respite-chill-mark),
+.containers > .container:has(> a > .respite-chill-mark),
+.containers > .container > a:has(> .respite-chill-mark) {
+    position: relative;
+}
+
+.respite-chill-mark {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    border-radius: 3px;
+    border: 1px solid rgba(168, 85, 247, 0.65);
+    background: rgba(24, 12, 40, 0.78);
+    color: #e9d5ff;
+    font-size: 10px;
+    line-height: 1;
+    box-shadow: 0 0 6px rgba(168, 85, 247, 0.35);
+    pointer-events: auto;
+}
+
+.respite-chill-mark i {
+    line-height: 1;
+    pointer-events: none;
+}
+
 /* ---- Container Storage: Item Sheet Header Button ---- */
 
 .respite-container-btn {

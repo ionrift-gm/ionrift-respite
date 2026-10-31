@@ -306,10 +306,36 @@ export function refreshSpoilageBadgesForElement(actor, el) {
         const item = actor.items.get(itemId);
         if (!item) continue;
 
-        // Container row: check cold storage badge
+        // Container row: check cold storage badge.
+        // Inventory portraits are fixed squares with no item name. A text pill
+        // overflows into the currency row, so those tiles get a snowflake on the image.
         if (ItemClassifier.isContainer(item)) {
             const existingColdBadge = row.querySelector(".respite-spoil-badge.spoil-cold");
             const isCold = ItemClassifier.isColdStorageContainer(item);
+            const isPortrait = row.classList.contains("container") && !!row.closest(".containers");
+
+            if (isPortrait) {
+                existingColdBadge?.remove();
+                const existingMark = row.querySelector(".respite-chill-mark");
+                if (!isCold) {
+                    existingMark?.remove();
+                    continue;
+                }
+                const mult = ItemClassifier.getPreservationMultiplier(item);
+                const tooltip = mult === 0
+                    ? game.i18n.localize("ionrift-respite.uiInjections.badgeStasisTooltip")
+                    : game.i18n.format("ionrift-respite.uiInjections.badgeColdTooltip", { mult });
+                const mark = existingMark ?? document.createElement("span");
+                mark.className = "respite-chill-mark";
+                mark.innerHTML = `<i class="fas fa-snowflake" aria-hidden="true"></i>`;
+                mark.dataset.tooltip = tooltip;
+                if (!existingMark) {
+                    const anchor = row.querySelector(":scope > a") ?? row;
+                    anchor.appendChild(mark);
+                }
+                continue;
+            }
+
             if (isCold) {
                 const mult = ItemClassifier.getPreservationMultiplier(item);
                 const badgeLabel = mult === 0 ? game.i18n.localize("ionrift-respite.uiInjections.badgeStasis") : game.i18n.format("ionrift-respite.uiInjections.badgeCold", { mult });
