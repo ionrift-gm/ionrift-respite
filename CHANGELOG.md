@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.4.0] - 2026-11-01
+
+### Added
+- Localized interface labels, settings, and camp dialogs for translation support.
+
+### Fixed
+- Players now see the Arctic camp banner overlay during rests without needing file-browsing permissions.
+- The Forage button is now disabled on generic game systems when no forage compendium sources are configured.
+
 ## [4.3.1] - 2026-10-25
 
 ### Added
