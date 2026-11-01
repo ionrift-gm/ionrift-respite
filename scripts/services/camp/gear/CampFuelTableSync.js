@@ -10,6 +10,8 @@ import {
     tableResultCount,
     ROLL_TABLE_GM_ONLY_OWNERSHIP,
     buildGmOnlyRollTableOwnership,
+    ownershipNeedsUpdate,
+    managedResultsMatchCreates,
     ensureRespiteRollTableFolder
 } from "../../travel/forage/ForageTableSync.js";
 import {
@@ -251,30 +253,37 @@ export class CampFuelTableSync {
         }
 
         const planned = planCampFuelTableRows(entries);
-
-        const staleIds = table.results
-            .filter(row => isModuleManaged(row))
-            .map(row => row.id);
-        if (staleIds.length) await table.deleteEmbeddedDocuments("TableResult", staleIds);
-
-        if (table.formula !== "1d100") {
-            await table.update({ formula: "1d100" });
-        }
-
         const creates = planned.map(row => {
             if (row.empty) return CampFuelTableSync._buildEmptyResultData(row.range, row.weight);
             return CampFuelTableSync._buildResultData(row.entry, row.range, row.weight);
         });
 
-        if (creates.length) await table.createEmbeddedDocuments("TableResult", creates);
-        if (tableResultCount(table) > 0) await table.normalize();
+        const managedRows = table.results.filter(row => isModuleManaged(row));
+        if (!managedResultsMatchCreates(managedRows, creates)) {
+            const staleIds = managedRows.map(row => row.id);
+            if (staleIds.length) await table.deleteEmbeddedDocuments("TableResult", staleIds);
+            if (table.formula !== "1d100") {
+                await table.update({ formula: "1d100" });
+            }
+            if (creates.length) await table.createEmbeddedDocuments("TableResult", creates);
+            if (tableResultCount(table) > 0) await table.normalize();
+        }
 
-        await table.update({
-            formula: "1d100",
-            description: buildCampFuelTableDescription(),
-            ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {}),
-            displayRoll: true
-        });
+        const desiredDesc = buildCampFuelTableDescription();
+        const desiredOwnership = buildGmOnlyRollTableOwnership(table.ownership ?? {});
+        if (
+            table.formula !== "1d100"
+            || table.description !== desiredDesc
+            || table.displayRoll !== true
+            || ownershipNeedsUpdate(table.ownership ?? {}, desiredOwnership)
+        ) {
+            await table.update({
+                formula: "1d100",
+                description: desiredDesc,
+                ownership: desiredOwnership,
+                displayRoll: true
+            });
+        }
 
         const kindlingRows = planned.filter(row => !row.empty).length;
         return { truncated: 0, entryCount: kindlingRows };
@@ -354,12 +363,13 @@ export class CampFuelTableSync {
                 }
             });
             Logger.log(`Created camp fuel table: ${TABLE_NAME}`);
-        } else if (table.folder !== folderId) {
+        } else if ((table.folder?.id ?? table.folder) !== folderId) {
             await table.update({ folder: folderId });
         } else {
-            await table.update({
-                ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {})
-            });
+            const desiredOwnership = buildGmOnlyRollTableOwnership(table.ownership ?? {});
+            if (ownershipNeedsUpdate(table.ownership ?? {}, desiredOwnership)) {
+                await table.update({ ownership: desiredOwnership });
+            }
         }
         return table;
     }

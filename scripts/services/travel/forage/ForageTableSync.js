@@ -58,6 +58,48 @@ export function buildGmOnlyRollTableOwnership(existing = {}) {
 }
 
 /**
+ * True when an ownership map differs from the desired GM-only ownership payload.
+ * @param {Record<string, number>} [existing]
+ * @param {Record<string, number|null>} [desired]
+ * @returns {boolean}
+ */
+export function ownershipNeedsUpdate(existing = {}, desired = {}) {
+    for (const [key, val] of Object.entries(desired)) {
+        if (key.startsWith("-")) return true;
+        if (Number(existing?.[key] ?? 0) !== Number(val ?? 0)) return true;
+    }
+    return false;
+}
+
+/**
+ * True when existing module-managed TableResult rows already match the planned creates.
+ * @param {object[]} [managedRows]
+ * @param {object[]} [creates]
+ * @returns {boolean}
+ */
+export function managedResultsMatchCreates(managedRows = [], creates = []) {
+    if (managedRows.length !== creates.length) return false;
+    for (let i = 0; i < creates.length; i++) {
+        const row = managedRows[i];
+        const expected = creates[i];
+        if (!row || !expected) return false;
+        const rowText = String(row.text ?? row.description ?? "");
+        const expText = String(expected.text ?? expected.description ?? "");
+        if (rowText !== expText) return false;
+        if (Number(row.weight ?? 1) !== Number(expected.weight ?? 1)) return false;
+        const rRange = row.range ?? [];
+        const eRange = expected.range ?? [];
+        if (Number(rRange[0]) !== Number(eRange[0]) || Number(rRange[1]) !== Number(eRange[1])) return false;
+        const rFlags = row.flags?.[MODULE_ID] ?? {};
+        const eFlags = expected.flags?.[MODULE_ID] ?? {};
+        if ((rFlags.itemRef ?? null) !== (eFlags.itemRef ?? null)) return false;
+        if (Number(rFlags.quantity ?? 1) !== Number(eFlags.quantity ?? 1)) return false;
+        if ((rFlags.packId ?? null) !== (eFlags.packId ?? null)) return false;
+    }
+    return true;
+}
+
+/**
  * @param {RollTable|null|undefined} table
  * @param {number} rollValue - d100 face (1-100)
  * @returns {TableResult|null}
@@ -124,9 +166,10 @@ export async function ensureRespiteRollTableFolder() {
             flags: { [MODULE_ID]: { folderKey: "ionrift" } }
         });
     } else {
-        await parent.update({
-            ownership: buildGmOnlyRollTableOwnership(parent.ownership ?? {})
-        });
+        const desiredParentOwnership = buildGmOnlyRollTableOwnership(parent.ownership ?? {});
+        if (ownershipNeedsUpdate(parent.ownership ?? {}, desiredParentOwnership)) {
+            await parent.update({ ownership: desiredParentOwnership });
+        }
     }
 
     const parentId = parent.id ?? parent._id;
@@ -144,9 +187,10 @@ export async function ensureRespiteRollTableFolder() {
             flags: { [MODULE_ID]: { folderKey: "respite" } }
         });
     } else {
-        await child.update({
-            ownership: buildGmOnlyRollTableOwnership(child.ownership ?? {})
-        });
+        const desiredChildOwnership = buildGmOnlyRollTableOwnership(child.ownership ?? {});
+        if (ownershipNeedsUpdate(child.ownership ?? {}, desiredChildOwnership)) {
+            await child.update({ ownership: desiredChildOwnership });
+        }
     }
     return child;
 }
@@ -422,9 +466,10 @@ export class ForageTableSync {
             if (!table.flags?.[MODULE_ID]?.isForageTable && !table.flags?.[MODULE_ID]?.isCampFuelTable) {
                 continue;
             }
-            await table.update({
-                ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {})
-            });
+            const desiredOwnership = buildGmOnlyRollTableOwnership(table.ownership ?? {});
+            if (ownershipNeedsUpdate(table.ownership ?? {}, desiredOwnership)) {
+                await table.update({ ownership: desiredOwnership });
+            }
             tables++;
         }
 
@@ -441,9 +486,10 @@ export class ForageTableSync {
                 || folder.name === CHILD_FOLDER
                 || (parentDoc?.name === PARENT_FOLDER);
             if (!isRespiteRollFolder) continue;
-            await folder.update({
-                ownership: buildGmOnlyRollTableOwnership(folder.ownership ?? {})
-            });
+            const desiredOwnership = buildGmOnlyRollTableOwnership(folder.ownership ?? {});
+            if (ownershipNeedsUpdate(folder.ownership ?? {}, desiredOwnership)) {
+                await folder.update({ ownership: desiredOwnership });
+            }
             folders++;
         }
 
@@ -571,11 +617,6 @@ export class ForageTableSync {
         const target = Math.max(sorted.length, 100 - manualWeight);
         scaleWeightsToTarget(sorted, target);
 
-        const staleIds = table.results
-            .filter(row => isModuleManaged(row))
-            .map(row => row.id);
-        if (staleIds.length) await table.deleteEmbeddedDocuments("TableResult", staleIds);
-
         // TableResult requires a valid two-element range at create time, before
         // normalize() recomputes them. Seed contiguous ranges from the weights.
         let cursor = 1;
@@ -587,14 +628,22 @@ export class ForageTableSync {
             return ForageTableSync._buildResultData(entry, [start, end]);
         });
 
-        if (creates.length) await table.createEmbeddedDocuments("TableResult", creates);
-        // normalize() divides by total weight; skip on an empty table to avoid 1d0.
-        if (tableResultCount(table) > 0) await table.normalize();
+        const managedRows = table.results.filter(row => isModuleManaged(row));
+        if (!managedResultsMatchCreates(managedRows, creates)) {
+            const staleIds = managedRows.map(row => row.id);
+            if (staleIds.length) await table.deleteEmbeddedDocuments("TableResult", staleIds);
+            if (creates.length) await table.createEmbeddedDocuments("TableResult", creates);
+            // normalize() divides by total weight; skip on an empty table to avoid 1d0.
+            if (tableResultCount(table) > 0) await table.normalize();
+        }
 
-        await table.update({
-            ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {}),
-            displayRoll: true
-        });
+        const desiredOwnership = buildGmOnlyRollTableOwnership(table.ownership ?? {});
+        if (ownershipNeedsUpdate(table.ownership ?? {}, desiredOwnership) || table.displayRoll !== true) {
+            await table.update({
+                ownership: desiredOwnership,
+                displayRoll: true
+            });
+        }
 
         return { truncated, entryCount: sorted.length };
     }
@@ -673,9 +722,10 @@ export class ForageTableSync {
             });
             Logger.log(`Created forage table: ${tableName}`);
         } else {
-            await table.update({
-                ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {})
-            });
+            const desiredOwnership = buildGmOnlyRollTableOwnership(table.ownership ?? {});
+            if (ownershipNeedsUpdate(table.ownership ?? {}, desiredOwnership)) {
+                await table.update({ ownership: desiredOwnership });
+            }
         }
         return table;
     }
