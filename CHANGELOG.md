@@ -4,10 +4,12 @@
 
 ### Added
 - Localized interface labels, settings, and camp dialogs for translation support.
+- Stasis container preset that halts food spoilage while stored.
 
 ### Fixed
 - Players now see the Arctic camp banner overlay during rests without needing file-browsing permissions.
-- The Forage button is now disabled on generic game systems when no forage compendium sources are configured.
+- Rest window headers no longer overlap when the terrain banner is hidden, and the window recenters as phases change.
+- Cold storage containers in portrait inventory grids now display a compact snowflake indicator instead of overflowing text badges.
 
 ## [4.3.1] - 2026-10-25
 
