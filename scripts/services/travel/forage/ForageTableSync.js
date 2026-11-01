@@ -83,8 +83,8 @@ export function managedResultsMatchCreates(managedRows = [], creates = []) {
         const row = managedRows[i];
         const expected = creates[i];
         if (!row || !expected) return false;
-        const rowText = String(row.text ?? row.description ?? "");
-        const expText = String(expected.text ?? expected.description ?? "");
+        const rowText = String(row.description ?? row.text ?? "");
+        const expText = String(expected.description ?? expected.text ?? "");
         if (rowText !== expText) return false;
         if (Number(row.weight ?? 1) !== Number(expected.weight ?? 1)) return false;
         const rRange = row.range ?? [];
