@@ -89,3 +89,6 @@ docs/
 
 # Automated adversarial audit output (DEV_PROTOCOLS)
 .audit/
+# Local locks & debug logs
+*.lock
+ionrift_debug/
