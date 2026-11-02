@@ -43,7 +43,8 @@ import {
     emitRestSnapshot,
     emitActivityChoice,
     emitCopySpellProposal,
-    emitSubmissionUpdate
+    emitSubmissionUpdate,
+    emitSocketMessage
 } from "../../../../services/socket/SocketController.js";
 import { getPartyActors } from "../../../../services/party/partyActors.js";
 import { _refreshGmRestIndicator, _refreshRejoinBar } from "../../../../module.js";
@@ -136,7 +137,7 @@ export class ActivityStationsDelegate {
             let rollTotal = null;
             if (checkDetails) {
                 const travelPenalty = typeof actor.getFlag === "function"
-                    ? (actor.getFlag("ionrift-respite", "travelMishapPenalty") ?? null)
+                    ? (actor.getFlag(MODULE_ID, "travelMishapPenalty") ?? null)
                     : null;
                 const hadTravelDis = travelPenalty === "activity_disadvantage";
                 const rollMode = checkDetails.rollAdvantage && hadTravelDis
@@ -684,12 +685,12 @@ export class ActivityStationsDelegate {
         const lookup = new Map();
         for (const recipes of engine.recipes.values()) {
             for (const recipe of recipes) {
-                const sat = recipe.outputFlags?.["ionrift-respite"]?.satiates;
+                const sat = recipe.outputFlags?.[MODULE_ID]?.satiates;
                 if (Array.isArray(sat) && recipe.output?.name) {
                     lookup.set(recipe.output.name.toLowerCase().trim(), sat);
                 }
-                const ambSat = recipe.ambitiousOutputFlags?.["ionrift-respite"]?.satiates
-                    ?? recipe.outputFlags?.["ionrift-respite"]?.satiates;
+                const ambSat = recipe.ambitiousOutputFlags?.[MODULE_ID]?.satiates
+                    ?? recipe.outputFlags?.[MODULE_ID]?.satiates;
                 if (Array.isArray(ambSat) && recipe.ambitiousOutput?.name) {
                     lookup.set(recipe.ambitiousOutput.name.toLowerCase().trim(), ambSat);
                 }
@@ -1147,7 +1148,7 @@ export class ActivityStationsDelegate {
         let armorWarning = null;
         if (!app._effectiveSafeRestSpot()) {
             try {
-                const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
+                const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
                 if (armorRuleEnabled) {
                     const actorForHint = game.actors.get(selectedCharacter.id);
                     const equippedArmor = actorForHint?.items?.find(i => i.type === "equipment" && i.system?.equipped && ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type));
@@ -1429,9 +1430,9 @@ export class ActivityStationsDelegate {
                             source: app._gmOverrides.has(charId) ? "gm" : "player"
                         };
                     }
-                    game.socket.emit(`module.ionrift-respite`, { type: "submissionUpdate", submissions });
+                    emitSocketMessage({ type: "submissionUpdate", submissions });
                 } else {
-                    game.socket.emit(`module.ionrift-respite`, {
+                    emitSocketMessage({
                         type: "activityChoice",
                         userId: game.user.id,
                         choices: Object.fromEntries(app._characterChoices),

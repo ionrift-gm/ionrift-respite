@@ -1,3 +1,4 @@
+import { emitSocketMessage } from "../../services/socket/SocketController.js";
 /**
  * CampfireEmbed
  * Lightweight version of CampfireApp that renders into an arbitrary DOM container
@@ -114,7 +115,7 @@ export class CampfireEmbed {
         if (this._campfireStickEmitTimer) clearTimeout(this._campfireStickEmitTimer);
         this._campfireStickEmitTimer = setTimeout(() => {
             this._campfireStickEmitTimer = null;
-            game.socket.emit(`module.${MODULE_ID}`, payload);
+            emitSocketMessage(payload);
         }, 200);
     }
 
@@ -562,7 +563,7 @@ export class CampfireEmbed {
                 const displayName = this._resolveDisplayName(game.user.name);
                 const color = this._getPlayerColor(game.user.name);
                 this._playEmote(emote, displayName, color);
-                game.socket.emit(`module.${MODULE_ID}`, {
+                emitSocketMessage({
                     type: "campfireEmote", emoteId, userName: displayName, color
                 });
             });
@@ -625,7 +626,7 @@ export class CampfireEmbed {
             this._heat = Math.min(100, this._heat + 1);
             this._updateMeter(this._container);
         }
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "campfirePoke", userName: game.user.name, x, y, color
         });
     }
@@ -673,7 +674,7 @@ export class CampfireEmbed {
         if (item) item.remove();
         this._heat = Math.min(100, this._heat + 3);
         this._updateMeter(this._container);
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "campfireTrinket", trinketId: trinket.id, color: trinket.color,
             userName: game.user.name, x, y
         });
@@ -714,7 +715,7 @@ export class CampfireEmbed {
             const displayName = this._resolveDisplayName(game.user.name);
             this._showWhittleComplete(figure, displayName);
             this._updateWhittleProgressBar(0);
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "campfireWhittle", complete: true,
                 figure: { id: figure.id, icon: figure.icon, label: figure.label },
                 userName: displayName
@@ -800,7 +801,7 @@ export class CampfireEmbed {
             const x = (e.clientX - rect.left) / rect.width;
             const y = (e.clientY - rect.top) / rect.height;
             this._dropWhittleItem(figure, owner, x, y, true);
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "campfireWhittleDrop", figureId: figure.id, icon: figure.icon,
                 owner, x, y, userName: game.user.name
             });
@@ -817,7 +818,7 @@ export class CampfireEmbed {
                 onSettle: (settledObj) => {
                     const nx = settledObj.x / this._physics._displayWidth;
                     const ny = settledObj.y / this._physics._displayHeight;
-                    game.socket.emit(`module.${MODULE_ID}`, {
+                    emitSocketMessage({
                         type: "campfireWhittleSettle", figureId: figure.id, icon: figure.icon,
                         owner, x: nx, y: ny, rotation: settledObj.rotation
                     });
@@ -862,7 +863,7 @@ export class CampfireEmbed {
             fireArea.appendChild(banner);
             setTimeout(() => banner.remove(), 3000);
         }
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "campfirePileIgnite", userName: game.user.name
         });
     }
@@ -900,7 +901,7 @@ export class CampfireEmbed {
         const roll = Math.floor(Math.random() * 100);
         const success = strikeCount > FLINT_STRIKE_GUARANTEE_AFTER || roll < chance;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "campfireStrike",
             userId: game.user.id,
             userName: game.user.name,
@@ -1053,7 +1054,7 @@ export class CampfireEmbed {
             return;
         }
         const actorName = this._getPlayerActor()?.name ?? game.user.name;
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "campfireStrike",
             userId: game.user.id,
             userName: game.user.name,
@@ -1094,7 +1095,7 @@ export class CampfireEmbed {
         const canModify = actor.isOwner;
         if (!canModify) {
             // Route through GM: emit socket, GM performs the mutation
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "consumeFirewood",
                 actorId: actor.id,
                 itemId: firewood.id

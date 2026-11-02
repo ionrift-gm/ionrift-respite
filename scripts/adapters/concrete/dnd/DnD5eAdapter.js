@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 import { SystemAdapter } from "../../SystemAdapter.js";
 
 /**
@@ -62,10 +63,10 @@ export class DnD5eAdapter extends SystemAdapter {
         for (const item of actor.items ?? []) {
             const baseItem = item.system?.type?.baseItem;
             if (baseItem) profKeys.add(baseItem);
-            const flagKey = item.flags?.["ionrift-respite"]?.toolKey;
+            const flagKey = item.flags?.[MODULE_ID]?.toolKey;
             if (flagKey) profKeys.add(String(flagKey).toLowerCase());
             if (item.type === "tool") {
-                const ident = (item.system?.identifier ?? item.system?.slug ?? item.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase();
+                const ident = (item.system?.identifier ?? item.system?.slug ?? item.flags?.[MODULE_ID]?.itemRef ?? "").toLowerCase();
                 if (ident) {
                     const idMatch = ident.match(/^([a-z0-9]+)/);
                     if (idMatch) profKeys.add(idMatch[1]);
@@ -158,8 +159,8 @@ export class DnD5eAdapter extends SystemAdapter {
         });
         if (!isWarlock) return false;
         return (actor.items ?? []).some(i => {
-            const id = (i.system?.identifier ?? i.system?.slug ?? i.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().replace(/[-_]/g, " ");
-            return i.flags?.["ionrift-respite"]?.isSpellbook === true
+            const id = (i.system?.identifier ?? i.system?.slug ?? i.flags?.[MODULE_ID]?.itemRef ?? "").toLowerCase().replace(/[-_]/g, " ");
+            return i.flags?.[MODULE_ID]?.isSpellbook === true
                 || id.includes("spellbook")
                 || id.includes("book of shadows")
                 || i.name?.toLowerCase().includes("spellbook")
@@ -172,7 +173,7 @@ export class DnD5eAdapter extends SystemAdapter {
         const lower = name.toLowerCase().trim();
         const normTarget = lower.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
         return (actor.items ?? []).find(i => {
-            const rf = i.flags?.["ionrift-respite"] ?? {};
+            const rf = i.flags?.[MODULE_ID] ?? {};
             for (const cand of [rf.itemRef, rf.campGearRole, rf.toolKey, i.system?.identifier, i.system?.slug, i.system?.type?.baseItem]) {
                 if (!cand) continue;
                 const cLow = String(cand).toLowerCase().trim();
@@ -204,7 +205,7 @@ export class DnD5eAdapter extends SystemAdapter {
         const keyLower = toolKey.toLowerCase();
         return (actor.items ?? []).some(i => {
             if (i.type !== "tool") return false;
-            const flagKey = (i.flags?.["ionrift-respite"]?.toolKey ?? i.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase();
+            const flagKey = (i.flags?.[MODULE_ID]?.toolKey ?? i.flags?.[MODULE_ID]?.itemRef ?? "").toLowerCase();
             const ident = (i.system?.identifier ?? i.system?.slug ?? "").toLowerCase();
             return i.system?.type?.value === toolKey
                 || i.system?.type?.baseItem === toolKey

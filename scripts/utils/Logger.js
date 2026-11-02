@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../data/moduleId.js";
 /**
  * Local Logger proxy for ionrift-respite.
  * Routes through the kernel Logger factory when available,
@@ -10,7 +11,7 @@ function verbose() {
         const bag = game.settings?.settings;
         if (!bag) return false;
         if (bag.has("ionrift-library.debug") && game.settings.get("ionrift-library", "debug")) return true;
-        if (bag.has("ionrift-respite.debug") && game.settings.get("ionrift-respite", "debug")) return true;
+        if (bag.has("ionrift-respite.debug") && game.settings.get(MODULE_ID, "debug")) return true;
     } catch { /* setting not registered yet */ }
     return false;
 }

@@ -603,7 +603,7 @@ export async function handleFeastServeRequest(data, ctx) {
                 .filter(Boolean);
 
             const ledger = game.ionrift?.respite?.getActiveApp?.()?._grantLedger;
-            const itemRef = itemData.flags?.["ionrift-respite"]?.itemRef ?? itemData.name ?? "feast_serving";
+            const itemRef = itemData.flags?.[MODULE_ID]?.itemRef ?? itemData.name ?? "feast_serving";
             for (const recipient of recipients) {
                 const slotKey = GrantLedger.mealSlotKey(recipient.id, itemRef);
                 const grant = [{

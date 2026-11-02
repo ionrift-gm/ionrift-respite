@@ -1,3 +1,4 @@
+import { emitSocketMessage } from "../../socket/SocketController.js";
 /**
  * CopySpellHandler
  * Manages the Copy Spell transaction flow:
@@ -24,7 +25,7 @@ export class CopySpellHandler {
         const actor = game.actors.get(actorId);
         if (!actor) return;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "copySpellProposal",
             actorId,
             actorName: actor.name,
@@ -68,7 +69,7 @@ export class CopySpellHandler {
 
         // Busy guard: reject if GM already has an active proposal
         if (gmApp?._gmCopySpellProposal) {
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "copySpellBusy",
                 actorId: data.actorId,
                 actorName: data.actorName
@@ -129,7 +130,7 @@ export class CopySpellHandler {
         const proposal = gmApp?._gmCopySpellProposal;
         if (!proposal?.charged) return;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "copySpellRollPrompt",
             actorId: proposal.actorId,
             actorName: proposal.actorName,
@@ -206,7 +207,7 @@ export class CopySpellHandler {
         gmApp._gmCopySpellProposal = null;
 
         // Broadcast result to player
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "copySpellResult",
             actorId: proposal.actorId,
             success,
@@ -233,7 +234,7 @@ export class CopySpellHandler {
      * @param {Object} proposal - The stored proposal data
      */
     static approveProposal(proposal) {
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "copySpellApproved",
             actorId: proposal.actorId,
             spellLevel: proposal.spellLevel,
@@ -250,7 +251,7 @@ export class CopySpellHandler {
      * @param {Application} playerApp - The player's RestSetupApp instance
      */
     static declineProposal(proposal, playerApp) {
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "copySpellDeclined",
             actorId: proposal.actorId
         });
@@ -283,7 +284,7 @@ export class CopySpellHandler {
 
         if (currentGold < cost) {
             ui.notifications.warn(game.i18n.format("ionrift-respite.copySpell.cannotChargeGold", { actor: actor.name, currentGold, cost }));
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "copySpellResult",
                 actorId: data.actorId,
                 success: false,
@@ -302,7 +303,7 @@ export class CopySpellHandler {
         ui.notifications.info(game.i18n.format("ionrift-respite.copySpell.chargedWaitingRoll", { actor: actor.name, cost }));
 
         // Send roll prompt to player
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "copySpellRollPrompt",
             actorId: data.actorId,
             actorName: actor.name,
@@ -405,7 +406,7 @@ export class CopySpellHandler {
         playerApp.render();
 
         // Broadcast result to GM
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "copySpellResult",
             actorId: data.actorId,
             success,

@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../data/moduleId.js";
 import * as RestAfkState from "../services/rest/session/RestAfkState.js";
 
 /**
@@ -256,7 +257,7 @@ export class RestPresentationHelper {
 
         let uiTheme = "glass";
         try {
-            uiTheme = game.settings.get("ionrift-respite", "uiTheme") ?? "glass";
+            uiTheme = game.settings.get(MODULE_ID, "uiTheme") ?? "glass";
         } catch { /* ignore */ }
         const isGlassTheme = uiTheme === "glass";
         const showDevUiToggle = Boolean(globalThis.DEBUG_RESPITE_UI_THEME_TOGGLE);

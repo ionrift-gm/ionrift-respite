@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../data/moduleId.js";
 /**
  * Party roster delegation shim.
  * Routes all roster queries through the ionrift-library kernel service
@@ -17,7 +18,7 @@ export function getPartyActors() {
 
     // Fallback: read legacy Respite setting directly.
     try {
-        const roster = game.settings.get("ionrift-respite", "partyRoster");
+        const roster = game.settings.get(MODULE_ID, "partyRoster");
         if (roster?.length) {
             return roster.map(id => game.actors.get(id)).filter(Boolean);
         }

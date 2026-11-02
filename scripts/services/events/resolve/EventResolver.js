@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 import { Logger } from "../../../utils/Logger.js";
 import { getPartyActors } from "../../party/partyActors.js";
 import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
@@ -31,12 +32,12 @@ export class EventResolver {
         // Check enabled packs (if setting exists)
         let enabledPacks = null;
         try {
-            enabledPacks = game.settings.get("ionrift-respite", "enabledPacks");
+            enabledPacks = game.settings.get(MODULE_ID, "enabledPacks");
         } catch (e) { /* setting may not exist yet */ }
 
         let selection = null;
         try {
-            selection = game.settings.get("ionrift-respite", "eventPoolSelection");
+            selection = game.settings.get(MODULE_ID, "eventPoolSelection");
         } catch (e) { /* setting may not exist yet */ }
 
         for (const event of eventData) {

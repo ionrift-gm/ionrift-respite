@@ -263,7 +263,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             if (firstIdx >= 0) this.#index = firstIdx;
         }
 
-        const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
+        const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
         const legacyBinding = importedPacks[result.packId]?.legacyTerrainBinding;
         const coreTags = (result.terrainTags?.core ?? []).map(t => t.label).join(", ");
         let terrainHint = "";

@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 import { SystemAdapter } from "../../SystemAdapter.js";
 
 /**
@@ -83,7 +84,7 @@ export class OSEAdapter extends SystemAdapter {
         const lower = name.toLowerCase().trim();
         const normTarget = lower.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
         return (actor.items ?? []).find(i => {
-            const rf = i.flags?.["ionrift-respite"] ?? {};
+            const rf = i.flags?.[MODULE_ID] ?? {};
             for (const cand of [rf.itemRef, rf.campGearRole, rf.toolKey, i.system?.identifier, i.system?.slug, i.system?.type?.baseItem]) {
                 if (!cand) continue;
                 const cLow = String(cand).toLowerCase().trim();

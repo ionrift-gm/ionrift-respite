@@ -38,6 +38,7 @@ import {
     emitRestSnapshot,
     emitRestResolved,
     emitAfkUpdate,
+    registerSocketListener,
 } from "./services/socket/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/ui/settings/SettingsRegistrar.js";
 import { registerUiHooks, refreshZzzOverlay, refreshSpoilageBadgesOnOpenSheets } from "./services/ui/sheet/UiInjections.js";
@@ -719,10 +720,10 @@ Hooks.once("ready", async () => {
             });
             const idx = game.ionrift.respite.travelBasePoolIndex;
             const forageCount = [...(idx ?? [])].filter(
-                e => e.flags?.["ionrift-respite"]?.category === "forage"
+                e => e.flags?.[MODULE_ID]?.category === "forage"
             ).length;
             const huntCount = [...(idx ?? [])].filter(
-                e => e.flags?.["ionrift-respite"]?.category === "hunt"
+                e => e.flags?.[MODULE_ID]?.category === "hunt"
             ).length;
             RespiteLog.log(`${MODULE_ID} | Base pool index: ${idx?.size ?? 0} items, ${forageCount} forage, ${huntCount} hunt`);
             if (forageCount === 0) {
@@ -759,7 +760,7 @@ Hooks.once("ready", async () => {
         showAfkPanel() { showAfkPanel(); },
         hideAfkPanelAfterRest() { hideAfkPanelAfterRest(); },
     };
-    game.socket.on(`module.${MODULE_ID}`, (data) => socketDispatch(data, socketContext));
+    registerSocketListener((data) => socketDispatch(data, socketContext));
 
     registerCampFurnitureZOrderGuards();
     registerLockdownHooks();

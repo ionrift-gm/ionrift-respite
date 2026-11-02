@@ -1,3 +1,4 @@
+import { emitSocketMessage } from "../../socket/SocketController.js";
 /**
  * InventoryContextMenu
  * Hooks into dnd5e.getItemContextOptions to add diet-aware "Consume" entries
@@ -282,7 +283,7 @@ async function _syncWithRestMealState(actor, itemId, isFood, itemSnapshot) {
             ? restApp.getRestSnapshot()
             : null;
         if (snapshot) {
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "restSnapshot",
                 snapshot
             });

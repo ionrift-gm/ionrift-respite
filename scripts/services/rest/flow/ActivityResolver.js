@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 import { getComfortDcMod, isComfortEnabled } from "../../camp/gear/ComfortCalculator.js";
 import {
     applyFletchingYieldFloor,
@@ -209,9 +210,9 @@ export class ActivityResolver {
         if (!activity.diminishingReturns) {
             for (const act of this.activities.values()) {
                 if (act.diminishingReturns?.actorFlag) {
-                    const currentStreak = actor.getFlag("ionrift-respite", act.diminishingReturns.actorFlag);
+                    const currentStreak = actor.getFlag(MODULE_ID, act.diminishingReturns.actorFlag);
                     if (currentStreak > 0) {
-                        await actor.setFlag("ionrift-respite", act.diminishingReturns.actorFlag, 0);
+                        await actor.setFlag(MODULE_ID, act.diminishingReturns.actorFlag, 0);
                     }
                 }
             }
@@ -253,7 +254,7 @@ export class ActivityResolver {
         const rollAdvantage = details.rollAdvantage;
 
         const travelPenalty = typeof actor.getFlag === "function"
-            ? (actor.getFlag("ionrift-respite", "travelMishapPenalty") ?? null)
+            ? (actor.getFlag(MODULE_ID, "travelMishapPenalty") ?? null)
             : null;
         const hadTravelDis = travelPenalty === "activity_disadvantage";
 
@@ -280,7 +281,7 @@ export class ActivityResolver {
         }
 
         if (hadTravelDis && activity.check) {
-            await actor.unsetFlag("ionrift-respite", "travelMishapPenalty");
+            await actor.unsetFlag(MODULE_ID, "travelMishapPenalty");
         }
 
         const rollModNote = hadTravelDis
@@ -590,11 +591,11 @@ export class ActivityResolver {
         let xpReduction = 0;
         if (activity.diminishingReturns) {
             const flagKey = activity.diminishingReturns.actorFlag ?? "trainingStreak";
-            const streak = actor.getFlag("ionrift-respite", flagKey) ?? 0;
+            const streak = actor.getFlag(MODULE_ID, flagKey) ?? 0;
             xpReduction = getTrainingXpReduction(streak);
 
             // Update streak for next rest
-            await actor.setFlag("ionrift-respite", flagKey, streak + 1);
+            await actor.setFlag(MODULE_ID, flagKey, streak + 1);
         }
 
         let narrative = outcome.narrative ?? "";
@@ -732,7 +733,7 @@ export class ActivityResolver {
             ?? 3;
 
         const flagKey = activity.diminishingReturns?.actorFlag ?? "trainingStreak";
-        const streak = activity.diminishingReturns ? (actor.getFlag("ionrift-respite", flagKey) ?? 0) : 0;
+        const streak = activity.diminishingReturns ? (actor.getFlag(MODULE_ID, flagKey) ?? 0) : 0;
         const xpReduction = activity.diminishingReturns
             ? getTrainingXpReduction(streak)
             : 0;
@@ -775,7 +776,7 @@ export class ActivityResolver {
         );
 
         if (activity.diminishingReturns) {
-            await actor.setFlag("ionrift-respite", context.flagKey, context.streak + 1);
+            await actor.setFlag(MODULE_ID, context.flagKey, context.streak + 1);
         }
         const xpReduction = context.xpReduction ?? 0;
         const awardedXP = Math.max(0, baseXP - xpReduction);
@@ -805,7 +806,7 @@ export class ActivityResolver {
                     speaker: ChatMessage.getSpeaker({ actor }),
                     whisper: ownerIds,
                     flavor: `<strong>${activity.name}</strong> (${context.rollLabel}) - DC ${context.adjustedDc}<br>Sets: ${segments}<br><strong style="color:#6b4f00;">${landedNote}</strong>${reductionNote}`,
-                    flags: { "ionrift-respite": { type: "trainingResult" } }
+                    flags: { [MODULE_ID]: { type: "trainingResult" } }
                 });
             } catch (e) {
                 console.warn("ionrift-respite | Training whisper failed:", e);

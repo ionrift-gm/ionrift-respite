@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 import { Logger } from "../../../utils/Logger.js";
 import { getPartyActors } from "../../party/partyActors.js";
 import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION, isComfortEnabled } from "../../camp/gear/ComfortCalculator.js";
@@ -300,7 +301,7 @@ export class RestFlowEngine {
                 }
             }
             const travelRec = typeof actor.getFlag === "function"
-                ? (actor.getFlag("ionrift-respite", "travelMishapRecovery") ?? null)
+                ? (actor.getFlag(MODULE_ID, "travelMishapRecovery") ?? null)
                 : null;
             if (travelRec?.hpMultiplier && typeof travelRec.hpMultiplier === "number") {
                 overallHpMultiplier *= travelRec.hpMultiplier;
@@ -325,7 +326,7 @@ export class RestFlowEngine {
             if (bonusHdFromActivity > 0) gearDescriptors.push("Deep sleep: +1 HD");
 
             if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {
-                void actor.unsetFlag("ionrift-respite", "travelMishapRecovery");
+                void actor.unsetFlag(MODULE_ID, "travelMishapRecovery");
             }
 
             const isShortSafe = this.restType === "short";
@@ -384,7 +385,7 @@ export class RestFlowEngine {
         }
 
         const travelRec = typeof actor.getFlag === "function"
-            ? (actor.getFlag("ionrift-respite", "travelMishapRecovery") ?? null)
+            ? (actor.getFlag(MODULE_ID, "travelMishapRecovery") ?? null)
             : null;
         if (travelRec?.hpMultiplier && typeof travelRec.hpMultiplier === "number") {
             overallHpMultiplier *= travelRec.hpMultiplier;
@@ -403,7 +404,7 @@ export class RestFlowEngine {
         let armorSleepPenalty = false;
         let equippedArmor = null;
         try {
-            const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
+            const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
             if (armorRuleEnabled) {
                 equippedArmor = actor.items?.find(i =>
                     i.type === "equipment" && i.system?.equipped &&
@@ -450,7 +451,7 @@ export class RestFlowEngine {
         if (armorSleepPenalty) gearDescriptors.push(`Sleeping in ${equippedArmor.name}: 1/4 HD, exhaustion not reduced`);
 
         if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {
-            void actor.unsetFlag("ionrift-respite", "travelMishapRecovery");
+            void actor.unsetFlag(MODULE_ID, "travelMishapRecovery");
         }
 
         // Short rests do not restore HP or HD naturally (players spend HD manually).

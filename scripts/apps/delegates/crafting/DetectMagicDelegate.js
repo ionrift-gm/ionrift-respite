@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 import {
     notifyDetectMagicScanApplied,
     notifyDetectMagicScanCleared
@@ -23,7 +24,7 @@ function actorIsWizard(actor) {
         if (i2.type !== "class") return false;
         const ident = (i2.system?.identifier ?? i2.system?.slug ?? "").toLowerCase().trim();
         if (ident === "wizard") return true;
-        if (i2.flags?.["ionrift-respite"]?.classIdentifier === "wizard") return true;
+        if (i2.flags?.[MODULE_ID]?.classIdentifier === "wizard") return true;
         const src = (i2._stats?.compendiumSource ?? i2.flags?.core?.sourceId ?? "").toLowerCase();
         if (/(?:^|[./-])wizard$/.test(src)) return true;
         return i2.name?.toLowerCase() === "wizard";
@@ -68,7 +69,7 @@ function spellItemMatchesName(spellItem, spellNameLower) {
     const slugTarget = spellNameLower.replace(/\s+/g, "-");
     const snakeTarget = spellNameLower.replace(/\s+/g, "_");
     const compactTarget = spellNameLower.replace(/\s+/g, "");
-    const flagSpell = String(spellItem?.flags?.["ionrift-respite"]?.spellKey ?? spellItem?.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().trim();
+    const flagSpell = String(spellItem?.flags?.[MODULE_ID]?.spellKey ?? spellItem?.flags?.[MODULE_ID]?.itemRef ?? "").toLowerCase().trim();
     if (flagSpell && (flagSpell === spellNameLower || flagSpell === slugTarget || flagSpell === snakeTarget || flagSpell === compactTarget)) return true;
     const identifier = String(spellItem?.system?.identifier ?? spellItem?.system?.slug ?? "").toLowerCase().trim();
     if (identifier && (identifier === spellNameLower || identifier === slugTarget || identifier === snakeTarget || identifier === compactTarget)) return true;

@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 /**
  * Pure logic for Hit Die healing modifiers (Durable, Periapt of Wound Closure, Song of Rest).
  * No UI or DOM dependencies.
@@ -34,7 +35,7 @@ export class HitDieModifiers {
 
     static #isDurableFeatItem(item) {
         if (!item) return false;
-        if (item.flags?.["ionrift-respite"]?.featKey === "durable" || item.flags?.["ionrift-respite"]?.itemRef === "durable") return true;
+        if (item.flags?.[MODULE_ID]?.featKey === "durable" || item.flags?.[MODULE_ID]?.itemRef === "durable") return true;
         const ident = (item.system?.identifier ?? item.system?.slug ?? "").trim().toLowerCase();
         if (ident === "durable") return true;
         const src = (item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "").toLowerCase();
@@ -48,7 +49,7 @@ export class HitDieModifiers {
      */
     static #isAttunedPeriaptOfWoundClosure(item) {
         if (!item) return false;
-        const ref = (item.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase();
+        const ref = (item.flags?.[MODULE_ID]?.itemRef ?? "").toLowerCase();
         const ident = (item.system?.identifier ?? item.system?.slug ?? "").toLowerCase();
         const src = (item._stats?.compendiumSource ?? item.flags?.core?.sourceId ?? "").toLowerCase();
         const lowerName = (item.name?.toLowerCase() ?? "").replace(/\u00a0/g, " ");
@@ -134,7 +135,7 @@ export class HitDieModifiers {
                 const ident = (cls.system?.identifier ?? cls.system?.slug ?? "").toLowerCase();
                 const src = (cls._stats?.compendiumSource ?? cls.flags?.core?.sourceId ?? "").toLowerCase();
                 const clsName = cls.name?.toLowerCase() ?? "";
-                const isBard = cls.flags?.["ionrift-respite"]?.songOfRest === true
+                const isBard = cls.flags?.[MODULE_ID]?.songOfRest === true
                     || ident === "bard"
                     || /(?:^|[./-])bard$/.test(src)
                     || /\bbard\b/.test(clsName);

@@ -1,3 +1,4 @@
+import { emitSocketMessageIfAvailable } from "../../socket/SocketController.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { REST_SESSION_SCHEMAS, getRestSessionSchema } from "./restSessionSchemas.js";
 
@@ -145,9 +146,7 @@ export function emitRestSessionDelta(restType, action, payload = {}) {
         return;
     }
 
-    if (game.socket) {
-        game.socket.emit(`module.${MODULE_ID}`, message);
-    }
+    emitSocketMessageIfAvailable(message);
 }
 
 /**
@@ -163,9 +162,7 @@ export function emitRestSessionSync(restType, state = {}) {
         state
     };
 
-    if (game.socket) {
-        game.socket.emit(`module.${MODULE_ID}`, message);
-    }
+    emitSocketMessageIfAvailable(message);
 }
 
 /**
@@ -181,9 +178,7 @@ export function emitRestSessionStarted(restType, data = {}) {
         restType,
         data
     };
-    if (game.socket) {
-        game.socket.emit(`module.${MODULE_ID}`, message);
-    }
+    emitSocketMessageIfAvailable(message);
 }
 
 /**
@@ -199,9 +194,7 @@ export function emitRestSessionResolved(restType, result = {}) {
         restType,
         result
     };
-    if (game.socket) {
-        game.socket.emit(`module.${MODULE_ID}`, message);
-    }
+    emitSocketMessageIfAvailable(message);
 }
 
 /**
@@ -220,9 +213,7 @@ export function emitRestSessionDismissed(restType) {
         type: REST_SESSION_SOCKET_TYPES.DISMISSED,
         restType
     };
-    if (game.socket) {
-        game.socket.emit(`module.${MODULE_ID}`, message);
-    }
+    emitSocketMessageIfAvailable(message);
 }
 
 export function emitRestSessionAbandoned(restType) {
@@ -231,9 +222,7 @@ export function emitRestSessionAbandoned(restType) {
         type: REST_SESSION_SOCKET_TYPES.ABANDONED,
         restType
     };
-    if (game.socket) {
-        game.socket.emit(`module.${MODULE_ID}`, message);
-    }
+    emitSocketMessageIfAvailable(message);
 }
 
 /**
@@ -245,9 +234,7 @@ export function emitRestSessionRequestState(userId) {
         type: REST_SESSION_SOCKET_TYPES.REQUEST_STATE,
         userId
     };
-    if (game.socket) {
-        game.socket.emit(`module.${MODULE_ID}`, message);
-    }
+    emitSocketMessageIfAvailable(message);
 }
 
 /**
@@ -263,9 +250,7 @@ export function emitRestSessionSnapshot(restType, state = {}, targetUserId = nul
         state,
         targetUserId
     };
-    if (game.socket) {
-        game.socket.emit(`module.${MODULE_ID}`, message);
-    }
+    emitSocketMessageIfAvailable(message);
 }
 
 /**

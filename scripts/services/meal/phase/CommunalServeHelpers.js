@@ -8,7 +8,7 @@ import { MODULE_ID } from "../inventory/MealConstants.js";
 /**
  * Build a party-meal snapshot that carries the supplied buffs so the
  * existing communal serve applies them. Buffs use the same descriptor shape
- * Respite already stores under `flags["ionrift-respite"].buff`.
+ * Respite already stores under `flags[MODULE_ID].buff`.
  */
 export function buildServeSnapshot(item, buffs, title) {
     let snapshot;

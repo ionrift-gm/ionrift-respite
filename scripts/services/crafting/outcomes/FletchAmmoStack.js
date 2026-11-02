@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 /**
  * Fletched ammo joins the stack the character already carries.
  * Matches on the system ammo subtype first so localized and plural item
@@ -30,7 +31,7 @@ const IDENTIFIER_MAP = {
 };
 
 function isMagicAmmo(item) {
-    if (item.system?.magical === true || item.flags?.["ionrift-respite"]?.magical === true) return true;
+    if (item.system?.magical === true || item.flags?.[MODULE_ID]?.magical === true) return true;
     const props = item.system?.properties;
     if (props?.has?.("mgc")) return true;
     if (Array.isArray(props) && props.includes("mgc")) return true;
@@ -54,7 +55,7 @@ export function findFletchAmmoStack(actor, kind) {
     const idSet = IDENTIFIER_MAP[resolvedKind];
     return ammo.find(item => item.system?.type?.subtype === subtype)
         ?? ammo.find(item => {
-            const flagKind = item.flags?.["ionrift-respite"]?.fletchKind ?? item.flags?.["ionrift-respite"]?.ammoKind;
+            const flagKind = item.flags?.[MODULE_ID]?.fletchKind ?? item.flags?.[MODULE_ID]?.ammoKind;
             if (flagKind === resolvedKind) return true;
             const ident = (item.system?.identifier ?? item.system?.slug ?? "").toLowerCase().trim();
             return Boolean(ident && idSet.has(ident));

@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 /**
  * Pluggable bridge for post-Detect-Magic inventory highlights (school-colored glows).
  *
@@ -18,7 +19,7 @@
 import { DetectMagicScanner } from "./DetectMagicScanner.js";
 import { refreshStationDetectMagicGlow } from "../../camp/props/StationInteractionLayer.js";
 
-const R = "ionrift-respite";
+const R = MODULE_ID;
 
 /** Per-row merge segment for inventory lists where siblings are not always adjacent DOM nodes. */
 const DM_RUN_CLASSES = ["only", "start", "mid", "end"];

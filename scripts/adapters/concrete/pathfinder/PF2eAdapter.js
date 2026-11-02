@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 import { SystemAdapter } from "../../SystemAdapter.js";
 
 /**
@@ -130,7 +131,7 @@ export class PF2eAdapter extends SystemAdapter {
             profKeys.push("crafting", "cook", "herb", "alchemist", "smith");
         }
         for (const item of actor.items ?? []) {
-            const flagKey = item.flags?.["ionrift-respite"]?.toolKey;
+            const flagKey = item.flags?.[MODULE_ID]?.toolKey;
             if (flagKey) profKeys.push(String(flagKey).toLowerCase());
             if (item.type === "lore") {
                 const slug = (item.system?.slug ?? item.system?.identifier ?? "").toLowerCase().replace(/[-_]+lore$/i, "").replace(/[-_]+/g, " ").trim();
@@ -190,7 +191,7 @@ export class PF2eAdapter extends SystemAdapter {
         const lower = name.toLowerCase().trim();
         const normTarget = lower.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
         return (actor.items ?? []).find(i => {
-            const rf = i.flags?.["ionrift-respite"] ?? {};
+            const rf = i.flags?.[MODULE_ID] ?? {};
             for (const cand of [rf.itemRef, rf.campGearRole, rf.toolKey, i.system?.identifier, i.system?.slug, i.system?.type?.baseItem]) {
                 if (!cand) continue;
                 const cLow = String(cand).toLowerCase().trim();
@@ -224,7 +225,7 @@ export class PF2eAdapter extends SystemAdapter {
         const keyLower = toolKey.toLowerCase();
         return (actor.items ?? []).some(i => {
             if (i.type !== "lore") return false;
-            const probe = `${i.flags?.["ionrift-respite"]?.toolKey ?? ""} ${i.system?.slug ?? ""} ${i.system?.identifier ?? ""} ${i.name ?? ""}`.toLowerCase();
+            const probe = `${i.flags?.[MODULE_ID]?.toolKey ?? ""} ${i.system?.slug ?? ""} ${i.system?.identifier ?? ""} ${i.name ?? ""}`.toLowerCase();
             return probe.includes(keyLower);
         });
     }

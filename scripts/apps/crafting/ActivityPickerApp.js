@@ -1,3 +1,4 @@
+import { emitSocketMessage } from "../../services/socket/SocketController.js";
 import { ActivityResolver } from "../../services/rest/flow/ActivityResolver.js";
 import { CraftingEngine } from "../../services/crafting/engine/CraftingEngine.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
@@ -235,7 +236,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             followUps: Object.fromEntries(this._followUps)
         };
 
-        game.socket.emit(`module.${MODULE_ID}`, payload);
+        emitSocketMessage(payload);
 
         this._hasSubmitted = true;
         this.render();

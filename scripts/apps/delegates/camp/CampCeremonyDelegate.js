@@ -13,7 +13,8 @@ import { ItemOutcomeHandler } from "../../../services/crafting/outcomes/ItemOutc
 import {
     emitPhaseChanged,
     emitCampLightFire,
-    emitActivityFireLevelRequest
+    emitActivityFireLevelRequest,
+    emitSocketMessage
 } from "../../../services/socket/SocketController.js";
 import { isComfortEnabled, COMFORT_TIERS } from "../../../services/camp/gear/ComfortCalculator.js";
 import { buildCampCeremonyPhasePayload } from "../../../services/camp/gear/campCeremonySync.js";
@@ -719,7 +720,7 @@ export class CampCeremonyDelegate {
             portrait: this._portraitForCeremonyActor(actorId, userId)
         };
         if (!game.user.isGM) {
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "campCeremonyStageWood",
                 userId,
                 actorId,
@@ -769,7 +770,7 @@ export class CampCeremonyDelegate {
             return;
         }
         if (!game.user.isGM) {
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "campCeremonyUnstageWood",
                 userId: game.user.id,
                 slotId

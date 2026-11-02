@@ -1,3 +1,4 @@
+import { emitSocketMessage } from "../../socket/SocketController.js";
 import { Logger } from "../../../utils/Logger.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { getDocSourceId, getRespiteFlag } from "../gear/CampGearScanner.js";
@@ -120,7 +121,7 @@ export class TorchTokenLinker {
      */
     static async setLightState(lit) {
         if (!game.user.isGM) {
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "torchTokenSync",
                 lit
             });

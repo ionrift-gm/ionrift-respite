@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 /** Comfort-tier arithmetic (hostile / rough / sheltered / safe). */
 
 /**
@@ -6,7 +7,7 @@
  * @returns {boolean}
  */
 export function isComfortEnabled() {
-    try { return game.settings.get("ionrift-respite", "enableComfort"); }
+    try { return game.settings.get(MODULE_ID, "enableComfort"); }
     catch { return true; } // default true if setting not yet registered
 }
 

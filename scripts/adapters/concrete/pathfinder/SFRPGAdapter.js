@@ -1,3 +1,4 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 import { SystemAdapter } from "../../SystemAdapter.js";
 
 /**
@@ -53,9 +54,9 @@ export class SFRPGAdapter extends SystemAdapter {
         const profKeys = new Set();
         for (const item of actor.items ?? []) {
             if (item.type === "equipment" && item.system?.proficient) {
-                const flagKey = item.flags?.["ionrift-respite"]?.toolKey;
+                const flagKey = item.flags?.[MODULE_ID]?.toolKey;
                 if (flagKey) profKeys.add(String(flagKey).toLowerCase());
-                const ident = (item.system?.identifier ?? item.system?.slug ?? item.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().replace(/[-_]/g, " ").trim();
+                const ident = (item.system?.identifier ?? item.system?.slug ?? item.flags?.[MODULE_ID]?.itemRef ?? "").toLowerCase().replace(/[-_]/g, " ").trim();
                 if (ident) profKeys.add(ident);
                 profKeys.add(item.name?.toLowerCase() ?? "");
             }
@@ -93,7 +94,7 @@ export class SFRPGAdapter extends SystemAdapter {
         const lower = name.toLowerCase().trim();
         const normTarget = lower.replace(/[-_'’]+/g, " ").replace(/\s+/g, " ").trim();
         return (actor.items ?? []).find(i => {
-            const rf = i.flags?.["ionrift-respite"] ?? {};
+            const rf = i.flags?.[MODULE_ID] ?? {};
             for (const cand of [rf.itemRef, rf.campGearRole, rf.toolKey, i.system?.identifier, i.system?.slug, i.system?.type?.baseItem]) {
                 if (!cand) continue;
                 const cLow = String(cand).toLowerCase().trim();
@@ -122,7 +123,7 @@ export class SFRPGAdapter extends SystemAdapter {
         const lower = toolKey.toLowerCase();
         return (actor.items ?? []).some(i => {
             if (i.type !== "equipment") return false;
-            const probe = `${i.flags?.["ionrift-respite"]?.toolKey ?? ""} ${i.flags?.["ionrift-respite"]?.itemRef ?? ""} ${i.system?.identifier ?? ""} ${i.system?.slug ?? ""} ${i.name ?? ""}`.toLowerCase();
+            const probe = `${i.flags?.[MODULE_ID]?.toolKey ?? ""} ${i.flags?.[MODULE_ID]?.itemRef ?? ""} ${i.system?.identifier ?? ""} ${i.system?.slug ?? ""} ${i.name ?? ""}`.toLowerCase();
             return probe.includes(lower);
         });
     }

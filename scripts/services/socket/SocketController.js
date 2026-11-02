@@ -119,6 +119,39 @@ function _emit(type, payload = {}) {
 }
 
 /**
+ * Emit a raw socket message payload on the module channel.
+ * @param {object} payload - Message payload containing `type` and fields.
+ */
+export function emitSocketMessage(payload) {
+    game.socket.emit(`module.${MODULE_ID}`, payload);
+}
+
+/**
+ * Emit a raw socket message payload when `game.socket` is available.
+ * @param {object} payload - Message payload containing `type` and fields.
+ */
+export function emitSocketMessageIfAvailable(payload) {
+    if (game.socket) {
+        game.socket.emit(`module.${MODULE_ID}`, payload);
+    }
+}
+
+/**
+ * Register a listener on the module socket channel.
+ * @param {(data: object) => void} handler
+ */
+export function registerSocketListener(handler) {
+    game.socket.on(`module.${MODULE_ID}`, handler);
+}
+
+export const SocketController = Object.freeze({
+    emit: emitSocketMessage,
+    emitIfAvailable: emitSocketMessageIfAvailable,
+    on: registerSocketListener
+});
+
+
+/**
  * GM ,  Players: a rest phase has started.
  * @param {object} restData - Rest payload (terrainTag, comfort, restType, activities, recipes).
  * @param {object} [opts] - Optional overrides (targetUserId, snapshot).

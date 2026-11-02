@@ -1,3 +1,4 @@
+import { emitSocketMessage } from "../../socket/SocketController.js";
 import { Logger } from "../../../utils/Logger.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 /**
@@ -183,7 +184,7 @@ export class CampfireTokenLinker {
     static async setLightState(lit, fireLevel = null, options = {}) {
         const ignite = !!options.ignite && !!lit;
         if (!game.user.isGM) {
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "campfireTokenSync",
                 lit,
                 fireLevel: lit ? (fireLevel ?? "campfire") : null,

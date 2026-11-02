@@ -17,7 +17,7 @@ import { SKILL_NAMES } from "../../../data/RestConstants.js";
 import { boostComfort, fireComfortDelta } from "../../../services/camp/gear/ComfortCalculator.js";
 import { notifyStationMealChoicesUpdated } from "../../camp/StationActivityDialog.js";
 import { isTrailerFilmingMode as _isTrailerFilmingMode } from "../rest/layout/RestWindowLayout.js";
-import { emitPhaseChanged } from "../../../services/socket/SocketController.js";
+import { emitPhaseChanged, emitSocketMessage } from "../../../services/socket/SocketController.js";
 import { RestSetupApp } from "../../rest/RestSetupApp.js";
 import { presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 
@@ -194,7 +194,7 @@ export class MealDelegate {
                     if (!itemId || itemId === "skip" || itemId.startsWith?.("__")) continue;
                     const item = actor.items.get(itemId);
                     if (!item) continue;
-                    let sats = item.flags?.["ionrift-respite"]?.satiates;
+                    let sats = item.flags?.[MODULE_ID]?.satiates;
                     if (!Array.isArray(sats) && satiatesLookup) {
                         sats = satiatesLookup.get(item.name.toLowerCase().trim()) ?? null;
                     }
@@ -259,7 +259,7 @@ export class MealDelegate {
                 app.render();
                 return;
             }
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "mealDayConsumeRequest",
                 userId: game.user.id,
                 consumeByCharacter
@@ -282,7 +282,7 @@ export class MealDelegate {
 
         await app._saveRestState();
 
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "mealDayConsumed",
             userId: game.user.id,
             mealChoices: Object.fromEntries(app._mealChoices)
@@ -385,7 +385,7 @@ export class MealDelegate {
         this._pushMealSlotWarnings(skippedSlots, actorId, choice);
         if (!(await this._confirmSkipMeals(skippedSlots))) return;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "mealChoice",
             userId: game.user.id,
             choices: { [actorId]: choice }
@@ -434,7 +434,7 @@ export class MealDelegate {
 
         if (!(await this._confirmSkipMeals(skippedSlots))) return;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "mealChoice",
             userId: game.user.id,
             choices
@@ -643,7 +643,7 @@ export class MealDelegate {
                             userId: ownerUser.id,
                             resolved: false
                         });
-                        game.socket.emit(`module.${MODULE_ID}`, {
+                        emitSocketMessage({
                             type: "dehydrationSaveRequest",
                             characterId: r.characterId,
                             actorName: r.actorName,
@@ -718,7 +718,7 @@ export class MealDelegate {
                     reason: s.reason ?? null,
                     pending: !s.resolved
                 }));
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "dehydrationResultsBroadcast",
                 results: allResults
             });
@@ -802,7 +802,7 @@ export class MealDelegate {
             reason: s.reason ?? null,
             pending: !s.resolved
         }));
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "dehydrationResultsBroadcast",
             results: allResults
         });
@@ -836,7 +836,7 @@ export class MealDelegate {
         await app._saveRestState();
         const snapshot = app.getRestSnapshot?.();
         if (snapshot) {
-            game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+            emitSocketMessage({ type: "restSnapshot", snapshot });
         }
         app.render();
         if (typeof app._updateRestBarProgress === "function") app._updateRestBarProgress();
@@ -916,7 +916,7 @@ export class MealDelegate {
 
         await app._saveRestState();
 
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "mealDayConsumed",
             userId,
             mealChoices: Object.fromEntries(app._mealChoices)
@@ -924,7 +924,7 @@ export class MealDelegate {
 
         const snapshot = app.getRestSnapshot?.();
         if (snapshot) {
-            game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+            emitSocketMessage({ type: "restSnapshot", snapshot });
         }
 
         app.render();
@@ -989,7 +989,7 @@ export class MealDelegate {
             }
 
             setTimeout(() => {
-                game.socket.emit(`module.${MODULE_ID}`, {
+                emitSocketMessage({
                     type: "dehydrationSaveResult",
                     characterId,
                     actorName,
@@ -1059,7 +1059,7 @@ export class MealDelegate {
             const resolvedResults = app._pendingDehydrationSaves
                 .filter(s => s.resolved)
                 .map(s => ({ actorName: s.actorName, total: s.total, passed: s.passed, dc: s.dc, reason: s.reason ?? null, pending: !s.resolved }));
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "dehydrationResultsBroadcast",
                 results: resolvedResults
             });

@@ -4,7 +4,7 @@ import { MealPhaseHandler } from "../../../services/meal/phase/MealPhaseHandler.
 import { MEAL_DEFAULTS } from "../../../services/meal/inventory/MealConstants.js";
 import { getFoodBuffPartyActors, getMealEligiblePartyActors } from "../../../services/party/partyActors.js";
 import { ItemClassifier } from "../../../services/party/ItemClassifier.js";
-import { emitFeastServeRequest } from "../../../services/socket/SocketController.js";
+import { emitFeastServeRequest, emitSocketMessage } from "../../../services/socket/SocketController.js";
 import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
 import { refreshGmRestIndicator } from "../../../services/ui/sheet/RejoinManager.js";
 import { Logger } from "../../../utils/Logger.js";
@@ -121,13 +121,13 @@ export class CraftingDelegate {
                         const act = app._activities?.find(a => a.id === actId);
                         submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: app._gmOverrides.has(charId) ? "gm" : "player" };
                     }
-                    game.socket.emit(`module.${MODULE_ID}`, { type: "submissionUpdate", submissions });
+                    emitSocketMessage({ type: "submissionUpdate", submissions });
                 } else {
                     app._characterChoices.set(characterId, craftingActivity.id);
                     app._lockedCharacters = app._lockedCharacters ?? new Set();
                     app._lockedCharacters.add(characterId);
 
-                    game.socket.emit(`module.${MODULE_ID}`, {
+                    emitSocketMessage({
                         type: "activityChoice",
                         userId: game.user.id,
                         choices: Object.fromEntries(app._characterChoices),
@@ -359,7 +359,7 @@ export class CraftingDelegate {
 
         try {
             const snap = typeof restApp.getRestSnapshot === "function" ? restApp.getRestSnapshot() : null;
-            if (snap) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot: snap });
+            if (snap) emitSocketMessage({ type: "restSnapshot", snapshot: snap });
         } catch (e) { console.warn(`${MODULE_ID} | creditFeastMealState: broadcast failed`, e); }
 
         Hooks.callAll(`${MODULE_ID}.stationMealChoicesTouched`);

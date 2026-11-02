@@ -62,7 +62,7 @@ export class TotmActivityDelegate {
         const activity = resolver?.activities?.get(activityId);
         if (!app._effectiveSafeRestSpot() && actor && activity && !activity.armorSleepWaiver) {
             try {
-                const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
+                const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
                 if (armorRuleEnabled) {
                     const equippedArmor = actor.items?.find(i =>
                         i.type === "equipment"

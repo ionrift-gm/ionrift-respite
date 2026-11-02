@@ -225,7 +225,7 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             const passXp = xpValues?.passXp ?? 10;
             const xp = actor.system?.details?.xp ?? {};
             const gap = (xp.max && xp.value !== null && xp.value !== undefined) ? (xp.max - xp.value) : null;
-            const streak = actor.getFlag?.("ionrift-respite", "trainingStreak") ?? 0;
+            const streak = actor.getFlag?.(MODULE_ID, "trainingStreak") ?? 0;
             const baseXP = 3 * passXp;
             const reduction = getTrainingXpReduction(streak);
             const effectiveXP = Math.max(baseXP - reduction, 0);

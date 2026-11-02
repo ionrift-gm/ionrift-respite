@@ -1,3 +1,4 @@
+import { MODULE_ID } from "./moduleId.js";
 /**
  * Built-in stub content for the Respite module.
  * Recipes and hunt yields load when no imported pack supplies them.
@@ -31,7 +32,7 @@ export const STUB_RECIPES = {
                 system: { type: { value: "food", subtype: "" } }
             },
             outputFlags: {
-                "ionrift-respite": {
+                [MODULE_ID]: {
                     itemRef: "stub_chef_bolstering_treats__out",
                     foodTag: "prepared",
                     spoilsAfterHours: 8,
@@ -76,7 +77,7 @@ export const STUB_RECIPES = {
                 system: { type: { value: "food", subtype: "" } }
             },
             outputFlags: {
-                "ionrift-respite": {
+                [MODULE_ID]: {
                     foodTag: "cooked_meal",
                     spoilsAfter: 3,
                     partyMeal: false,
@@ -119,7 +120,7 @@ export const STUB_RECIPES = {
                 system: { type: { value: "food", subtype: "" } }
             },
             outputFlags: {
-                "ionrift-respite": {
+                [MODULE_ID]: {
                     foodTag: "preserved",
                     spoilsAfter: null,
                     partyMeal: false,
@@ -129,7 +130,7 @@ export const STUB_RECIPES = {
                 }
             },
             ambitiousOutputFlags: {
-                "ionrift-respite": {
+                [MODULE_ID]: {
                     foodTag: "preserved",
                     spoilsAfter: null,
                     partyMeal: false,
@@ -172,7 +173,7 @@ export const STUB_RECIPES = {
                 system: { type: { value: "food", subtype: "" } }
             },
             outputFlags: {
-                "ionrift-respite": {
+                [MODULE_ID]: {
                     foodTag: "cooked_meal",
                     spoilsAfter: 3,
                     partyMeal: false,
@@ -218,7 +219,7 @@ export const STUB_RECIPES = {
                 system: { type: { value: "food", subtype: "" } }
             },
             outputFlags: {
-                "ionrift-respite": {
+                [MODULE_ID]: {
                     foodTag: "cooked_meal",
                     spoilsAfter: null,
                     partyMeal: false,
@@ -262,7 +263,7 @@ export const STUB_RECIPES = {
                 system: { type: { value: "food", subtype: "" } }
             },
             outputFlags: {
-                "ionrift-respite": {
+                [MODULE_ID]: {
                     foodTag: "preserved",
                     spoilsAfter: null,
                     partyMeal: false,
@@ -272,7 +273,7 @@ export const STUB_RECIPES = {
                 }
             },
             ambitiousOutputFlags: {
-                "ionrift-respite": {
+                [MODULE_ID]: {
                     foodTag: "preserved",
                     spoilsAfter: null,
                     partyMeal: false,
@@ -319,7 +320,7 @@ export const STUB_RECIPES = {
                 system: { type: { value: "food", subtype: "" } }
             },
             outputFlags: {
-                "ionrift-respite": {
+                [MODULE_ID]: {
                     foodTag: "cooked_meal",
                     spoilsAfter: 3,
                     partyMeal: true,

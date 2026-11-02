@@ -250,8 +250,8 @@ export class ActivityEligibility {
                         return id === "warlock" || c.name?.toLowerCase().trim() === "warlock";
                     });
                     const hasSpellbook = isWarlock && (actor.items ?? []).some(i => {
-                        const id = (i.system?.identifier ?? i.system?.slug ?? i.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().replace(/[-_]/g, " ");
-                        return i.flags?.["ionrift-respite"]?.isSpellbook === true
+                        const id = (i.system?.identifier ?? i.system?.slug ?? i.flags?.[MODULE_ID]?.itemRef ?? "").toLowerCase().replace(/[-_]/g, " ");
+                        return i.flags?.[MODULE_ID]?.isSpellbook === true
                             || id.includes("spellbook")
                             || id.includes("book of shadows")
                             || i.name?.toLowerCase().includes("spellbook")
@@ -298,10 +298,10 @@ export class ActivityEligibility {
         for (const item of actor.items ?? []) {
             const baseItem = item.system?.type?.baseItem;
             if (baseItem) profKeys.add(baseItem);
-            const flagKey = item.flags?.["ionrift-respite"]?.toolKey;
+            const flagKey = item.flags?.[MODULE_ID]?.toolKey;
             if (flagKey) profKeys.add(String(flagKey).toLowerCase());
 
-            const probe = `${item.system?.identifier ?? ""} ${item.system?.slug ?? ""} ${item.flags?.["ionrift-respite"]?.itemRef ?? ""} ${item._stats?.compendiumSource ?? ""} ${item.name ?? ""}`.toLowerCase();
+            const probe = `${item.system?.identifier ?? ""} ${item.system?.slug ?? ""} ${item.flags?.[MODULE_ID]?.itemRef ?? ""} ${item._stats?.compendiumSource ?? ""} ${item.name ?? ""}`.toLowerCase();
             if (probe.includes("cook")) profKeys.add("cook");
             if (probe.includes("herbalism") || probe.includes("herb")) profKeys.add("herb");
             if (probe.includes("alchemist")) profKeys.add("alchemist");
@@ -334,7 +334,7 @@ export class ActivityEligibility {
         const addSpellKeys = (set, item) => {
             const name = item.name?.toLowerCase();
             if (name) set.add(name);
-            const ident = (item.system?.identifier ?? item.system?.slug ?? item.flags?.["ionrift-respite"]?.spellKey ?? item.flags?.["ionrift-respite"]?.itemRef ?? "").toLowerCase().trim();
+            const ident = (item.system?.identifier ?? item.system?.slug ?? item.flags?.[MODULE_ID]?.spellKey ?? item.flags?.[MODULE_ID]?.itemRef ?? "").toLowerCase().trim();
             if (ident) {
                 set.add(ident);
                 set.add(ident.replace(/[-_]+/g, " "));
@@ -350,7 +350,7 @@ export class ActivityEligibility {
         for (const item of actor.items ?? []) {
             if (item.type !== "spell") continue;
             const name = item.name?.toLowerCase();
-            const hasIdent = Boolean(item.system?.identifier || item.system?.slug || item.flags?.["ionrift-respite"]?.spellKey || item.flags?.["ionrift-respite"]?.itemRef);
+            const hasIdent = Boolean(item.system?.identifier || item.system?.slug || item.flags?.[MODULE_ID]?.spellKey || item.flags?.[MODULE_ID]?.itemRef);
             if (!name && !hasIdent) continue;
 
             addSpellKeys(known, item);

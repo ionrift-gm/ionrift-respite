@@ -30,7 +30,7 @@ import { formatMealBuffPreview } from "../../services/meal/buffs/MealBuffPresets
 import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../../services/crafting/engine/CraftCommitSummary.js";
 import { buildCraftRecipeListContext } from "../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { patchCraftingRiskUi } from "../../services/crafting/engine/CraftingRiskUiPatch.js";
-import { emitFeastServeRequest, emitActivityColdCampRequest } from "../../services/socket/SocketController.js";
+import { emitFeastServeRequest, emitActivityColdCampRequest, emitSocketMessage } from "../../services/socket/SocketController.js";
 import { CampGearScanner, isTinderboxItem, isActorFirewoodItem } from "../../services/camp/gear/CampGearScanner.js";
 import { isStationLayerActive } from "../../services/camp/props/StationInteractionLayer.js";
 import { guardEmbedItems } from "../../services/crafting/outcomes/MintGuard.js";
@@ -523,10 +523,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ?? this._restApp?._getFollowUpForCharacter?.(actor?.id)
             ?? null;
         let armorRuleEnabled = false;
-        try { armorRuleEnabled = !!game.settings.get("ionrift-respite", "armorDoffRule"); } catch { /* ok */ }
+        try { armorRuleEnabled = !!game.settings.get(MODULE_ID, "armorDoffRule"); } catch { /* ok */ }
         const safeSpot = !!(this._restApp?._engine?.safeRestSpot ?? this._restApp?._restData?.safeRestSpot);
         let fromSetting = false;
-        try { fromSetting = !!game.settings.get("ionrift-respite", "safeRestSpot"); } catch { /* ok */ }
+        try { fromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot"); } catch { /* ok */ }
         const effectiveSafe = safeSpot || fromSetting;
         const armorForDetail = !effectiveSafe && armorRuleEnabled;
 
@@ -852,10 +852,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         // Armor penalty gate: warn before locking an activity that penalises sleeping in armor.
         const effectiveSafe = !!(this._restApp?._engine?.safeRestSpot ?? this._restApp?._restData?.safeRestSpot)
-            || (() => { try { return !!game.settings.get("ionrift-respite", "safeRestSpot"); } catch { return false; } })();
+            || (() => { try { return !!game.settings.get(MODULE_ID, "safeRestSpot"); } catch { return false; } })();
         if (!effectiveSafe && !activity?.armorSleepWaiver) {
             try {
-                const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
+                const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
                 if (armorRuleEnabled) {
                     const equippedArmor = this._actor?.items?.find(i =>
                         i.type === "equipment"
@@ -1071,7 +1071,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                     source: restApp._gmOverrides?.has(charId) ? "gm" : "player"
                 };
             }
-            game.socket.emit(`module.${MODULE_ID}`, { type: "submissionUpdate", submissions });
+            emitSocketMessage({ type: "submissionUpdate", submissions });
         } else {
             restApp._characterChoices?.set(characterId, activityId);
             restApp._lockedCharacters = restApp._lockedCharacters ?? new Set();
@@ -1082,7 +1082,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 choicesPayload,
                 characterId
             });
-            game.socket.emit(`module.${MODULE_ID}`, {
+            emitSocketMessage({
                 type: "activityChoice",
                 userId: game.user.id,
                 choices: choicesPayload,
@@ -1239,7 +1239,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             if (!confirmed) return;
         }
 
-        game.socket.emit(`module.${MODULE_ID}`, {
+        emitSocketMessage({
             type: "activityFireLevelRequest",
             userId: game.user.id,
             fireLevel: level

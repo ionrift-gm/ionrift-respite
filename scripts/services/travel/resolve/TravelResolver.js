@@ -70,7 +70,7 @@ export class TravelResolver {
         if (!indexEntries) return;
         const defaultPackId = packId ?? "ionrift-respite.respite-items";
         for (const entry of indexEntries) {
-            const rf = entry.flags?.["ionrift-respite"];
+            const rf = entry.flags?.[MODULE_ID];
             let category = null;
             let terrains = null;
 
@@ -604,6 +604,7 @@ export class TravelResolver {
      * @param {number} [quantity]
      * @returns {{ itemRef: string, quantity: number, itemData: object }}
      */
+    // INLINE-ITEM: justified because last-resort fallback when compendium pool is empty
     _makeKindling(quantity = 1) {
         return {
             itemRef: "kindling",
@@ -759,6 +760,7 @@ export class TravelResolver {
         }
     }
 
+    // INLINE-ITEM: justified because last-resort fallback when compendium pool is empty
     _makeMeat(quantity = 1, desc) {
         return {
             itemRef: "fresh_meat",
@@ -777,6 +779,7 @@ export class TravelResolver {
         };
     }
 
+    // INLINE-ITEM: justified because last-resort fallback when compendium pool is empty
     _makeFish(quantity = 1, desc) {
         return {
             itemRef: "fresh_fish",
@@ -795,6 +798,7 @@ export class TravelResolver {
         };
     }
 
+    // INLINE-ITEM: justified because last-resort fallback when compendium pool is empty
     _makeChoiceCut(quantity = 1) {
         return {
             itemRef: "choice_cut",
@@ -813,6 +817,7 @@ export class TravelResolver {
         };
     }
 
+    // INLINE-ITEM: justified because last-resort fallback when compendium pool is empty
     _makeAnimalFat(quantity = 1) {
         return {
             itemRef: "animal_fat",
@@ -829,6 +834,7 @@ export class TravelResolver {
         };
     }
 
+    // INLINE-ITEM: justified because last-resort fallback when compendium pool is empty
     _makeVenomSac(quantity = 1) {
         return {
             itemRef: "venom_sac",
