@@ -107,7 +107,7 @@ export async function registerReadyTokenAndResumeFlow(ctx) {
         const requestRestAndShortRestState = (label) => {
             RespiteLog.log(`${MODULE_ID} | Player requesting rest state (${label})...`);
             emitRequestRestState(game.user.id);
-            import("./services/rest/session/RestSessionSync.js").then(m => m.emitRestSessionRequestState(game.user.id)).catch(() => {});
+            import("../services/rest/session/RestSessionSync.js").then(m => m.emitRestSessionRequestState(game.user.id)).catch(() => {});
         };
         setTimeout(() => requestRestAndShortRestState("initial"), 1000);
 
@@ -182,13 +182,13 @@ export async function registerReadyTokenAndResumeFlow(ctx) {
                 }
                 if (getActiveShortRestApp() || getActiveRestSessionApp("shortrest")) {
                     RespiteLog.log(`${MODULE_ID} | Tab visible, resyncing short rest state...`);
-                    import("./services/rest/session/RestSessionSync.js")
+                    import("../services/rest/session/RestSessionSync.js")
                         .then(m => m.emitRestSessionRequestState(game.user.id))
                         .catch(() => {});
                 }
                 if (getActiveRestSessionApp("bivouac") || getActiveRestSessionApp("downtime")) {
                     RespiteLog.log(`${MODULE_ID} | Tab visible, resyncing gritty rest state...`);
-                    import("./services/rest/session/RestSessionSync.js")
+                    import("../services/rest/session/RestSessionSync.js")
                         .then(m => m.emitRestSessionRequestState(game.user.id))
                         .catch(() => {});
                 }
