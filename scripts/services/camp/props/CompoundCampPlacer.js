@@ -65,7 +65,7 @@ export function getCampStationPlacementKeys(safeRestSpot = false, options = {}) 
 /** Code-only feature flag: auto-place stations when entering step 2. */
 export const AUTO_PLACE_STATIONS = true;
 
-const PLAYER_GEAR = {
+export const PLAYER_GEAR = {
     bedroll: { name: "Bedroll",  width: 1,   height: 1 },
     tent:    { name: "Tent",     width: 2,   height: 2 },
     /** Small map token: dining gear (half-grid footprint). */
