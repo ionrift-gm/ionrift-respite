@@ -244,6 +244,7 @@ export function buildCharacterStatuses(app, partyActors, partyState, safeRestSpo
                 copySpellResult: app._copySpellResult?.actorId === a.id ? app._copySpellResult : null
             };
         });
+        return characterStatuses;
 }
 
 export function buildTotmStationCards(app, partyActors, partyState, safeRestSpot, setupSafeHaven) {

@@ -2,8 +2,8 @@ import { Logger } from "../../../utils/Logger.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { STATION_RANGE_SQUARES } from "../../../data/RestConstants.js";
 import { measureWorldDistanceFeet } from "./CompoundCampPlacer.js";
-import { UI_FONT_STACK, _iconTextureAsync, _layoutIconSprite, OV } from "./StationIconRenderer.js";
-import { stationTokenStillOnScene, getProximityActorIdFn } from "./StationInteractionLayer.js";
+import { UI_FONT_STACK, _iconTextureAsync, _layoutIconSprite, OV, ICON_RASTER_PX } from "./StationIconRenderer.js";
+import { stationTokenStillOnScene, getProximityActorIdFn, getOverlayContainer } from "./StationInteractionLayer.js";
 
 /**
  * One overlay attached to a canvas Token PIXI object.
@@ -150,8 +150,9 @@ export class StationOverlay {
             this._onClick();
         });
 
-        if (_overlayContainer) {
-            _overlayContainer.addChild(container);
+        const overlayContainer = getOverlayContainer();
+        if (overlayContainer) {
+            overlayContainer.addChild(container);
         } else {
             console.warn(`${MODULE_ID} | _overlayContainer not ready; falling back to token child`);
             this.token.addChild(container);

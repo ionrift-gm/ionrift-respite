@@ -76,11 +76,11 @@ export async function closeOpenStationDialog() {
 
 export const COOK_ACTIVITY_IDS = new Set(["act_cook", "act_brew"]);
 
-const DIALOG_WIDTH = 320;
+export const DIALOG_WIDTH = 320;
 /** Campfire dialog: comfort + 3-column gear grid; wider than default. */
 const CAMPFIRE_DIALOG_WIDTH = 400;
 /** Crafting split panel needs a wider dialog to fit the master-detail layout. */
-const CRAFT_SPLIT_WIDTH = 760;
+export const CRAFT_SPLIT_WIDTH = 760;
 const ANCHOR_ABOVE_PX = 40;
 const EST_HEIGHT = 260;
 const VIS_CLOSE_RATIO = 0.12;

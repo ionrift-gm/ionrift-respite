@@ -26,6 +26,7 @@ import { CampfireEmbed } from "../../camp/CampfireEmbed.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { registerCampfireEmbed, clearCampfireEmbed } from "../../../module.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { CampCeremonyDelegate } from "./CampCeremonyDelegate.js";
 
 const FIRE_LEVELS = Object.freeze(["unlit", "embers", "campfire", "bonfire"]);
 

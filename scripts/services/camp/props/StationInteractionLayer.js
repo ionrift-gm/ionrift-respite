@@ -22,7 +22,7 @@ import { getActiveRestSessionApp } from "../../rest/session/RestSessionSync.js";
 // furnitureKeys that remain interactive after an activity is chosen (meals)
 const MEAL_STATION_KEYS = new Set(["campfire", "cookingArea"]);
 
-import { ensureIconFontsLoaded, _portraitUrlsForStation } from "./StationIconRenderer.js";
+import { ensureIconFontsLoaded, _portraitUrlsForStation, _iconTexCache } from "./StationIconRenderer.js";
 import { StationOverlay } from "./StationOverlay.js";
 
 let _activateGeneration = 0;
@@ -590,3 +590,4 @@ export function isStationLayerActive() {
 
 export function stationTokenStillOnScene(token) { return _stationTokenStillOnScene(token); }
 export function getProximityActorIdFn() { return _getProximityActorId; }
+export function getOverlayContainer() { return _overlayContainer; }

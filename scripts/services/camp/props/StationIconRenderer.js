@@ -166,7 +166,7 @@ export function _rasterIconCanvas(station, fill, px) {
     return out;
 }
 
-const _iconTexCache = new Map();
+export const _iconTexCache = new Map();
 
 /**
  * PIXI texture for a station icon, via the cropped Canvas2D raster. Canvas2D
@@ -200,7 +200,7 @@ export function _iconTextureAsync(station, fill, px) {
 
 const _ICON_SPRITE_MAX = 22;
 // Rasterize larger than display size, then scale the sprite down for a crisp icon.
-const ICON_RASTER_PX = 44;
+export const ICON_RASTER_PX = 44;
 
 /** @param {PIXI.Sprite} spr @param {PIXI.Texture} tex */
 export function _layoutIconSprite(spr, tex) {

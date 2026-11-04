@@ -1,4 +1,5 @@
 import { MODULE_ID } from "../../../../data/moduleId.js";
+import { SHELTER_SPELLS } from "../../../../data/RestConstants.js";
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
 import { CampGearScanner } from "../../../../services/camp/gear/CampGearScanner.js";
 import { emitCampLightFire, emitTrainingStateUpdate } from "../../../../services/socket/SocketController.js";
