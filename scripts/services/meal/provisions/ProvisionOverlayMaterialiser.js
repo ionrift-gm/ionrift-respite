@@ -18,6 +18,30 @@ function titleCase(value) {
     return String(value ?? "").replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function isRespiteSublayerIncubating(manifest, sublayer) {
+    if (manifest) {
+        if (manifest.incubation === true) return true;
+        if (manifest.releaseStatus === "incubating") return true;
+        if (String(manifest.tier ?? "").toLowerCase() === "incubation") return true;
+        if (String(manifest.classification ?? "").toLowerCase() === "incubation") return true;
+    }
+    if (String(sublayer ?? "").startsWith("incuba")) return true;
+    return false;
+}
+
+function formatRespiteSublayerLabel(sublayer, manifest = null) {
+    const baseTitle = manifest?.packLabel || titleCase(sublayer);
+    if (!manifest) return `Respite: ${baseTitle}`;
+
+    const version = manifest.version ?? "0.0.0";
+    if (isRespiteSublayerIncubating(manifest, sublayer)) {
+        return `Respite: ${baseTitle} [v${version} · Incubating]`;
+    }
+    const tier = manifest.tier ? ` ${manifest.tier}` : "";
+    const preview = manifest.preview ? " Preview" : "";
+    return `Respite: ${baseTitle} [v${version} · Public${tier}${preview}]`;
+}
+
 /**
  * Top-level folder label for an items/ packDir inside a materialised overlay.
  * Cooking keeps fixed labels. Other packDirs (e.g. brewing under craft-professions)
@@ -59,11 +83,13 @@ function respiteMaterialiserConfig() {
         compendiumPrefix: "respite",
         logLabel: "Respite",
         notifyLabel: "Respite",
-        labelForSublayer: (sublayer) => `Respite: ${titleCase(sublayer)}`,
+        labelForSublayer: (sublayer, manifest) => formatRespiteSublayerLabel(sublayer, manifest),
         sectionWrapperName: respiteSectionWrapperName,
-        sidebarFolderResolver: async () => {
+        sidebarFolderResolver: async (_pack, context = {}) => {
             const { ContentPackCompiler } = await import("../../packs/registry/ContentPackCompiler.js");
-            return ContentPackCompiler.findRespiteCompendiumFolderId();
+            return ContentPackCompiler.ensureRespiteOverlayFolderId({
+                incubating: Boolean(context.incubating)
+            });
         },
         onActiveChange: (collectionIds, active) => applyForageSources(collectionIds, active),
         onRemove: (collectionIds) => applyForageSources(collectionIds, false)
