@@ -552,7 +552,7 @@ class DowntimeSyncAndRenderMixin {
     }
 
     _onRender(context, options) {
-        super._onRender(context, options);
+        Object.getPrototypeOf(Object.getPrototypeOf(this))?._onRender?.call(this, context, options);
         const html = this.element;
         if (!html) return;
 
