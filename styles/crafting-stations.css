@@ -3439,6 +3439,30 @@
 .ionrift-station-dialog .comfort-hero-recovery .recovery-exhaustion i {
     color: rgba(251, 191, 36, 0.85);
 }
+.ionrift-station-dialog .comfort-hero-spellbook {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: auto;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: rgba(196, 181, 253, 0.95);
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    border-radius: 4px;
+    cursor: pointer;
+}
+.ionrift-station-dialog .comfort-hero-spellbook:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+}
+.ionrift-station-dialog .comfort-hero-spellbook i {
+    font-size: 0.6rem;
+}
 .ionrift-station-dialog .comfort-hero-hints {
     margin-top: 0.3rem;
     display: flex;

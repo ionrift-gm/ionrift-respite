@@ -278,6 +278,7 @@ export const SETTING_KEYS = [
     "spoilageNameSuffix",
     "lockPlayerQuantity",
     "lockAttuneOutsideRest",
+    "lockSpellPrepOutsideRest",
     "safeRestSpot",
     "campfireTokenName",
     "torchTokenName",

@@ -523,6 +523,16 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "lockSpellPrepOutsideRest", {
+        name: "ionrift-respite.settings.lockSpellPrepOutsideRest.name",
+        hint: "ionrift-respite.settings.lockSpellPrepOutsideRest.hint",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
+        restricted: true
+    });
+
     /** Remembered from Rest Setup: long rest uses safe rest spot (no encounter risk). */
     game.settings.register(MODULE_ID, "safeRestSpot", {
         scope: "world",

@@ -4364,8 +4364,8 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   PLAYER LOCKDOWN: Quantity & Attunement restrictions
-   Applied via .respite-lock-quantity / .respite-lock-attune classes
+   PLAYER LOCKDOWN: Quantity, Attunement & Spell Preparation restrictions
+   Applied via .respite-lock-quantity / .respite-lock-attune / .respite-lock-spellprep classes
    injected by PlayerLockdownService on actor sheet render.
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -4403,6 +4403,14 @@
 
 /* ── Attunement Lock: tidy5e sheet ──────────────────────────────── */
 .respite-lock-attune .item-attunement {
+    pointer-events: none !important;
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(0.6);
+}
+
+/* ── Spell Preparation Lock: dnd5e sheet ────────────────────────── */
+.respite-lock-spellprep [data-action="prepare"] {
     pointer-events: none !important;
     opacity: 0.3;
     cursor: not-allowed;

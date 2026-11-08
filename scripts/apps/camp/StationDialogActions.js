@@ -16,6 +16,7 @@ import {
     isWorkbenchIdentifyUiEnabled
 } from "../../data/RestConstants.js";
 import { cardHintTakenBy } from "../../data/activityCardHint.js";
+import { openActorSpellbook } from "../../services/ui/sheet/SpellbookShortcut.js";
 import { buildActivityListItem, buildActivityDetailContext, promptArmorSleepIfNeeded } from "../crafting/ActivityDetailBuilder.js";
 import {
     computeCanShowDetectMagicScanButton,
@@ -593,6 +594,11 @@ export const StationDialogActionMethods = {
             app.refreshCanvasStationOverlaysIfActivity();
         }
         await this.render(true);
+    },
+
+    async onOpenSpellbook() {
+        if (!this._actor?.isOwner) return;
+        await openActorSpellbook(this._actor);
     },
 
     async onStationDetectMagicScan(event) {

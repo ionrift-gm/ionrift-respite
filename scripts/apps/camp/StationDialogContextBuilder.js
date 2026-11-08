@@ -16,6 +16,7 @@ import {
     isWorkbenchIdentifyUiEnabled
 } from "../../data/RestConstants.js";
 import { cardHintTakenBy } from "../../data/activityCardHint.js";
+import { actorHasPreparableSpells } from "../../services/ui/sheet/SpellbookShortcut.js";
 import { buildActivityListItem, buildActivityDetailContext, promptArmorSleepIfNeeded } from "../crafting/ActivityDetailBuilder.js";
 import {
     computeCanShowDetectMagicScanButton,
@@ -235,6 +236,8 @@ export const StationDialogContextMethods = {
             campfireFlavorOnly,
             campGearFlavorPanel,
             campPersonalCard,
+            showPrepareSpells: !!campPersonalCard && !!this._actor?.isOwner
+                && actorHasPreparableSpells(this._actor),
             fireTabContext,
             hideNoActivitiesMessage: this._station?.id === "campfire",
             isGmUser:           !!game.user?.isGM,

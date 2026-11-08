@@ -120,6 +120,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             workbenchIdentifyRemovePotion: StationActivityDialog.#onWorkbenchIdentifyRemovePotion,
             dismissWorkbenchIdentifyAck: StationActivityDialog.#onDismissWorkbenchIdentifyAck,
             reclaimCampGear: StationActivityDialog.#onReclaimCampGearFromDialog,
+            openSpellbook: StationActivityDialog.#onOpenSpellbook,
             craftSelectRecipe: StationActivityDialog.#onCraftSelectRecipe,
             craftSelectRisk: StationActivityDialog.#onCraftSelectRisk,
             craftCommit: StationActivityDialog.#onCraftCommit,
@@ -326,6 +327,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     static async #onWorkbenchIdentifyRemovePotion(event, target) { return StationDialogActionMethods.onWorkbenchIdentifyRemovePotion.call(this, event, target); }
     static async #onDismissWorkbenchIdentifyAck(event, target) { return StationDialogActionMethods.onDismissWorkbenchIdentifyAck.call(this, event, target); }
     static async #onReclaimCampGearFromDialog(event, target) { return StationDialogActionMethods.onReclaimCampGearFromDialog.call(this, event, target); }
+    static async #onOpenSpellbook(event, target) { return StationDialogActionMethods.onOpenSpellbook.call(this, event, target); }
     static async #onStationDetectMagicScan(event, target) { return StationDialogActionMethods.onStationDetectMagicScan.call(this, event, target); }
     static async #onStationIdentifyScannedItem(event, target) { return StationDialogActionMethods.onStationIdentifyScannedItem.call(this, event, target); }
     static async #onServeToParty(event, target) { return StationDialogActionMethods.onServeToParty.call(this, event, target); }

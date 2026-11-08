@@ -697,6 +697,12 @@
             </div>
             {{/if}}
         </div>
+        {{#if showPrepareSpells}}
+        <button type="button" class="comfort-hero-spellbook" data-action="openSpellbook"
+                data-tooltip="{{localize "ionrift-respite.stationActivity.prepareSpellsTooltip"}}">
+            <i class="fas fa-book" aria-hidden="true"></i> {{localize "ionrift-respite.stationActivity.prepareSpells"}}
+        </button>
+        {{/if}}
         {{#if campPersonalCard.hasMitigationHints}}
         <div class="comfort-hero-hints" aria-label="{{localize "ionrift-respite.stationActivity.waysToImprove"}}">
             {{#each campPersonalCard.mitigationHints}}

@@ -26,6 +26,12 @@ const RESTRICTION_TOGGLES = [
         get label() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.label"); },
         icon: "fas fa-gem",
         get hint() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.hint"); }
+    },
+    {
+        key: "lockSpellPrepOutsideRest",
+        get label() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockSpellPrepOutsideRest.label"); },
+        icon: "fas fa-book",
+        get hint() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockSpellPrepOutsideRest.hint"); }
     }
 ];
 
