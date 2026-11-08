@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.4.1] - 2026-11-08
+
+### Added
+- Lock Spell Preparation to Long Rest setting in Player Restrictions (off by default, D&D 5e only) so players can only change prepared spells during a long rest (or with Memorize Spell during a short rest), plus a Prepare Spells shortcut in the rest station window.
+
+### Fixed
+- Forage roll tables on Foundry V13 now read result descriptions without deprecation warnings.
+- Provision content packs match and apply item overlays more reliably across systems.
+
 ## [4.4.0] - 2026-11-01
 
 ### Added
