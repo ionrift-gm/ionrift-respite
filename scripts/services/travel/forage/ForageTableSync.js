@@ -31,15 +31,15 @@ const WATCHED_PACK_IDS = [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID];
 
 /** Roll tables stay GM-only; players roll d100 in chat and the GM client maps the value. */
 export const ROLL_TABLE_GM_ONLY_OWNERSHIP =
-    (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.NONE) ?? 0;
+    (typeof CONST !== "undefined" ? CONST.DOCUMENT_OWNERSHIP_LEVELS?.NONE : undefined) ?? 0;
 
 /**
- * Ownership payload that hides roll tables from players and strips legacy per-user Observer grants.
+ * Ownership payload that hides roll tables from players and resets legacy per-user Observer grants.
  * @param {Record<string, number>} [existing]
- * @returns {Record<string, number|null>}
+ * @returns {Record<string, number>}
  */
 export function buildGmOnlyRollTableOwnership(existing = {}) {
-    const ownerLevel = (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.OWNER) ?? 3;
+    const ownerLevel = (typeof CONST !== "undefined" ? CONST.DOCUMENT_OWNERSHIP_LEVELS?.OWNER : undefined) ?? 3;
     const ownership = { default: ROLL_TABLE_GM_ONLY_OWNERSHIP };
 
     for (const user of game.users ?? []) {
@@ -50,7 +50,7 @@ export function buildGmOnlyRollTableOwnership(existing = {}) {
         if (userId === "default") continue;
         const user = game.users.get(userId);
         if (!user?.isGM && (level ?? 0) > ROLL_TABLE_GM_ONLY_OWNERSHIP) {
-            ownership[`-${userId}`] = null;
+            ownership[userId] = ROLL_TABLE_GM_ONLY_OWNERSHIP;
         }
     }
 
@@ -60,12 +60,11 @@ export function buildGmOnlyRollTableOwnership(existing = {}) {
 /**
  * True when an ownership map differs from the desired GM-only ownership payload.
  * @param {Record<string, number>} [existing]
- * @param {Record<string, number|null>} [desired]
+ * @param {Record<string, number>} [desired]
  * @returns {boolean}
  */
 export function ownershipNeedsUpdate(existing = {}, desired = {}) {
     for (const [key, val] of Object.entries(desired)) {
-        if (key.startsWith("-")) return true;
         if (Number(existing?.[key] ?? 0) !== Number(val ?? 0)) return true;
     }
     return false;

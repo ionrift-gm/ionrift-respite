@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Fixed a repeating "ownership is not a mapping" error on load when players had been given access to Respite's forage or camp fuel roll tables.
+
 ## [4.4.1] - 2026-11-08
 
 ### Added
