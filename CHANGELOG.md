@@ -1,6 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [4.4.2] - 2026-11-16
+
+### Added
+- Pathfinder 2e camp Workbench item examination using trained Arcana, Nature, Occultism, Religion, or Crafting (with an Alchemist's Toolkit) for secret 10-minute Identify Magic and Identify Alchemy checks.
 
 ### Fixed
 - Fixed a repeating "ownership is not a mapping" error on load when players had been given access to Respite's forage or camp fuel roll tables.
