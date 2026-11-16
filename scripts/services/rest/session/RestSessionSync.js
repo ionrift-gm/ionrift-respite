@@ -74,6 +74,9 @@ export function userControlsActor(userId, actorId) {
  */
 export function registerRestSessionApp(restType, appInstance) {
     activeSessionApps.set(restType, appInstance);
+    try {
+        Hooks?.callAll?.("ionrift.respiteRestStateChanged", { active: true, restType });
+    } catch { /* ignore */ }
 }
 
 /**
@@ -84,6 +87,12 @@ export function registerRestSessionApp(restType, appInstance) {
 export function unregisterRestSessionApp(restType) {
     activeSessionApps.delete(restType);
     pendingDeltas.delete(restType);
+    try {
+        Hooks?.callAll?.("ionrift.respiteRestStateChanged", {
+            active: Boolean(globalThis.game?.ionrift?.respite?.isRestActive),
+            restType
+        });
+    } catch { /* ignore */ }
 }
 
 /**

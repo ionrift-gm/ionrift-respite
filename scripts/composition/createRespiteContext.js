@@ -288,7 +288,17 @@ export function createRespiteContext(runtime) {
         openItemConfig: (item = null) => ItemProvisionsApp.openForItem(item),
         openItemAuditor: () => ItemProvisionsApp.openAuditor(),
         ProvisionsAuditScanner,
-        get isRestActive() { return runtime.respiteFlowActive; },
+        get isRestActive() {
+            return Boolean(
+                runtime.respiteFlowActive
+                || runtime.playerRestActive
+                || runtime.activeRestSetupApp
+                || runtime.activePlayerRestApp
+                || runtime.activeShortRestApp
+                || runtime.getActiveRestSessionApp?.("bivouac")
+                || runtime.getActiveRestSessionApp?.("downtime")
+            );
+        },
     };
 
     exposeRespiteApi(api);

@@ -1,3 +1,9 @@
+import {
+    Pf2eWorkbenchExamineService,
+    classifyPf2eItemKind,
+    isPf2eItemUnidentified
+} from "./Pf2eWorkbenchExamineService.js";
+
 /**
  * DetectMagicScanner
  * Scans party inventories for unidentified magical items and handles
@@ -35,11 +41,33 @@ export class DetectMagicScanner {
      */
     static collectAllMagicItems(actor) {
         const items = [];
-        const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container"]);
+        const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container", "armor", "shield", "treasure", "backpack"]);
         const summarise = game.ionrift?.workshop?.getLatentSummary ?? null;
+        const isPf2e = Pf2eWorkbenchExamineService.isPf2e();
 
-        for (const item of actor.items) {
+        for (const item of actor.items ?? []) {
             if (!validTypes.has(item.type)) continue;
+
+            if (isPf2e) {
+                const pf2eKind = classifyPf2eItemKind(item);
+                if (pf2eKind !== "magic") continue;
+                const isUnid = isPf2eItemUnidentified(item);
+                const unidName = item.system?.identification?.unidentified?.name ?? item.system?.unidentified?.name;
+                const quartermasterLatent = summarise?.(item);
+                const trueName = quartermasterLatent?.originalName ?? quartermasterLatent?.trueName ?? item.name;
+                const displayName = isUnid ? (unidName || item.name) : item.name;
+                items.push({
+                    itemId: item.id,
+                    displayName,
+                    trueName,
+                    school: item.system?.school ?? null,
+                    rarity: quartermasterLatent?.originalRarity ?? item.system?.traits?.rarity ?? item.rarity ?? null,
+                    img: item.img ?? "icons/svg/mystery-man.svg",
+                    requiresAttunement: false,
+                    identified: !isUnid
+                });
+                continue;
+            }
 
             const raw = item.toObject?.()?.system ?? {};
             const identifiedLive = item.system?.identified;

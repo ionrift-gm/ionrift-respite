@@ -87,12 +87,13 @@ export const StationDialogContextMethods = {
         const hasAnyGeneral = activityItems.length > 0;
         const hasCookingAvail = cookActItems.length > 0;
 
-        // GM and actors with the Identify spell prepared can see it.
-        const _identifyGateData = (hubEligible && isWorkbenchIdentifyUiEnabled() && this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
+        // GM and actors with the Identify spell prepared can see it (DnD5e only; PF2e uses non-leaking Examine nomination).
+        const isPf2eSystem = (game.system?.id ?? "") === "pf2e" || (game.ionrift?.respite?.adapter?.id ?? "") === "pf2e";
+        const _identifyGateData = (!isPf2eSystem && hubEligible && isWorkbenchIdentifyUiEnabled() && this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
             ? this._restApp.getStationIdentifyEmbedContext({})
             : { identifyCasters: [], unidentifiedItems: [] };
         const isIdentifyCaster = _identifyGateData.identifyCasters?.some(c => c.id === this._actor?.id);
-        this._canSeeSharedPool = !!game.user?.isGM || !!isIdentifyCaster;
+        this._canSeeSharedPool = !isPf2eSystem && (!!game.user?.isGM || !!isIdentifyCaster);
         const _byOwner = new Map();
         for (const item of (_identifyGateData.unidentifiedItems ?? []).filter(it => !it.isPotion)) {
             if (!_byOwner.has(item.actorId)) {

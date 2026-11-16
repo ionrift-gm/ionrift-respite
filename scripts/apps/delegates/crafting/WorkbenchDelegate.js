@@ -20,19 +20,26 @@ import {
 } from "../../../data/RestConstants.js";
 import { itemIsDnD5ePotionType, resolveItemFromDropEvent } from "../../../utils/itemDropUtils.js";
 import {
+    Pf2eWorkbenchExamineService,
+    isPf2eItemUnidentified
+} from "../../../services/crafting/detectMagic/Pf2eWorkbenchExamineService.js";
+import {
     canStageFocus,
     canStageIdentify,
     validateWorkbenchZoneDrop
 } from "./WorkbenchZoneRules.js";
 
 /**
- * Unidentified for workbench: dnd5e identified===false, Quartermaster latent mask,
- * or infected stack still awaiting Identify split.
+ * Unidentified for workbench: dnd5e identified===false, PF2e status==='unidentified',
+ * Quartermaster latent mask, or infected stack still awaiting Identify split.
  */
 function itemIsWorkbenchUnidentified(actor, item) {
     if (!item || !actor?.items?.has(item.id)) return false;
-    const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container"]);
+    const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container", "armor", "shield", "treasure", "backpack"]);
     if (!validTypes.has(item.type)) return false;
+    if (Pf2eWorkbenchExamineService.isPf2e()) {
+        return isPf2eItemUnidentified(item);
+    }
     const infectedCount = Number(item.getFlag?.("ionrift-quartermaster", "infectedCount") ?? 0) || 0;
     if (infectedCount > 0) return true;
     const raw = item.toObject?.()?.system ?? {};
@@ -99,6 +106,17 @@ export class WorkbenchDelegate {
             this._app._workbenchIdentifySubmitPending = new Set();
         }
         return this._app._workbenchIdentifySubmitPending;
+    }
+
+    getPf2eSkill(actorId) {
+        if (!actorId) return null;
+        return this._app._workbenchPf2eSkills?.get(actorId) ?? null;
+    }
+
+    setPf2eSkill(actorId, skillSlug) {
+        if (!actorId || !skillSlug) return;
+        if (!this._app._workbenchPf2eSkills) this._app._workbenchPf2eSkills = new Map();
+        this._app._workbenchPf2eSkills.set(actorId, String(skillSlug).toLowerCase());
     }
 
         getStaging(actorId) {
@@ -177,8 +195,13 @@ export class WorkbenchDelegate {
     }
 
     getDragContext(actorId, collectPartyIdentifyEmbedData, getPartyActors) {
+        const isPf2e = Pf2eWorkbenchExamineService.isPf2e();
         const empty = {
             workbenchIdentifyActorId: null,
+            isPf2eWorkbench: isPf2e,
+            pf2eCanIdentify: false,
+            pf2eSkillChips: [],
+            pf2eActiveSkill: null,
             workbenchGearChip: null,
             workbenchPotionChip: null,
             workbenchSpellChip: null,
@@ -197,6 +220,7 @@ export class WorkbenchDelegate {
         if (!actorId) return empty;
         const actor = game.actors.get(actorId);
         const st = this.getStaging(actorId);
+        const pf2eEval = isPf2e ? Pf2eWorkbenchExamineService.evaluateActor(actor, this.getPf2eSkill(actorId)) : null;
         // Gear chip may belong to a different actor (shared pool cross-identify)
         const resolveGearChip = (itemId, gearActorId) => {
             const owner = gearActorId ? game.actors.get(gearActorId) : actor;
@@ -204,11 +228,14 @@ export class WorkbenchDelegate {
             if (!item) return null;
             // Accept any item; already-identified still stages so zones don't leak mundane vs magical.
             const isUnidentified = itemIsWorkbenchUnidentified(owner, item);
+            const unidName = item.system?.identification?.unidentified?.name || item.system?.unidentified?.name;
+            const label = (isUnidentified ? (unidName || item.name) : item.name) || game.i18n.localize("ionrift-respite.common.itemFallback");
             return {
                 itemId,
                 gearActorId: owner?.id ?? actorId,
                 img: item.img || "icons/svg/mystery-man.svg",
-                label: (isUnidentified ? (item.system?.unidentified?.name || item.name) : item.name) || game.i18n.localize("ionrift-respite.common.itemFallback"),
+                label,
+                name: label,
                 ownerName: owner?.name ?? "",
                 alreadyIdentified: !isUnidentified
             };
@@ -216,10 +243,12 @@ export class WorkbenchDelegate {
         const resolvePotionChip = itemId => {
             const item = actor?.items.get(itemId);
             if (!item || !itemIsDnD5ePotionType(item)) return null;
+            const label = item.name || game.i18n.localize("ionrift-respite.common.potionFallback");
             return {
                 itemId,
                 img: item.img || "icons/svg/mystery-man.svg",
-                label: item.name || game.i18n.localize("ionrift-respite.common.potionFallback")
+                label,
+                name: label
             };
         };
         const resolveSpellChip = (itemId, spellActorId) => {
@@ -227,11 +256,13 @@ export class WorkbenchDelegate {
             const item = owner?.items.get(itemId);
             if (!item) return null;
             const isUnidentified = itemIsWorkbenchUnidentified(owner, item);
+            const label = (isUnidentified ? (item.system?.unidentified?.name || item.name) : item.name) || game.i18n.localize("ionrift-respite.common.itemFallback");
             return {
                 itemId,
                 spellActorId: owner?.id ?? actorId,
                 img: item.img || "icons/svg/mystery-man.svg",
-                label: (isUnidentified ? (item.system?.unidentified?.name || item.name) : item.name) || game.i18n.localize("ionrift-respite.common.itemFallback"),
+                label,
+                name: label,
                 ownerName: owner?.name ?? "",
                 alreadyIdentified: !isUnidentified
             };
@@ -240,24 +271,38 @@ export class WorkbenchDelegate {
         const workbenchPotionChip = st.potionItemId ? resolvePotionChip(st.potionItemId) : null;
         const workbenchSpellChip = st.spellItemId ? resolveSpellChip(st.spellItemId, st.spellActorId) : null;
         const workbenchSubmitPending = this.submitPending.has(actorId);
-        const workbenchSubmitLocked = workbenchSubmitPending
-            || (!workbenchGearChip && !workbenchPotionChip && !workbenchSpellChip);
+        const workbenchSubmitLocked = isPf2e
+            ? (workbenchSubmitPending || !workbenchGearChip || !pf2eEval?.canIdentify)
+            : (workbenchSubmitPending || (!workbenchGearChip && !workbenchPotionChip && !workbenchSpellChip));
         const ack = this.acknowledge?.get(actorId) ?? null;
-        const workbenchIdentifyAcknowledgement = ack ? { items: ack.items } : null;
+        const workbenchIdentifyAcknowledgement = ack ? {
+            title: ack.title ?? null,
+            lead: ack.lead ?? null,
+            outcome: ack.outcome ?? null,
+            items: ack.items
+        } : null;
         const workbenchAckRevealReady = !ack || Date.now() >= ack.revealAt;
         const focusBudget = this.getFocusBudget(actorId);
         const focusCount = this.getFocusCount(actorId);
         const workbenchFocusExhausted = this.isFocusExhausted(actorId);
         const focusRemaining = Math.max(0, focusBudget - focusCount);
         const focusBudgetLabel = focusBudget > 1 ? `${focusRemaining}/${focusBudget} left` : null;
-        const focusTooltip = focusBudget > 1
-            ? `Focus: ${focusRemaining} of ${focusBudget} items remaining this rest (DMG p.136). Click to clear.`
-            : "One non-potion item per rest (Identifying a Magic Item, DMG p.136). Click to clear.";
-        const restCiteText = focusBudget > 1
-            ? `Focus up to ${focusBudget} items this downtime (${focusRemaining} remaining); taste as needed (DMG p.136).`
-            : "Focus once per rest; taste as needed (DMG p.136).";
+        const focusTooltip = isPf2e
+            ? "Drag any item from your Inventory here to nominate it for examination. Click to clear."
+            : (focusBudget > 1
+                ? `Focus: ${focusRemaining} of ${focusBudget} items remaining this rest (DMG p.136). Click to clear.`
+                : "One non-potion item per rest (Identifying a Magic Item, DMG p.136). Click to clear.");
+        const restCiteText = isPf2e
+            ? "Choose an identification discipline (Identify Magic or Identify Alchemy) and nominate an item from your inventory."
+            : (focusBudget > 1
+                ? `Focus up to ${focusBudget} items this downtime (${focusRemaining} remaining); taste as needed (DMG p.136).`
+                : "Focus once per rest; taste as needed (DMG p.136).");
         return {
             workbenchIdentifyActorId: actorId,
+            isPf2eWorkbench: isPf2e,
+            pf2eCanIdentify: Boolean(pf2eEval?.canIdentify),
+            pf2eSkillChips: pf2eEval?.skillChips ?? [],
+            pf2eActiveSkill: pf2eEval?.activeSkill ?? null,
             workbenchGearChip,
             workbenchPotionChip,
             workbenchSpellChip,
@@ -301,6 +346,10 @@ export class WorkbenchDelegate {
         const st = this.getStaging(actorId);
         if (!st.gearItemId && !st.potionItemId && !st.spellItemId) {
             ui.notifications.warn(game.i18n.localize("ionrift-respite.workbenchDelegate.dragAtLeastOne"));
+            return;
+        }
+        if (Pf2eWorkbenchExamineService.isPf2e()) {
+            await this._submitPf2eFromStation(actorId, actor, st);
             return;
         }
         const arcane = buildArcaneWorkbenchAccess(actor, {
@@ -416,6 +465,88 @@ export class WorkbenchDelegate {
     _notifySubmitPendingChange() {
     notifyWorkbenchIdentifyStagingTouched();
         if (this._app.rendered) this._app.render();
+    }
+
+    async _submitPf2eFromStation(actorId, actor, st) {
+        const itemId = st.gearItemId;
+        const ownerActorId = st.gearActorId || actorId;
+        const ownerActor = game.actors.get(ownerActorId) ?? actor;
+        const item = ownerActor?.items?.get(itemId);
+        if (!item) {
+            ui.notifications.warn("Nominate an inventory item to examine.");
+            return;
+        }
+        const pf2eEval = Pf2eWorkbenchExamineService.evaluateActor(actor, this.getPf2eSkill(actorId));
+        if (!pf2eEval.canIdentify) {
+            ui.notifications.warn("Requires Trained proficiency in Arcana, Nature, Occultism, Religion, or Crafting (with an Alchemist's Toolkit).");
+            return;
+        }
+        const skillSlug = pf2eEval.activeSkillSlug;
+
+        this.submitPending.add(actorId);
+        this._notifySubmitPendingChange();
+        try {
+            let res = null;
+            if (game.user.isGM) {
+                res = await Pf2eWorkbenchExamineService.resolveExamination({
+                    casterActor: actor,
+                    ownerActor,
+                    item,
+                    skillSlug
+                });
+            } else {
+                const requestId = foundry.utils.randomID();
+                const targetUserId = game.user.id;
+                res = await new Promise((resolve) => {
+                    WorkbenchDelegate._pendingIdentifyRequests.set(requestId, resolve);
+                    emitWorkbenchIdentifyRequest({
+                        actorId: ownerActorId,
+                        casterActorId: actorId,
+                        itemId,
+                        skill: skillSlug,
+                        requestId,
+                        targetUserId,
+                        intent: "pf2e-examine"
+                    });
+                    setTimeout(() => {
+                        if (WorkbenchDelegate._pendingIdentifyRequests.has(requestId)) {
+                            WorkbenchDelegate._pendingIdentifyRequests.delete(requestId);
+                            resolve({ ok: false, message: "Examination request timed out." });
+                        }
+                    }, 10000);
+                });
+            }
+
+            if (!res || res.ok === false) {
+                if (res?.message) ui.notifications.warn(res.message);
+                return;
+            }
+
+            if (!this._app._workbenchIdentifyAcknowledge) {
+                this._app._workbenchIdentifyAcknowledge = new Map();
+            }
+            this._app._workbenchIdentifyStaging.delete(actorId);
+            this._app._workbenchIdentifyAcknowledge.set(actorId, {
+                title: res.title || (res.identified ? "Revelation" : "Examination Complete"),
+                lead: res.lead || "",
+                outcome: res.outcome || (res.identified ? "success" : "failed"),
+                items: Array.isArray(res.items) ? res.items : [],
+                revealAt: Date.now() + 900
+            });
+            this.recordFocusUsed(actorId);
+            notifyWorkbenchIdentifyStagingTouched();
+            if (this._app.rendered) this._app.render();
+            const REVEAL_MS = 950;
+            setTimeout(() => {
+                if (this._app.rendered && this.acknowledge?.has(actorId)) {
+                    this._app.render();
+                }
+            }, REVEAL_MS);
+        } finally {
+            if (this.submitPending.delete(actorId)) {
+                this._notifySubmitPendingChange();
+            }
+        }
     }
 
     
@@ -611,6 +742,13 @@ export class WorkbenchDelegate {
             }
             const item = itemOwner.items.get(itemId);
             if (!item) return { ok: false, msg: "Item not found." };
+            if (Pf2eWorkbenchExamineService.isPf2e() && zone === "gear") {
+                const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container", "armor", "shield", "treasure", "backpack"]);
+                if (!validTypes.has(item.type)) {
+                    return { ok: false, msg: "Only physical inventory items can be nominated for examination." };
+                }
+                return { ok: true };
+            }
             return validateWorkbenchZoneDrop({
                 zone,
                 isPotion: itemIsDnD5ePotionType(item)
@@ -688,6 +826,37 @@ export class WorkbenchDelegate {
         };
 
         const zones = embed.querySelectorAll(".wb-ident-drop-zone");
+        for (const chip of embed.querySelectorAll("[data-wb-pf2e-skill]")) {
+            if (chip._wbSkillBound) continue;
+            chip._wbSkillBound = true;
+            chip.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (chip.dataset.disabled === "true") {
+                    const reason = chip.dataset.statusReason || "Not trained in that identification skill.";
+                    ui.notifications.warn(`${chip.dataset.skillLabel || chip.dataset.wbPf2eSkill}: ${reason}`);
+                    return;
+                }
+                this.setPf2eSkill(actorId, chip.dataset.wbPf2eSkill);
+                bump();
+            });
+        }
+        for (const invBtn of embed.querySelectorAll("[data-wb-open-inventory]")) {
+            if (invBtn._wbInvBound) continue;
+            invBtn._wbInvBound = true;
+            invBtn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const actor = game.actors.get(actorId);
+                if (!actor?.sheet) return;
+                await actor.sheet.render(true);
+                try {
+                    actor.sheet.activateTab?.("inventory");
+                } catch {
+                    // Sheet may use a different tab API
+                }
+            });
+        }
         for (const zone of zones) {
             if (zone._wbIdentBound) continue;
             zone._wbIdentBound = true;

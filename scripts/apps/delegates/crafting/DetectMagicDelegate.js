@@ -3,6 +3,7 @@ import {
     notifyDetectMagicScanApplied,
     notifyDetectMagicScanCleared
 } from "../../../services/crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
+import { Pf2eWorkbenchExamineService } from "../../../services/crafting/detectMagic/Pf2eWorkbenchExamineService.js";
 import {
     emitDetectMagicScanBroadcast,
     emitDetectMagicScanCleared
@@ -150,8 +151,13 @@ export function getNamedSpellAccess(actor, spellNameLower) {
     for (const i of actorSpellItems(actor)) {
         if (!spellItemMatchesName(i, spellNameLower)) continue;
         sawSpell = true;
-        const level = i.system?.level ?? 0;
-        if (level === 0) {
+        const rawTraits = i.system?.traits?.value ?? i.traits ?? [];
+        const traitList = Array.isArray(rawTraits) ? rawTraits : (rawTraits instanceof Set ? [...rawTraits] : []);
+        const isPf2eCantrip = Boolean(i.isCantrip === true || traitList.some((t) => String(t).toLowerCase() === "cantrip"));
+        const level = typeof i.system?.level === "object"
+            ? (isPf2eCantrip ? 0 : (i.system?.level?.value ?? 1))
+            : (i.system?.level ?? 0);
+        if (level === 0 || isPf2eCantrip) {
             return {
                 state: "available",
                 badge: "",
@@ -466,11 +472,12 @@ export async function purgeDetectMagicRestArtifacts(actors) {
  */
 export function collectPartyIdentifyEmbedData(partyActors, options = {}) {
     const restrictUnidentifiedActorId = options.restrictUnidentifiedToActorId ?? null;
+    const isPf2e = Pf2eWorkbenchExamineService.isPf2e();
     const unidentifiedItems = [];
     const identifyCasters = [];
     const detectMagicCasters = [];
     for (const a of partyActors) {
-        if (!restrictUnidentifiedActorId || a.id === restrictUnidentifiedActorId) {
+        if (!isPf2e && (!restrictUnidentifiedActorId || a.id === restrictUnidentifiedActorId)) {
             for (const item of a.items ?? []) {
                 if (item.system?.identified === false) {
                     const hasUnidentifiedData = !!(item.system?.unidentified?.name || item.system?.unidentified?.description);

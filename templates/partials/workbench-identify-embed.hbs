@@ -5,7 +5,12 @@
     {{!-- Top Utility Bar: Header Info / Caster Hint + Detect Magic Reconnaissance Ping --}}
     <div class="wb-ident-utility-bar">
         <div class="wb-ident-utility-meta">
-            {{#if identifyCasters.length}}
+            {{#if isPf2eWorkbench}}
+            <span class="wb-ident-recon-hint">
+                <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                <span>Select a trained tradition skill or Crafting (with an Alchemist's Toolkit), then drag an item from your inventory to examine it.</span>
+            </span>
+            {{else if identifyCasters.length}}
             <span class="wb-ident-caster-hint" data-tooltip="{{localize "ionrift-respite.workbenchIdentify.availableCasters"}} {{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}">
                 <i class="fas fa-hat-wizard" aria-hidden="true"></i>
                 <span class="wb-ident-caster-text">{{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}} {{localize "ionrift-respite.workbenchIdentify.canCastIdentify"}}</span>
@@ -41,6 +46,58 @@
     </p>
     {{/if}}
 
+    {{#if isPf2eWorkbench}}
+    <div class="wb-pf2e-examine-panel">
+        <div class="wb-pf2e-skill-chips" role="group" aria-label="Identification Skill">
+            {{#each pf2eSkillChips}}
+            <button type="button"
+                class="wb-pf2e-skill-chip{{#if selected}} is-selected{{/if}}{{#if disabled}} is-disabled{{/if}}"
+                data-wb-pf2e-skill="{{slug}}"
+                data-skill-label="{{label}}"
+                {{#if disabled}}data-disabled="true" data-status-reason="{{statusReason}}"{{/if}}
+                data-tooltip="{{tooltip}}">
+                <span class="wb-pf2e-skill-name">{{label}}</span>
+                <span class="wb-pf2e-skill-meta">{{#if ready}}{{rankLabel}} · {{modLabel}}{{else}}{{statusReason}}{{/if}}</span>
+            </button>
+            {{/each}}
+        </div>
+
+        <div class="meal-panel wb-ident-card wb-ident-card--focus wb-ident-card--pf2e{{#unless pf2eCanIdentify}} wb-ident-zone-lacking wb-ident-zone-unavailable{{/unless}}">
+            <div class="wb-ident-card-head">
+                <span class="panel-label wb-ident-card-title">
+                    {{#if pf2eActiveSkill}}{{pf2eActiveSkill.disciplineLabel}} · {{pf2eActiveSkill.label}}{{else}}Camp Item Examination{{/if}}
+                    <span class="wb-ident-pill">Secret · 10m</span>
+                </span>
+                <button type="button" class="wb-pf2e-inventory-btn" data-wb-open-inventory data-tooltip="Open your character inventory to drag an item here">
+                    <i class="fas fa-suitcase" aria-hidden="true"></i> Inventory
+                </button>
+            </div>
+            <div class="wb-ident-well-wrap">
+                <div class="meal-drop-zone wb-ident-drop-zone gear-focus-drop-zone {{#if workbenchGearChip}}filled{{/if}}{{#unless pf2eCanIdentify}} wb-ident-zone-blocked{{/unless}}"
+                    data-wb-zone="gear"
+                    data-tooltip="{{#if pf2eActiveSkill}}{{pf2eActiveSkill.tooltip}}{{else}}Requires Trained proficiency in Arcana, Nature, Occultism, Religion, or Crafting (with an Alchemist's Toolkit).{{/if}}">
+                    <div class="drop-zone-silhouette">
+                        {{#if workbenchGearChip}}
+                        <img src="{{workbenchGearChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
+                        <span class="drop-zone-clear-badge" title="{{localize "ionrift-respite.workbenchIdentify.removeItem"}}"><i class="fas fa-times"></i></span>
+                        {{else}}
+                        <i class="fas fa-hand-sparkles drop-zone-sil drop-zone-gear-sil"></i>
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+            <div class="wb-ident-card-meta">
+                {{#if workbenchGearChip}}
+                <span class="wb-ident-staged-name" title="{{workbenchGearChip.name}}">{{workbenchGearChip.name}}</span>
+                <span class="wb-ident-staged-hint">{{localize "ionrift-respite.workbenchIdentify.clickToClear"}}</span>
+                {{else}}
+                <span class="wb-ident-method-tag">{{#if pf2eActiveSkill}}{{pf2eActiveSkill.disciplineLabel}}{{else}}Trained Skill Required{{/if}}</span>
+                <span class="wb-ident-method-desc">Drag any item from your Inventory here to nominate it for examination.</span>
+                {{/if}}
+            </div>
+        </div>
+    </div>
+    {{else}}
     {{!-- Main Triage Bay: 3 Symmetrical Cards --}}
     <div class="wb-ident-triage-grid">
 
@@ -153,6 +210,7 @@
         </div>
 
     </div>
+    {{/if}}
 
     {{!-- Tabletop Dynamic Commit Action --}}
     <div class="station-meal-submit-row wb-ident-submit-row">
@@ -174,8 +232,8 @@
     {{#if workbenchIdentifyAcknowledgement}}
     <div class="wb-ident-ack-overlay" role="dialog" aria-modal="true">
         <div class="wb-ident-ack-card wb-ident-ack-fx">
-            <div class="wb-ident-ack-title" id="wb-ident-ack-heading"><i class="fas fa-scroll"></i> {{localize "ionrift-respite.workbenchIdentify.revelation"}}</div>
-            <p class="wb-ident-ack-lead">{{localize "ionrift-respite.workbenchIdentify.namesAndProperties"}}</p>
+            <div class="wb-ident-ack-title" id="wb-ident-ack-heading"><i class="fas fa-scroll"></i> {{#if workbenchIdentifyAcknowledgement.title}}{{workbenchIdentifyAcknowledgement.title}}{{else}}{{localize "ionrift-respite.workbenchIdentify.revelation"}}{{/if}}</div>
+            <p class="wb-ident-ack-lead">{{#if workbenchIdentifyAcknowledgement.lead}}{{workbenchIdentifyAcknowledgement.lead}}{{else}}{{localize "ionrift-respite.workbenchIdentify.namesAndProperties"}}{{/if}}</p>
             {{#each workbenchIdentifyAcknowledgement.items}}
             <div class="wb-ident-ack-row">
                 <img src="{{img}}" alt="" class="wb-ident-ack-img" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">

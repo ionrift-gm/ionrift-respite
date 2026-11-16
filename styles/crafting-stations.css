@@ -7107,3 +7107,88 @@
 .mf-cookbook-btn i {
     font-size: 0.85rem;
 }
+
+/* ---- PF2e Workbench Camp Item Examination ---- */
+
+.wb-pf2e-examine-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.25rem 0;
+}
+
+.wb-pf2e-skill-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.wb-pf2e-skill-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.wb-pf2e-skill-chip:hover:not(.is-disabled) {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.45);
+    color: #ffffff;
+}
+
+.wb-pf2e-skill-chip.is-selected {
+    background: rgba(139, 92, 246, 0.24);
+    border-color: rgba(167, 139, 250, 0.8);
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+.wb-pf2e-skill-chip.is-disabled {
+    opacity: 0.48;
+    border-style: dashed;
+    cursor: not-allowed;
+}
+
+.wb-pf2e-skill-meta {
+    font-size: 0.66rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.wb-pf2e-skill-chip.is-selected .wb-pf2e-skill-meta {
+    color: rgba(221, 214, 254, 0.9);
+}
+
+.wb-ident-card--pf2e {
+    width: 100%;
+    max-width: 100%;
+}
+
+.wb-pf2e-inventory-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.wb-pf2e-inventory-btn:hover {
+    background: rgba(139, 92, 246, 0.18);
+    border-color: rgba(139, 92, 246, 0.5);
+    color: #ffffff;
+}

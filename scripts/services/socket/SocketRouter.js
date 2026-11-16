@@ -14,6 +14,7 @@ import {
     notifyDetectMagicScanApplied,
     notifyDetectMagicScanCleared
 } from "../crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
+import { Pf2eWorkbenchExamineService } from "../crafting/detectMagic/Pf2eWorkbenchExamineService.js";
 import {
     showPrepNotification, removePrepNotification
 } from "../ui/sheet/RejoinManager.js";
@@ -374,6 +375,31 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.WORKBENCH_IDENTIFY_REQUEST: {
             if (!game.user.isGM) break;
             const { actorId, itemId, requestId, targetUserId } = data;
+            if (data.intent === "pf2e-examine" || Pf2eWorkbenchExamineService.isPf2e()) {
+                void (async () => {
+                    const ownerActor = game.actors.get(actorId);
+                    const casterActor = game.actors.get(data.casterActorId || actorId) ?? ownerActor;
+                    const item = ownerActor?.items?.get(itemId);
+                    if (!item) {
+                        console.warn(`[Respite] WB-IDENTIFY PF2E GM: item not found. actor=${actorId} item=${itemId}`);
+                        emitWorkbenchIdentifyResult({ requestId, success: false, outcome: "missing", targetUserId });
+                        return;
+                    }
+                    const res = await Pf2eWorkbenchExamineService.resolveExamination({
+                        casterActor,
+                        ownerActor,
+                        item,
+                        skillSlug: data.skill
+                    });
+                    emitWorkbenchIdentifyResult({
+                        requestId,
+                        ...res,
+                        success: Boolean(res?.identified),
+                        targetUserId
+                    });
+                })();
+                break;
+            }
             const intent = data.intent === "taste" || data.intent === "focus" || data.intent === "identify"
                 ? data.intent
                 : "focus";
@@ -450,7 +476,7 @@ export function dispatch(data, ctx) {
             const { requestId, success, items } = data;
             const pendingCount = WorkbenchDelegate._pendingIdentifyRequests?.size ?? -1;
         Logger.log(`[Respite] WB-IDENTIFY player: result received success=${success} req=${requestId} pendingMapSize=${pendingCount}`);
-            WorkbenchDelegate._resolveIdentifyRequest(requestId, { success, items });
+            WorkbenchDelegate._resolveIdentifyRequest(requestId, { ...data, success, items });
             break;
         }
 

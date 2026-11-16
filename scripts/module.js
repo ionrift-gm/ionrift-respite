@@ -95,9 +95,25 @@ export function clearCampfireEmbed() {
     activeCampfireEmbed = null;
 }
 
+function _notifyRestStateChanged() {
+    try {
+        const active = Boolean(
+            respiteFlowActive
+            || _playerRestActive
+            || activeRestSetupApp
+            || activePlayerRestApp
+            || activeShortRestApp
+            || getActiveRestSessionApp?.("bivouac")
+            || getActiveRestSessionApp?.("downtime")
+        );
+        Hooks?.callAll?.("ionrift.respiteRestStateChanged", { active });
+    } catch { /* ignore */ }
+}
+
 export function registerActiveRestApp(app) {
     activeRestSetupApp = app;
     respiteFlowActive = true;
+    _notifyRestStateChanged();
 }
 
 export function setActiveRestData(data) {
@@ -111,6 +127,7 @@ export function clearActiveRestApp() {
     respiteFlowActive = false;
     _removeGmRestIndicator();
     hideAfkPanelAfterRest();
+    _notifyRestStateChanged();
 }
 
 /**
@@ -125,11 +142,13 @@ export function retainGmRestAppFooter() {
 export function registerActiveShortRestApp(app) {
     activeShortRestApp = app;
     respiteFlowActive = true;
+    _notifyRestStateChanged();
 }
 
 export function clearActiveShortRestApp() {
     activeShortRestApp = null;
     respiteFlowActive = false;
+    _notifyRestStateChanged();
 }
 
 export function notifyShortRestActive() {
@@ -138,6 +157,7 @@ export function notifyShortRestActive() {
 
 export function setRespiteFlowActive(active) {
     respiteFlowActive = Boolean(active);
+    _notifyRestStateChanged();
 }
 
 /** @type {object|null} */
@@ -369,13 +389,18 @@ Hooks.once("init", async () => {
     // Expose API via composition root
     const respiteRuntime = {
         get respiteFlowActive() { return respiteFlowActive; },
-        set respiteFlowActive(v) { respiteFlowActive = v; },
+        set respiteFlowActive(v) { respiteFlowActive = v; _notifyRestStateChanged(); },
+        get playerRestActive() { return _playerRestActive; },
+        set playerRestActive(v) { _playerRestActive = Boolean(v); _notifyRestStateChanged(); },
         get activeRestSetupApp() { return activeRestSetupApp; },
-        set activeRestSetupApp(v) { activeRestSetupApp = v; },
+        set activeRestSetupApp(v) { activeRestSetupApp = v; _notifyRestStateChanged(); },
+        get activePlayerRestApp() { return activePlayerRestApp; },
+        set activePlayerRestApp(v) { activePlayerRestApp = v; _notifyRestStateChanged(); },
         get activeRestData() { return activeRestData; },
         set activeRestData(v) { activeRestData = v; },
         get activeShortRestApp() { return activeShortRestApp; },
-        set activeShortRestApp(v) { activeShortRestApp = v; },
+        set activeShortRestApp(v) { activeShortRestApp = v; _notifyRestStateChanged(); },
+        getActiveRestSessionApp,
         hideAfkPanel
     };
     createRespiteContext(respiteRuntime);
@@ -754,9 +779,9 @@ Hooks.once("ready", async () => {
         get activeCampfireEmbed() { return activeCampfireEmbed; },
         get playerRestActive() { return _playerRestActive; },
         get activeRestData() { return activeRestData; },
-        setActivePlayerRestApp(v) { activePlayerRestApp = v; },
-        setActiveShortRestApp(v) { activeShortRestApp = v; },
-        setPlayerRestActive(v) { _playerRestActive = v; },
+        setActivePlayerRestApp(v) { activePlayerRestApp = v; _notifyRestStateChanged(); },
+        setActiveShortRestApp(v) { activeShortRestApp = v; _notifyRestStateChanged(); },
+        setPlayerRestActive(v) { _playerRestActive = Boolean(v); _notifyRestStateChanged(); },
         registerActiveShortRestApp(app) { registerActiveShortRestApp(app); },
         showAfkPanel() { showAfkPanel(); },
         hideAfkPanelAfterRest() { hideAfkPanelAfterRest(); },
@@ -778,7 +803,7 @@ Hooks.once("ready", async () => {
         getActiveAfkPanel: () => activeAfkPanel,
         getPlayerRestActive: () => _playerRestActive,
         getRespiteFlowActive: () => respiteFlowActive,
-        setRespiteFlowActive: (v) => { respiteFlowActive = v; },
+        setRespiteFlowActive: (v) => { respiteFlowActive = Boolean(v); _notifyRestStateChanged(); },
         emitRequestRestState, getActiveRestSessionApp, BivouacApp, DowntimeLedgerApp, ShortRestApp,
         registerActiveShortRestApp, showAfkPanel, _maybeShowAmbientAfkPanelAtReady,
         clearCampTokens, resetCampSession, RestSetupApp, registerActiveRestApp, setActiveRestData,
