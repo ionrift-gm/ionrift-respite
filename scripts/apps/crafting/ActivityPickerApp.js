@@ -56,7 +56,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         }
     }
 
-    async _prepareContext(options) {
+    async _prepareContext(_options) {
         const myCharacters = game.actors.filter(
             a => a.hasPlayerOwner && a.isOwner && a.type === "character"
         );
@@ -102,7 +102,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         };
     }
 
-    _onRender(context, options) {
+    _onRender(_context, _options) {
         // Bind change events on activity selects
         const selects = this.element.querySelectorAll(".activity-select");
         for (const sel of selects) {
@@ -161,7 +161,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 }
             };
 
-            sel.addEventListener("change", (ev) => {
+            sel.addEventListener("change", (_ev) => {
                 this._choices.set(characterId, sel.value);
                 updateHint();
                 updateFollowUp();
@@ -176,7 +176,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
     /**
      * Builds inline HTML for a Tier 2 follow-up panel.
      */
-    _buildFollowUpHTML(followUp, characterId, activityId) {
+    _buildFollowUpHTML(followUp, characterId, _activityId) {
         const label = `<label class="followup-label">${followUp.label}</label>`;
 
         if (followUp.type === "partyMember") {
@@ -195,7 +195,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         }
 
         if (followUp.type === "radio") {
-            const radios = followUp.options.map((opt, i) => {
+            const radios = followUp.options.map((opt) => {
                 const checked = opt.value === followUp.default ? "checked" : "";
                 return `<label class="followup-radio-label">
                     <input type="radio" name="followup-${characterId}" value="${opt.value}" ${checked}>
@@ -211,13 +211,14 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
     /**
      * Submits choices back to the GM via socket.
      */
-    static async #onSubmit(event, target) {
+    static async #onSubmit(_event, _target) {
         const myCharacters = game.actors.filter(
             a => a.hasPlayerOwner && a.isOwner && a.type === "character"
         );
 
         for (const actor of myCharacters) {
-            if (!this._choices.get(actor.id)) {
+            const activityId = this._choices.get(actor.id);
+            if (!activityId) {
                 ui.notifications.warn(game.i18n.format("ionrift-respite.activityPickerApp.chooseActivityForActor", { actor: actor.name }));
                 return;
             }

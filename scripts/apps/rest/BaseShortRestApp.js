@@ -1,19 +1,12 @@
 import { MODULE_ID } from "../../data/moduleId.js";
-import { Logger } from "../../utils/Logger.js";
 import { RestPresentationHelper } from "../../utils/RestPresentationHelper.js";
-import { ImageResolver } from "../../utils/ImageResolver.js";
 import { confirmAbandonRest } from "./confirmAbandonRest.js";
 import { WorkbenchDelegate } from "../delegates/crafting/WorkbenchDelegate.js";
 import {
-    collectPartyIdentifyEmbedData,
-    DetectMagicDelegate,
-    purgeDetectMagicRestArtifacts,
-    spawnDetectMagicCastRipple
+    DetectMagicDelegate
 } from "../delegates/crafting/DetectMagicDelegate.js";
-import { getPartyActors } from "../../services/party/partyActors.js";
 import { HitDiceService } from "../../services/rest/recovery/HitDiceService.js";
 import { getShortRestRechargeLabels } from "../../services/rest/recovery/ShortRestRecharge.js";
-import { isWorkbenchIdentifyUiEnabled } from "../../data/RestConstants.js";
 import * as RestAfkState from "../../services/rest/session/RestAfkState.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -135,7 +128,7 @@ export class BaseShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) 
     /**
      * GM clears character selection to return to neutral overview.
      */
-    static onClearSelectedCharacter(event, target) {
+    static onClearSelectedCharacter(_event, _target) {
         if (!this._isGM) return;
         this._selectedCharacterId = null;
         this.render();
@@ -166,7 +159,7 @@ export class BaseShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) 
     /**
      * Confirm and abandon the rest.
      */
-    static async onAbandonRest(event, target) {
+    static async onAbandonRest(_event, _target) {
         const confirmed = await confirmAbandonRest();
         if (confirmed) {
             Hooks.callAll("ionrift.respite.restCleanup");
@@ -177,7 +170,7 @@ export class BaseShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) 
     /**
      * Toggle the UI theme between Ionrift Glass and Gilded Slate.
      */
-    static async onToggleUiTheme(event, target) {
+    static async onToggleUiTheme(_event, _target) {
         let currentTheme = "glass";
         try {
             currentTheme = game.settings.get(MODULE_ID, "uiTheme") ?? "glass";

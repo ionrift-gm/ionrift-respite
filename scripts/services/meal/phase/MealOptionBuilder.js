@@ -64,7 +64,7 @@ export function buildFoodOptions(actor) {
  * Build water options from actor inventory.
  * Delegates to {@link ItemClassifier.isWater} for diet-aware filtering.
  */
-export function buildWaterOptions(actor, rules) {
+export function buildWaterOptions(actor, _rules) {
     const options = [];
     const inventoryItems = iterInventoryItems(actor);
     const waterContainerIds = collectWaterSourceContainerIds(inventoryItems, actor);

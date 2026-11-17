@@ -11,12 +11,8 @@ import { emitSocketMessage } from "../../services/socket/SocketController.js";
 import { CampfirePhysics } from "../../services/camp/fire/CampfirePhysics.js";
 import { CampfireTokenLinker } from "../../services/camp/fire/CampfireTokenLinker.js";
 import {
-    CampGearScanner,
-    actorHasTinderbox,
     countActorFirewood,
-    findConsumableFirewoodItem,
-    isFireCantripItem,
-    isCreateBonfireCantrip
+    findConsumableFirewoodItem
 } from "../../services/camp/gear/CampGearScanner.js";
 import { logCampfireReconnect } from "../../services/camp/fire/CampfireReconnectLog.js";
 import { MODULE_ID } from "../../data/moduleId.js";

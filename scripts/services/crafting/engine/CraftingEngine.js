@@ -385,10 +385,12 @@ export class CraftingEngine {
         const consumeIngredients = success || riskTier !== "safe";
 
         if (success) {
-            let { output, outputFlags } = pickRecipeCraftOutput(recipe, {
+            const picked = pickRecipeCraftOutput(recipe, {
                 useAmbitious: useAmbitiousOutput,
                 terrainTag
             });
+            let output = picked.output;
+            const outputFlags = picked.outputFlags;
 
             if (output && recipe.outputQuantityProficiency) {
                 output = { ...output, quantity: getChefTreatOutputQuantity(actor) };
@@ -464,7 +466,9 @@ export class CraftingEngine {
      * Recipes with noSkillCheck skip the roll and always grant output (Chef Bolstering Treats, etc.).
      */
     async _resolveNoSkillCheckCraft(actor, recipe, recipeId, professionId, terrainTag, partySize, { ledger } = {}) {
-        let { output, outputFlags } = pickRecipeCraftOutput(recipe, { terrainTag });
+        const picked = pickRecipeCraftOutput(recipe, { terrainTag });
+        let output = picked.output;
+        const outputFlags = picked.outputFlags;
 
         if (output && recipe.outputQuantityProficiency) {
             output = { ...output, quantity: getChefTreatOutputQuantity(actor) };

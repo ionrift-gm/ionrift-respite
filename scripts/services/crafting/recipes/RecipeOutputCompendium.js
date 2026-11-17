@@ -3,7 +3,7 @@
  */
 
 import { Logger } from "../../../utils/Logger.js";
-import { ProvisionsCustomPack, PROVISIONS_CUSTOM_PACK_ID, folderParentId } from "../../meal/provisions/ProvisionsCustomPack.js";
+import { ProvisionsCustomPack, PROVISIONS_CUSTOM_PACK_ID } from "../../meal/provisions/ProvisionsCustomPack.js";
 import { syncResourceTypeFromMealFlags } from "../../meal/buffs/MealBuffPresets.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 

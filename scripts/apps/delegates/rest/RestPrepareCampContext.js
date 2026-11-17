@@ -1,5 +1,4 @@
 import { Logger } from "../../../utils/Logger.js";
-import { MODULE_ID } from "../../../data/moduleId.js";
 import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
 import { CampGearScanner, isFireCantripItem } from "../../../services/camp/gear/CampGearScanner.js";
 import { hasCampfirePlaced } from "../../../services/camp/props/CompoundCampPlacer.js";

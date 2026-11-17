@@ -1,5 +1,6 @@
 import { TerrainRegistry } from "../resolve/TerrainRegistry.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { Logger } from "../../../utils/Logger.js";
 
 const EFFECT_TYPES = new Set([
     "condition", "consume_gold", "consume_resource", "damage", "encounter",
@@ -412,9 +413,8 @@ function renderReportSection(lines, heading) {
  */
 function buildImportReportHtml(report, opts = {}) {
     if (report.warnings?.length) {
-        console.groupCollapsed(`${MODULE_ID} | Event pack import warnings (${report.packId ?? "pack"})`);
-        for (const line of report.warnings) console.warn(line);
-        console.groupEnd();
+        Logger.warn(`${MODULE_ID} | Event pack import warnings (${report.packId ?? "pack"})`);
+        for (const line of report.warnings) Logger.warn(line);
     }
 
     const bodyParts = [];

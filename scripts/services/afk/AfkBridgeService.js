@@ -18,7 +18,6 @@ import {
     readPlayerListStatusAfk,
     writePlayerListStatusAfk
 } from "./adapters/PlayerListStatusAfkAdapter.js";
-import { MODULE_ID } from "../../data/moduleId.js";
 
 /** @typedef {"respite"|"socket"|"external"|"reconcile"} AfkChangeOrigin */
 

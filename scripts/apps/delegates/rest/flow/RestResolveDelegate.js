@@ -11,23 +11,10 @@ import {
     mealExhaustionFloorFor
 } from "../../../../services/meal/phase/MealExhaustionGuard.js";
 import { ItemOutcomeHandler } from "../../../../services/crafting/outcomes/ItemOutcomeHandler.js";
-import { GrantLedger } from "../../../../services/crafting/outcomes/GrantLedger.js";
 import { purgeDetectMagicRestArtifacts } from "../../crafting/DetectMagicDelegate.js";
 import { SoundDelegate } from "../SoundDelegate.js";
-import {
-    clearCampTokens,
-    getCampSceneId,
-    resetCampSession
-} from "../../../../services/camp/props/CompoundCampPlacer.js";
-import {
-    emitRestAbandoned
-} from "../../../../services/socket/SocketController.js";
 import { getPartyActors } from "../../../../services/party/partyActors.js";
-import { RestSetupApp } from "../../../rest/RestSetupApp.js";
-import { confirmAbandonRest } from "../../../rest/confirmAbandonRest.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
-import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
-import { ImageResolver } from "../../../../utils/ImageResolver.js";
 
 export class RestResolveDelegate {
     constructor(app) {
@@ -48,7 +35,7 @@ export class RestResolveDelegate {
         }
     }
 
-    async _onResolveEvents(event, target) {
+    async _onResolveEvents(_event, _target) {
         const app = this._app;
 
         // Collect ALL resource-loss effects from resolved tree and stall penalties.

@@ -92,7 +92,7 @@ export class RestPresentationHelper {
      * @param {string} [options.currentUserId]
      * @returns {Array<object>}
      */
-    static getPartyRosterPills(party, { finishedActorIds = new Set(), currentUserId = game.user?.id } = {}) {
+    static getPartyRosterPills(party, { finishedActorIds = new Set(), _currentUserId = game.user?.id } = {}) {
         return (party ?? []).map(actor => {
             const pres = this.getActorPresentation(actor);
             const isUser = actor.isOwner;

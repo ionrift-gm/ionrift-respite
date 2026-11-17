@@ -14,7 +14,7 @@ export function resolveUserIdForCharacter(characterId) {
     const players = game.users?.filter(u => !u.isGM && actor.testUserPermission(u, "OWNER")) ?? [];
     if (players.length) return players[0].id;
     return game.users?.find(u => actor.isOwner && !u.isGM)?.id
-        ?? game.users?.find(u => actor.isOwner)?.id
+        ?? game.users?.find(_u => actor.isOwner)?.id
         ?? null;
 }
 

@@ -398,7 +398,7 @@ export class RestFlowEngine {
         }
 
         // Exhaustion risk at Rough/Hostile (using effective comfort)
-        let exhaustionDC = getExhaustionDC(effectiveComfort);
+        const exhaustionDC = getExhaustionDC(effectiveComfort);
 
         // Sleeping in medium/heavy armor: recover only 1/4 HD, exhaustion not reduced
         let armorSleepPenalty = false;

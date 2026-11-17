@@ -1,15 +1,11 @@
 import { Logger } from "../../utils/Logger.js";
-import { refreshGmRestIndicator } from "../ui/sheet/RejoinManager.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 import { clearAllZzzOverlays } from "../ui/sheet/UiInjections.js";
 import { RestSetupApp } from "../../apps/rest/RestSetupApp.js";
 import { ShortRestApp } from "../../apps/rest/ShortRestApp.js";
 import { setCharacterAfk } from "../afk/AfkBridgeService.js";
 import { CopySpellHandler } from "../crafting/outcomes/CopySpellHandler.js";
-import { CampfireTokenLinker } from "../camp/fire/CampfireTokenLinker.js";
-import { TorchTokenLinker } from "../camp/props/TorchTokenLinker.js";
 import {
-    notifyDetectMagicScanApplied,
     notifyDetectMagicScanCleared
 } from "../crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
 import { closeOpenStationDialog } from "../../apps/camp/StationActivityDialog.js";
@@ -28,9 +24,10 @@ import {
 } from "./SocketController.js";
 import { applyCampProgress } from "../rest/session/campProgressState.js";
 import {
+    refreshGmRestIndicator,
     showRejoinNotification, removeRejoinNotification,
     showShortRestRejoinNotification, removeShortRestRejoinNotification,
-    showPrepNotification, removePrepNotification,
+    removePrepNotification,
     removeGmRestIndicator
 } from "../ui/sheet/RejoinManager.js";
 import { resolvePlayerCloseOptions } from "../ui/sheet/playerClosePolicy.js";
@@ -579,7 +576,7 @@ export function handleCopySpellBusy(data, ctx) {
  * @param {object} data - { cookActorId, itemSnapshot, partyIds, feastMode }
  * @param {SocketContext} ctx
  */
-export async function handleFeastServeRequest(data, ctx) {
+export async function handleFeastServeRequest(data, _ctx) {
     const { MealPhaseHandler } = await import("../meal/phase/MealPhaseHandler.js");
 
     const { cookActorId, itemSnapshot, partyIds, feastMode } = data;

@@ -1,4 +1,3 @@
-import { MODULE_ID } from "../../../data/moduleId.js";
 import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
 import { DecisionTreeResolver } from "../../../services/events/resolve/DecisionTreeResolver.js";
 import { countPoolEventsForTerrain } from "../../../services/events/catalog/EventCatalogLoader.js";

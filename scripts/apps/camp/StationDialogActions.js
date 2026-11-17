@@ -1,35 +1,13 @@
 import { Logger } from "../../utils/Logger.js";
 import { MODULE_ID } from "../../data/moduleId.js";
-
-import {
-    ACTIVITY_ICONS,
-    applyActivityPortraitAssignments,
-    buildActivityAssignments,
-    buildPartyState,
-    foldOrphanedAssignmentsOntoOther,
-    getActivityAdvisory,
-    DETECT_MAGIC_BTN_LABEL_GM,
-    DETECT_MAGIC_BTN_LABEL_PLAYER,
-    DETECT_MAGIC_BTN_LABEL_DISMISS,
-    DETECT_MAGIC_BTN_TITLE_GM,
-    isWorkbenchExamineUiEnabled,
-    isWorkbenchIdentifyUiEnabled
-} from "../../data/RestConstants.js";
-import { cardHintTakenBy } from "../../data/activityCardHint.js";
 import { openActorSpellbook } from "../../services/ui/sheet/SpellbookShortcut.js";
-import { buildActivityListItem, buildActivityDetailContext, promptArmorSleepIfNeeded } from "../crafting/ActivityDetailBuilder.js";
+import { promptArmorSleepIfNeeded } from "../crafting/ActivityDetailBuilder.js";
 import {
-    computeCanShowDetectMagicScanButton,
-    computeCanTriggerDetectMagicScan,
-    getDetectMagicPlayerAccessReason,
     spawnDetectMagicCastRipple
 } from "../delegates/crafting/DetectMagicDelegate.js";
-import { canPlaceStation, actorHasBrewingTools } from "../../services/camp/props/CompoundCampPlacer.js";
-import { getPartyActors, getFoodBuffPartyActors } from "../../services/party/partyActors.js";
+import { getPartyActors } from "../../services/party/partyActors.js";
 import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
-import { formatMealBuffPreview } from "../../services/meal/buffs/MealBuffPresets.js";
-import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../../services/crafting/engine/CraftCommitSummary.js";
-import { buildCraftRecipeListContext } from "../../services/crafting/engine/CraftRecipeListBuilder.js";
+import { buildCraftCommitSummary } from "../../services/crafting/engine/CraftCommitSummary.js";
 import { patchCraftingRiskUi } from "../../services/crafting/engine/CraftingRiskUiPatch.js";
 import { emitFeastServeRequest, emitActivityColdCampRequest, emitSocketMessage } from "../../services/socket/SocketController.js";
 import { CampGearScanner, isTinderboxItem, isActorFirewoodItem } from "../../services/camp/gear/CampGearScanner.js";
@@ -39,7 +17,7 @@ import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
 import { ItemOutcomeHandler } from "../../services/crafting/outcomes/ItemOutcomeHandler.js";
 import { CraftingDelegate } from "../delegates/crafting/CraftingDelegate.js";
 
-import { COOK_ACTIVITY_IDS, DIALOG_WIDTH, CRAFT_SPLIT_WIDTH, StationActivityDialog } from "./StationActivityDialog.js";
+import { COOK_ACTIVITY_IDS, DIALOG_WIDTH, CRAFT_SPLIT_WIDTH, notifyStationMealChoicesUpdated } from "./StationActivityDialog.js";
 export const StationDialogActionMethods = {
     onOpenMonsterCookbook() {
         const dialog = this;
@@ -471,7 +449,6 @@ export const StationDialogActionMethods = {
                 });
                 return;
             }
-            const OWNER = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
             const myActors = allActors.filter(a => a.isOwner);
             const need = newCost - curCost;
             const myFirewood = myActors.reduce((sum, a) => {
@@ -569,7 +546,7 @@ export const StationDialogActionMethods = {
         await this.render(true);
     },
 
-    async onWorkbenchIdentifyRemovePotion(event, target) {
+    async onWorkbenchIdentifyRemovePotion(_event, _target) {
         const actorId = this._actor?.id;
         if (!actorId || !this._restApp?.removeWorkbenchIdentifyPotionFromStation) return;
         this._restApp.removeWorkbenchIdentifyPotionFromStation(actorId);

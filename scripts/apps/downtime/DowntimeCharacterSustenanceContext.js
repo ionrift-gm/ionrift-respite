@@ -198,10 +198,10 @@ export function buildCharacterSustenanceData(app, actor, {
 
             const totalAutoConsumed = totalRoutineFoodUnitsNeeded - autoFoodRemaining;
             const foodShortfallUnits = autoFoodRemaining;
-            let foodShortfallDays = (haven === "wilderness" && fpd > 0)
+            const foodShortfallDays = (haven === "wilderness" && fpd > 0)
                 ? Math.ceil(foodShortfallUnits / fpd)
                 : 0;
-            let hasStarvationRisk = (haven === "wilderness") && (foodShortfallDays > 0);
+            const hasStarvationRisk = (haven === "wilderness") && (foodShortfallDays > 0);
 
             const fedDaysCount = (haven === "civilized")
                 ? 7
@@ -223,10 +223,10 @@ export function buildCharacterSustenanceData(app, actor, {
             const waterShortfallUnits = (haven === "civilized")
                 ? 0
                 : Math.max(0, totalWaterUnitsNeeded - totalWaterFulfilled);
-            let waterShortfallDays = (haven === "civilized" || wpd <= 0)
+            const waterShortfallDays = (haven === "civilized" || wpd <= 0)
                 ? 0
                 : Math.ceil(waterShortfallUnits / wpd);
-            let hasDehydrationRisk = (haven === "wilderness") && (waterShortfallDays > 0);
+            const hasDehydrationRisk = (haven === "wilderness") && (waterShortfallDays > 0);
             const hydratedDaysCount = (haven === "civilized")
                 ? 7
                 : Math.max(0, 7 - waterShortfallDays);

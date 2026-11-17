@@ -521,7 +521,7 @@ export function registerUiHooks() {
     ];
 
     for (const hookName of sheetHooks) {
-        Hooks.on(hookName, (app, html, context) => {
+        Hooks.on(hookName, (app, html, _context) => {
             injectDietButton(app, html);
             injectSpoilageBadges(app, html);
             injectPlayerLockdownClasses(app, html);

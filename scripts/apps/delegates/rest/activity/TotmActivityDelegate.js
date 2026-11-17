@@ -14,13 +14,14 @@ import {
 import { GatherYieldService } from "../../../../services/rest/forage/GatherYieldService.js";
 import { executePlayerRoll } from "../../../../services/ui/rollRequest/RollRequestManager.js";
 import { promptArmorSleepIfNeeded } from "../../../crafting/ActivityDetailBuilder.js";
+import { isCampfireMinigameEnabled } from "../../../../services/rest/flow/RestProfileSettings.js";
 
 export class TotmActivityDelegate {
     constructor(app) {
         this._app = app;
     }
 
-    async onConfirmTotmFollowUp(event, target) {
+    async onConfirmTotmFollowUp(_event, _target) {
         const app = this._app;
 
         const expanded = app._totmFollowUpExpanded;
@@ -452,7 +453,7 @@ export class TotmActivityDelegate {
         app.render();
     }
 
-    async onTotmCraftClose(event, target) {
+    async onTotmCraftClose(_event, _target) {
         const app = this._app;
 
         if (app._totmCraftRollPending) return;
@@ -566,7 +567,7 @@ export class TotmActivityDelegate {
     
     }
 
-    async onUnlockTotmActivity(event, target) {
+    async onUnlockTotmActivity(_event, _target) {
         const app = this._app;
         const cid = app._selectedCharacterId;
         if (!cid) return;

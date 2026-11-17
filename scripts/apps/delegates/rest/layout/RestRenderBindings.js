@@ -1,4 +1,3 @@
-import { CopySpellHandler } from "../../../../services/crafting/outcomes/CopySpellHandler.js";
 import { logCampfireReconnect } from "../../../../services/camp/fire/CampfireReconnectLog.js";
 import {
     hasCampfirePlaced,
@@ -6,18 +5,13 @@ import {
 } from "../../../../services/camp/props/CompoundCampPlacer.js";
 import {
     isStationLayerActive,
-    refreshStationEmptyNoticeFade,
-    refreshStationPortraitsFromChoices
+    refreshStationEmptyNoticeFade
 } from "../../../../services/camp/props/StationInteractionLayer.js";
 import { isSimpleStationsMode } from "../../../../services/rest/flow/RestProfileSettings.js";
 import { isWorkbenchIdentifyUiEnabled } from "../../../../data/RestConstants.js";
 import { bindSustenanceMeters } from "../../meal/SustenanceMeterBinding.js";
 import { CampfireMakeCampDialog } from "../../../camp/CampfireMakeCampDialog.js";
 import { closeStationDialogIfDifferentActor } from "../../../camp/StationActivityDialog.js";
-import {
-    emitCopySpellProposal,
-    emitActivityChoice
-} from "../../../../services/socket/SocketController.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
 
 export class RestRenderBindings {
@@ -25,7 +19,7 @@ export class RestRenderBindings {
         this._app = app;
     }
 
-    _onRenderBindings(context, options) {
+    _onRenderBindings(context, _options) {
         const app = this._app;
         app.element?.classList.toggle("hide-terrain-banners", !!context?.hideTerrainBanner);
 

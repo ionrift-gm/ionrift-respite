@@ -5,31 +5,18 @@ import { HitDiceService } from "../../services/rest/recovery/HitDiceService.js";
 import { HitDieModifiers } from "../../services/rest/recovery/HitDieModifiers.js";
 import { SustenanceEngine } from "../../services/rest/gritty/SustenanceEngine.js";
 import { ItemClassifier } from "../../services/party/ItemClassifier.js";
-import { CampStanceManager } from "./CampStanceManager.js";
 import { EncounterDraftService } from "../../services/rest/gritty/EncounterDraftService.js";
 import { CalendarHandler } from "../../services/rest/session/CalendarHandler.js";
 import { setNativeShortRestUnsuppressed } from "../../services/rest/flow/NativeRestPass.js";
 import {
-    registerRestSessionApp,
-    unregisterRestSessionApp,
-    drainPendingRestSessionDeltas,
     emitRestSessionDelta,
-    emitRestSessionSync,
     emitRestSessionResolved,
-    emitRestSessionAbandoned,
-    userControlsActor
+    emitRestSessionAbandoned
 } from "../../services/rest/session/RestSessionSync.js";
-import { setRespiteFlowActive } from "../../module.js";
 import { countActorFirewood, findConsumableFirewoodItem } from "../../services/camp/gear/CampGearScanner.js";
 import { consumeItem } from "../../services/meal/inventory/MealItemConsumer.js";
 import { confirmAbandonRest } from "../rest/confirmAbandonRest.js";
-import { getShortRestRechargeLabels } from "../../services/rest/recovery/ShortRestRecharge.js";
-import { RestPresentationHelper } from "../../utils/RestPresentationHelper.js";
-import { ImageResolver } from "../../utils/ImageResolver.js";
-import { WorkbenchDelegate } from "../delegates/crafting/WorkbenchDelegate.js";
 import {
-    DetectMagicDelegate,
-    collectPartyIdentifyEmbedData,
     spawnDetectMagicCastRipple,
     purgeDetectMagicRestArtifacts
 } from "../delegates/crafting/DetectMagicDelegate.js";
@@ -40,7 +27,7 @@ import { isWorkbenchIdentifyUiEnabled } from "../../data/RestConstants.js";
  * Single-screen overnight management for Gritty Realism 8-hour short rests.
  */
 export const BivouacActionMethods = {
-    async onAbandonBivouac(event, target) {
+    async onAbandonBivouac(_event, _target) {
         if (!this._isGM) return;
 
         const confirmed = await confirmAbandonRest({
@@ -103,7 +90,7 @@ export const BivouacActionMethods = {
         this._saveSessionState();
     },
 
-    onOptOutChef(event, target) {
+    onOptOutChef(_event, _target) {
         if (this._isGM) {
             this._chefVolunteered = false;
             this._chefMealBonusByActor.clear();
@@ -212,7 +199,7 @@ export const BivouacActionMethods = {
         this._saveSessionState();
     },
 
-    async onClaimChefMealFromBadge(event, target) {
+    async onClaimChefMealFromBadge(event, _target) {
         if (event?.target?.closest?.(".btn-chef-optout")) return;
         if (!this._chefVolunteered || !this._chefVolunteer) return;
 
@@ -443,7 +430,7 @@ export const BivouacActionMethods = {
         this._saveSessionState();
     },
 
-    async onPassTheNight(event, target) {
+    async onPassTheNight(_event, _target) {
         if (!this._isGM) return;
 
         const party = getPartyActors();
@@ -607,7 +594,7 @@ export const BivouacActionMethods = {
         this.close({ resolved: true });
     },
 
-    onToggleBivouacFinished(event, target) {
+    onToggleBivouacFinished(event, _target) {
         event.preventDefault?.();
         const uid = game.user.id;
         const next = !this._finishedUsers.has(uid);
@@ -710,7 +697,7 @@ export const BivouacActionMethods = {
         }
     },
 
-    onWorkbenchIdentifyRemovePotion(event, target) {
+    onWorkbenchIdentifyRemovePotion(_event, _target) {
         const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
         const actorId = el?.dataset?.workbenchActorId;
         if (!actorId) return;

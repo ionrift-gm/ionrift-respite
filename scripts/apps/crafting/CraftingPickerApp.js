@@ -1,4 +1,4 @@
-import { CraftingEngine, matchesRecipeIngredient } from "../../services/crafting/engine/CraftingEngine.js";
+import { matchesRecipeIngredient } from "../../services/crafting/engine/CraftingEngine.js";
 import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
 import { buildCraftRecipeListContext } from "../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
@@ -83,7 +83,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             && MonstrousFeastBridge.ownsCooking();
     }
 
-    async _prepareContext(options) {
+    async _prepareContext(_options) {
         if (!this._selectedRecipeId && !this._hasCrafted) {
             let partySize = 1;
             try {
@@ -174,7 +174,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         return results;
     }
 
-    _preRender(context, options) {
+    _preRender(_context, _options) {
         const detail = this.element?.querySelector(".crafting-detail-panel");
         this._savedDetailScroll = detail?.scrollTop ?? null;
         const list = this.element?.querySelector(".crafting-list-panel");
@@ -205,7 +205,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         this.render();
     }
 
-    static async #onCraftRecipe(event, target) {
+    static async #onCraftRecipe(_event, _target) {
         if (this._hasCrafted || !this._selectedRecipeId) return;
 
         if (this._restApp) {
@@ -238,7 +238,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         this.render();
     }
 
-    static async #onServeFeastNow(event, target) {
+    static async #onServeFeastNow(_event, _target) {
         if (this._feastServed || this._feastInFlight) return;
         this._feastInFlight = true;
         try {
@@ -259,12 +259,12 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         }
     }
 
-    static #onToggleMissing(event, target) {
+    static #onToggleMissing(_event, _target) {
         this._showMissing = !this._showMissing;
         this.render();
     }
 
-    static #onOpenMonsterCookbook(event, target) {
+    static #onOpenMonsterCookbook(_event, _target) {
         this._openMonsterCookbook();
     }
 
@@ -331,7 +331,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         await this.close();
     }
 
-    static #onClose(event, target) {
+    static #onClose(_event, _target) {
         this._commitCraftResult();
         this.close();
     }

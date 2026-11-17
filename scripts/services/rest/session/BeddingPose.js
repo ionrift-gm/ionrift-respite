@@ -127,8 +127,7 @@ export function createBeddingScheduler({ show, hide }) {
             if (!beddingPoseWillDwell(ctx)) return;
             if (shown) return;
             const mine = ++ticket;
-            let current;
-            current = (async () => {
+            const current = (async () => {
                 try {
                     await afterNextPaint();
                     if (mine !== ticket) return;

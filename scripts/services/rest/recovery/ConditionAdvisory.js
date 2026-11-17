@@ -556,7 +556,7 @@ export class ConditionAdvisory {
      * @param {Object} effect
      * @param {Object|null} fx - Shared effect-automation helper.
      */
-    static async _stampRestExpiry(ae, entry, effect, fx = null) {
+    static async _stampRestExpiry(ae, entry, effect, _fx = null) {
         if (!ae?.update) return;
         const duration = effect.duration ?? entry?.defaultDuration ?? "next_rest";
         const durationConfig = this._durationMap?.[duration] ?? {};

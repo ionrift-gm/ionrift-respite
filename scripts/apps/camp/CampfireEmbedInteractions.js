@@ -7,18 +7,12 @@ import { emitSocketMessage } from "../../services/socket/SocketController.js";
  * Reuses the same campfire.hbs template and CampfirePhysics engine.
  * All socket events route through the same module.js handlers.
  */
-import { CampfirePhysics } from "../../services/camp/fire/CampfirePhysics.js";
 import { CampfireTokenLinker } from "../../services/camp/fire/CampfireTokenLinker.js";
 import {
-    CampGearScanner,
     actorHasTinderbox,
-    countActorFirewood,
-    findConsumableFirewoodItem,
     isFireCantripItem,
     isCreateBonfireCantrip
 } from "../../services/camp/gear/CampGearScanner.js";
-import { logCampfireReconnect } from "../../services/camp/fire/CampfireReconnectLog.js";
-import { MODULE_ID } from "../../data/moduleId.js";
 
 /** Default kindling art (matches respite-items kindling.json). */
 const DEFAULT_KINDLING_IMG = "icons/commodities/wood/kindling-sticks-brown.webp";
