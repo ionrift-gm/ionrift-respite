@@ -19,7 +19,6 @@ import {
     INGREDIENT_NAMES,
     SUSTENANCE_TYPES,
     DEFAULT_DIET,
-    DIET_PRESET_LABELS,
     DIET_PRESETS
 } from "./ItemClassifierConstants.js";
 export { PROVISION_ITEM_TYPES, STORAGE_TYPES };
@@ -305,7 +304,7 @@ export class ItemClassifier {
         const hours = item.flags?.[MODULE_ID]?.spoilsAfterHours;
         if (hours === null || hours === undefined) return null;
         const n = Number(hours);
-        let baseHours = n > 0 ? n : null;
+        const baseHours = n > 0 ? n : null;
         if (baseHours === null) return null;
 
         // Apply container cold storage preservation

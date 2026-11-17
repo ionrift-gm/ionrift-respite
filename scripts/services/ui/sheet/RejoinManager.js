@@ -1,4 +1,3 @@
-import { Logger } from "../../../utils/Logger.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { getPartyActors } from "../../party/partyActors.js";
 

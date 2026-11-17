@@ -1,4 +1,3 @@
-import { ResourcePoolRoller } from "../../rest/recovery/ResourcePoolRoller.js";
 import { isHomebrewProvisionOnly } from "../settings/TravelSettings.js";
 import { ForageTableSync } from "./ForageTableSync.js";
 

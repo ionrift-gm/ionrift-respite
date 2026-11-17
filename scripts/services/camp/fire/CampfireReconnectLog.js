@@ -2,6 +2,7 @@
  * Client-side diagnostics for TotM campfire restore after F5 / rejoin.
  * Grep Foundry console or foundrylog.txt for: CampfireReconnect
  */
+import { Logger } from "../../../utils/Logger.js";
 
 const TAG = "CampfireReconnect";
 
@@ -18,5 +19,5 @@ export function logCampfireReconnect(step, detail = {}) {
         phase: detail.phase ?? undefined,
         ...detail
     };
-    console.info(`[Respite:${TAG}] ${step}`, payload); // log-allow: reconnect trace, grepped from the console
+    Logger.info(`[Respite:${TAG}] ${step}`, payload);
 }

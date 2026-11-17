@@ -39,7 +39,7 @@ static onSetupBack(event, target) {
     /**
      * Short-term dev toggle to switch between Normal and Gritty Realism rest variants.
      */
-    static async onToggleDevRestVariant(event, target) {
+    static async onToggleDevRestVariant(_event, _target) {
         if (!game.user.isGM) return;
 
         const form = this.element?.querySelector("form");
@@ -83,7 +83,7 @@ static onSetupBack(event, target) {
         ui.notifications.info(variantMsg);
         this.render();
     }
-static onSetupDefaults(event, target) {
+static onSetupDefaults(_event, _target) {
         const form = this.element.querySelector("form");
         const formData = form ? Object.fromEntries(new FormData(form)) : {};
         this._selectedTerrain = formData.terrain ?? this._selectedTerrain ?? "forest";
@@ -97,13 +97,13 @@ static onSetupDefaults(event, target) {
         this.render();
     }
 
-    static onEncounterAdjUp(event, target) {
+    static onEncounterAdjUp(_event, _target) {
         if (!game.user.isGM || !this._engine) return;
         this._engine.gmEncounterAdj = (this._engine.gmEncounterAdj ?? 0) + 1;
         this.render({ force: true });
     }
 
-    static onEncounterAdjDown(event, target) {
+    static onEncounterAdjDown(_event, _target) {
         if (!game.user.isGM || !this._engine) return;
         this._engine.gmEncounterAdj = (this._engine.gmEncounterAdj ?? 0) - 1;
         this.render({ force: true });
@@ -269,7 +269,7 @@ static _buildTrainingProgressBar(training) {
             ui.notifications.warn(game.i18n.localize("ionrift-respite.restSetup.notify.monsterCookingUnavailable"));
         }
     }
-static onActivityDetailBack(event, target) {
+static onActivityDetailBack(_event, _target) {
         this._activityDetailId = null;
         this.render();
     }
@@ -293,11 +293,11 @@ static async onSubmitMealChoices(event, target) {
             }
         }
     }
-static onHideWindow(event, target) {
+static onHideWindow(_event, _target) {
         this.close();
     }
 
-static async onExitStationChoiceReview(event, target) {
+static async onExitStationChoiceReview(event, _target) {
         event?.preventDefault?.();
         if (!this._postStationChoiceReview) return;
         const charId = this._stationReviewCharacterId;
@@ -307,7 +307,7 @@ static async onExitStationChoiceReview(event, target) {
         await this.close({ retainPlayerApp: true, skipRejoin: true });
     }
 
-static async onDetectMagicScan(event, target) {
+static async onDetectMagicScan(event, _target) {
         const btn = event?.currentTarget ?? null;
         btn?.classList.add("is-casting");
         spawnDetectMagicCastRipple(btn);
@@ -325,12 +325,12 @@ static async onIdentifyScannedItem(event, target) {
         if (!actorId || !itemId) return;
         await this.identifyScannedMagicItem(actorId, itemId);
     }
-static onOpenLedger(event, target) {
+static onOpenLedger(_event, _target) {
         if (!game.user.isGM) return;
         this.openLedgerPanel();
     }
 
-    static onToggleLogisticsDrawer(event, target) {
+    static onToggleLogisticsDrawer(_event, _target) {
         if (!this._isGM) return;
         this._campLogistics.toggleDrawer();
     }
@@ -375,7 +375,7 @@ static async onCampPledgeFirewood(event, target) {
         }
     }
 
-static async onCampReclaimFirewood(event, target) {
+static async onCampReclaimFirewood(_event, _target) {
         if (!game.user.isGM) {
             emitCampFirewoodReclaim(game.user.id);
             return;
@@ -385,14 +385,14 @@ static async onCampReclaimFirewood(event, target) {
     static async onDismissCampfireCanvasPanel() {
         this.render({ force: true });
     }
-    static async onDismissEventPoolNudge(event, target) {
+    static async onDismissEventPoolNudge(_event, _target) {
         const snoozeUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
         await game.settings.set(MODULE_ID, "eventPoolNudgeSnoozedUntil", snoozeUntil);
         await this._saveRestState();
         this.render();
     }
 
-    static onOpenEventPoolCurator(event, target) {
+    static onOpenEventPoolCurator(_event, _target) {
         const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
         openEventPoolApp(terrainTag);
     }
@@ -418,7 +418,7 @@ static onDismissWorkbenchIdentifyAckTotm(event, target) {
         this._workbench.dismissAcknowledgement(actorId);
     }
 
-static async onDetectMagicScanTotm(event, target) {
+static async onDetectMagicScanTotm(event, _target) {
         const btn = event?.currentTarget ?? null;
         btn?.classList.add("is-casting");
         spawnDetectMagicCastRipple(btn);
@@ -440,7 +440,7 @@ static onTotmCraftSelectRisk(event, target) {
         this._totmCraftRisk = target.dataset.risk;
         this.render();
     }
-    static onTotmCraftToggleMissing(event, target) {
+    static onTotmCraftToggleMissing(_event, _target) {
         if (this._totmCraftRollPending) return;
         this._totmCraftShowMissing = !this._totmCraftShowMissing;
         this.render();
@@ -455,7 +455,7 @@ static async onPreviewCampFireLevel(event, target) {
         this.render();
     }
 
-static async onContinueToCampLayout(event, target) {
+static async onContinueToCampLayout(_event, _target) {
         if (!game.user.isGM) return;
         ui.notifications?.info(game.i18n.localize("ionrift-respite.restSetup.notify.useCampfireOnMap"));
     }
@@ -479,7 +479,7 @@ static async onContinueToCampLayout(event, target) {
         // Phase transitions are owned by RestFlowActions.
         this.render({ force: true });
     }
-    static onSkipGather(event, target) {
+    static onSkipGather(_event, _target) {
         const actorId = this._selectedCharacterId ?? game.user.character?.id ?? getPartyActors()[0]?.id;
         if (!actorId) return;
         if (gatherAlreadyResolved(this, actorId)) {
@@ -544,7 +544,7 @@ static async onContinueToCampLayout(event, target) {
             name: target.dataset.name
         });
     }
-    static async onToggleUiTheme(event, target) {
+    static async onToggleUiTheme(_event, _target) {
         let currentTheme = "glass";
         try {
             currentTheme = game.settings.get(MODULE_ID, "uiTheme") ?? "glass";

@@ -494,7 +494,7 @@ export async function placeStationPlaceholders(safeRestSpot = false, options = {
  * @param {boolean} [safeRestSpot] - Relabel weapon rack token to Supply Table
  * @returns {Promise<string[]>} promoted target keys
  */
-export async function promoteAllPlaceholders(safeRestSpot = false, options = {}) {
+export async function promoteAllPlaceholders(safeRestSpot = false, _options = {}) {
     if (!game.user.isGM) return [];
 
     const scene = canvas?.scene;

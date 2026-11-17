@@ -22,7 +22,7 @@ export class OSEAdapter extends SystemAdapter {
         return actor.system?.scores?.[key]?.mod ?? 0;
     }
 
-    getProficiencyBonus(actor) {
+    getProficiencyBonus(_actor) {
         return 0;
     }
 

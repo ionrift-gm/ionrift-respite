@@ -1,5 +1,4 @@
 import { Logger } from "../../../utils/Logger.js";
-import { MODULE_ID } from "../../../data/moduleId.js";
 import {
     notifyWorkbenchIdentifyStagingTouched
 } from "../../camp/StationActivityDialog.js";
@@ -194,7 +193,7 @@ export class WorkbenchDelegate {
         };
     }
 
-    getDragContext(actorId, collectPartyIdentifyEmbedData, getPartyActors) {
+    getDragContext(actorId, _collectPartyIdentifyEmbedData, _getPartyActors) {
         const isPf2e = Pf2eWorkbenchExamineService.isPf2e();
         const empty = {
             workbenchIdentifyActorId: null,

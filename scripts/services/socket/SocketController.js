@@ -1,4 +1,3 @@
-import { Logger } from "../../utils/Logger.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 /**
  * Canonical socket message type strings.

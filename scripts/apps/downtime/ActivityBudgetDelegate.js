@@ -1,4 +1,3 @@
-import { MODULE_ID } from "../../data/moduleId.js";
 import { ActivityRegistry, DOWNTIME_STATIONS } from "../../data/downtime/ActivityRegistry.js";
 import { clipToCardHint } from "../../data/activityCardHint.js";
 

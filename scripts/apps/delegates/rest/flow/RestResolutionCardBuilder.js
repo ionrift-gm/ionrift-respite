@@ -1,18 +1,6 @@
 import { Logger } from "../../../../utils/Logger.js";
-import { ResourceSink } from "../../../../services/rest/recovery/ResourceSink.js";
-import { RecoveryHandler } from "../../../../services/rest/recovery/RecoveryHandler.js";
-import { stampExhaustionRecovery } from "../../../../services/rest/recovery/ExhaustionStage.js";
-import { ConditionAdvisory } from "../../../../services/rest/recovery/ConditionAdvisory.js";
-import { CalendarHandler } from "../../../../services/rest/session/CalendarHandler.js";
-import { MealPhaseHandler } from "../../../../services/meal/phase/MealPhaseHandler.js";
-import {
-    mergeMealExhaustionFloors,
-    mealExhaustionFloorFor
-} from "../../../../services/meal/phase/MealExhaustionGuard.js";
 import { ItemOutcomeHandler } from "../../../../services/crafting/outcomes/ItemOutcomeHandler.js";
 import { GrantLedger } from "../../../../services/crafting/outcomes/GrantLedger.js";
-import { purgeDetectMagicRestArtifacts } from "../../crafting/DetectMagicDelegate.js";
-import { SoundDelegate } from "../SoundDelegate.js";
 import {
     clearCampTokens,
     getCampSceneId,
@@ -22,7 +10,6 @@ import {
     emitRestAbandoned
 } from "../../../../services/socket/SocketController.js";
 import { getPartyActors } from "../../../../services/party/partyActors.js";
-import { RestSetupApp } from "../../../rest/RestSetupApp.js";
 import { confirmAbandonRest } from "../../../rest/confirmAbandonRest.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
@@ -534,7 +521,7 @@ export const RestResolutionCardMethods = {
     
     },
 
-    async onAbandonRest(event, target) {
+    async onAbandonRest(_event, _target) {
         const app = this._app;
 
         if (!game.user.isGM) return;

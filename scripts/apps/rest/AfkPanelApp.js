@@ -78,7 +78,7 @@ export class AfkPanelApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
     }
 
-    static #onSelfToggle(event, target) {
+    static #onSelfToggle(event, _target) {
         event.preventDefault?.();
 
         let ids;
@@ -107,7 +107,7 @@ export class AfkPanelApp extends HandlebarsApplicationMixin(ApplicationV2) {
         setCharacterAfk(id, newState, "respite");
     }
 
-    static async #onAfkPanelToggleLock(event, target) {
+    static async #onAfkPanelToggleLock(event, _target) {
         event.preventDefault?.();
         event.stopPropagation?.();
         const lay = AfkPanelApp.#readLayout();

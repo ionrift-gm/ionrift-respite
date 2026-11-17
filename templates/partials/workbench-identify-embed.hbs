@@ -10,7 +10,8 @@
                 <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
                 <span>Select a trained tradition skill or Crafting (with an Alchemist's Toolkit), then drag an item from your inventory to examine it.</span>
             </span>
-            {{else if identifyCasters.length}}
+            {{else}}
+            {{#if identifyCasters.length}}
             <span class="wb-ident-caster-hint" data-tooltip="{{localize "ionrift-respite.workbenchIdentify.availableCasters"}} {{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}">
                 <i class="fas fa-hat-wizard" aria-hidden="true"></i>
                 <span class="wb-ident-caster-text">{{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}} {{localize "ionrift-respite.workbenchIdentify.canCastIdentify"}}</span>
@@ -20,6 +21,7 @@
                 <i class="fas fa-sparkles" aria-hidden="true"></i>
                 <span>{{{localize "ionrift-respite.workbenchIdentify.reconHint"}}}</span>
             </span>
+            {{/if}}
             {{/if}}
         </div>
         <div class="wb-ident-utility-recon{{#unless detectMagicAvailable}}{{#unless magicScanActive}} wb-ident-zone-lacking{{#if (eq detectMagicAccess.state "unprepared")}} wb-ident-zone-unprepared{{else}} wb-ident-zone-unavailable{{/if}}{{/unless}}{{/unless}}">

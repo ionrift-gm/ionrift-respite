@@ -1,5 +1,4 @@
 import { emitSocketMessageIfAvailable } from "../../socket/SocketController.js";
-import { MODULE_ID } from "../../../data/moduleId.js";
 import { REST_SESSION_SCHEMAS, getRestSessionSchema } from "./restSessionSchemas.js";
 
 /**

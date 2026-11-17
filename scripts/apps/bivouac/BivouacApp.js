@@ -5,35 +5,24 @@ import { getPartyActors } from "../../services/party/partyActors.js";
 import { HitDiceService } from "../../services/rest/recovery/HitDiceService.js";
 import { HitDieModifiers } from "../../services/rest/recovery/HitDieModifiers.js";
 import { SustenanceEngine } from "../../services/rest/gritty/SustenanceEngine.js";
-import { ItemClassifier } from "../../services/party/ItemClassifier.js";
 import { CampStanceManager } from "./CampStanceManager.js";
-import { EncounterDraftService } from "../../services/rest/gritty/EncounterDraftService.js";
-import { CalendarHandler } from "../../services/rest/session/CalendarHandler.js";
-import { setNativeShortRestUnsuppressed } from "../../services/rest/flow/NativeRestPass.js";
 import {
     registerRestSessionApp,
     unregisterRestSessionApp,
     drainPendingRestSessionDeltas,
     emitRestSessionDelta,
     emitRestSessionSync,
-    emitRestSessionResolved,
-    emitRestSessionAbandoned,
     userControlsActor
 } from "../../services/rest/session/RestSessionSync.js";
 import { BIVOUAC_STATE_SCHEMA } from "../../services/rest/session/restSessionSchemas.js";
 import { setRespiteFlowActive } from "../../module.js";
-import { countActorFirewood, findConsumableFirewoodItem } from "../../services/camp/gear/CampGearScanner.js";
-import { consumeItem } from "../../services/meal/inventory/MealItemConsumer.js";
-import { confirmAbandonRest } from "../rest/confirmAbandonRest.js";
+import { countActorFirewood } from "../../services/camp/gear/CampGearScanner.js";
 import { getShortRestRechargeLabels } from "../../services/rest/recovery/ShortRestRecharge.js";
 import { RestPresentationHelper } from "../../utils/RestPresentationHelper.js";
 import { ImageResolver } from "../../utils/ImageResolver.js";
 import { WorkbenchDelegate } from "../delegates/crafting/WorkbenchDelegate.js";
 import {
-    DetectMagicDelegate,
-    collectPartyIdentifyEmbedData,
-    spawnDetectMagicCastRipple,
-    purgeDetectMagicRestArtifacts
+    DetectMagicDelegate
 } from "../delegates/crafting/DetectMagicDelegate.js";
 import { isWorkbenchIdentifyUiEnabled } from "../../data/RestConstants.js";
 import { BaseShortRestApp } from "../rest/BaseShortRestApp.js";
@@ -198,7 +187,7 @@ export class BivouacApp extends BaseShortRestApp {
      * @param {string} actorId
      * @returns {number}
      */
-    getFocusBudget(actorId) {
+    getFocusBudget(_actorId) {
         return 1;
     }
 
@@ -253,7 +242,7 @@ export class BivouacApp extends BaseShortRestApp {
      * @param {Actor[]} [party]
      * @returns {boolean}
      */
-    _isActorChefFed(actorId, party = getPartyActors()) {
+    _isActorChefFed(actorId, _party = getPartyActors()) {
         if (!this._chefVolunteered || !this._chefVolunteer) return false;
         const settingVal = game.settings?.get?.(MODULE_ID, "chefTreatsProvideSustenance");
         const treatsProvideSustenance = typeof settingVal === "boolean" ? settingVal : true;
@@ -278,7 +267,7 @@ export class BivouacApp extends BaseShortRestApp {
         drainPendingRestSessionDeltas("bivouac");
     }
 
-    async _prepareContext(options) {
+    async _prepareContext(_options) {
         drainPendingRestSessionDeltas("bivouac");
         const isGM = this._isGM;
         const party = getPartyActors();

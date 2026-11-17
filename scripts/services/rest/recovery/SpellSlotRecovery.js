@@ -192,7 +192,7 @@ export class SpellSlotRecovery {
         let plannedSpend = 0;
         const normalized = [];
         for (const level of [...merged.keys()].sort((a, b) => a - b)) {
-            let want = merged.get(level) ?? 0;
+            const want = merged.get(level) ?? 0;
             const slot = recoverable.find(s => s.level === level);
             if (!slot) continue;
             let use = Math.min(want, slot.spent);

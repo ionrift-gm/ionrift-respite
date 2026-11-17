@@ -23,7 +23,7 @@ export function _faGlyphFromIconClass(iconClass) {
     return cp != null ? String.fromCodePoint(cp) : "";
 }
 
-let _activateGeneration = 0;
+const _activateGeneration = 0;
 
 /** Matches `--ionrift-font-stack` in ionrift-library (PIXI.Text does not inherit app CSS). */
 export const UI_FONT_STACK = "Signika, sans-serif";

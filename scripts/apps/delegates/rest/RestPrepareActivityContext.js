@@ -558,8 +558,8 @@ export function buildRosterAndOverview(app, partyActors, characterStatuses, hero
 
 export function buildResolvePhaseSummaries(app) {
         let recoverySummary = [];
-        let activitySummary = [];
-        let partyDiscoveries = [];
+        const activitySummary = [];
+        const partyDiscoveries = [];
         if (app._phase === "resolve" && app._outcomes?.length) {
             const scopedOutcomes = app._isGM
                 ? app._outcomes

@@ -7,6 +7,12 @@ import { bulletTip, buildSustenanceDiegetic } from "./DowntimeSustenanceBuilder.
 
 export function buildCharacterRollAndStatusContext(app, actor, { haven, isCivilized, scanResult, workbenchIdentifyUiEnabled }, sus) {
     let {
+        foodShortfallDays,
+        hasStarvationRisk,
+        waterShortfallDays,
+        hasDehydrationRisk
+    } = sus;
+    const {
         isOwner,
         budget,
         isDrilledDown,
@@ -24,16 +30,12 @@ export function buildCharacterRollAndStatusContext(app, actor, { haven, isCivili
         climateTooltip,
         isTraitPill,
         totalAutoConsumed,
-        foodShortfallDays,
-        hasStarvationRisk,
         fedDaysCount,
         totalDaysWaterNeeded,
         totalWaterUnitsNeeded,
         waterOptions,
         totalWaterFulfilled,
         waterShortfallUnits,
-        waterShortfallDays,
-        hasDehydrationRisk,
         hydratedDaysCount,
         waterPintsRemainingInPack,
         autoFoodSummary,

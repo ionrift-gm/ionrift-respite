@@ -253,7 +253,7 @@ export class PF2eAdapter extends SystemAdapter {
         await actor.update({ "system.attributes.hp.temp": next });
     }
 
-    async applyHDRestore(actor, count) {
+    async applyHDRestore(_actor, _count) {
         // PF2e has no Hit Dice to restore. No-op.
         // Focus Point restoration is handled by triggerNativeRest().
     }

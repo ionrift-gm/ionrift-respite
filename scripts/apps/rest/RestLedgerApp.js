@@ -132,12 +132,12 @@ export class RestLedgerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
-    static #onFreezeScroll(event, target) {
+    static #onFreezeScroll(_event, _target) {
         this.#freezeScroll = !this.#freezeScroll;
         this.render();
     }
 
-    static async #onCopy(event, target) {
+    static async #onCopy(_event, _target) {
         if (!this.#ledger) return;
         const all = this.#ledger.getAll();
         if (!all.length) {

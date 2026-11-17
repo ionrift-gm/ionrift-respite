@@ -224,7 +224,7 @@ export class TravelMishapHandler {
         return [game.i18n.format("ionrift-respite.travelMishap.hpRecoveryBadge", { mult })];
     }
 
-    static async _applyTravelPenalty(actor, effect, mishapDescription) {
+    static async _applyTravelPenalty(actor, effect, _mishapDescription) {
         const penalty = effect.penalty;
         if (penalty === "activity_disadvantage") {
             await actor.setFlag(MODULE_ID, "travelMishapPenalty", "activity_disadvantage");

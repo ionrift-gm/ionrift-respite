@@ -221,7 +221,7 @@ export class TravelResolver {
     async buildHuntResult(actor, terrainTag, total, dc, skillEval, lootRolls = []) {
         const { success, nat20, nat1, exceptional } = skillEval;
 
-        let items = [];
+        const items = [];
         let mishap = null;
 
         if (nat1) {

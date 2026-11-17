@@ -27,7 +27,7 @@ export class RestPrepareContext {
         this._app = app;
     }
 
-    async build(options) {
+    async build(_options) {
         const app = this._app;
 
         if (app._dataReady) {

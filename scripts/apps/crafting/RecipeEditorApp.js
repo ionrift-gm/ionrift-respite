@@ -10,10 +10,8 @@ import {
     applyProfessionToolToRecipe,
     describeRecipeSaveOverwrite,
     getHomebrewProfessionOptions,
-    getProfessionToolRequired,
     HOMEBREW_PROFESSION_DISPLAY,
     sanitizeCustomRecipes,
-    TOOL_PROFICIENCY_LABELS,
     validateCustomRecipe
 } from "../../services/crafting/recipes/RecipeCatalog.js";
 import {
@@ -24,11 +22,9 @@ import {
     defaultSatiatesForProfession,
     formatMealBuffPreview,
     formatMealBuffPresetTitle,
-    FOOD_TAG_OPTIONS,
     getMealBuffPreset,
     getMealBuffPresetAttribution,
     getMealBuffPresetsForProfession,
-    matchMealBuffPresetId,
     syncResourceTypeFromMealFlags
 } from "../../services/meal/buffs/MealBuffPresets.js";
 import { MealBuffPickerDialog } from "../meal/MealBuffPickerDialog.js";

@@ -46,7 +46,7 @@ export class EncounterDraftService {
         campStanceManager = null,
         safePassage = false,
         baseDC = 15,
-        isTerminalNight = false,
+        _isTerminalNight = false,
         hasActiveGuard = false,
         silent = false
     } = {}) {
@@ -191,7 +191,7 @@ export class EncounterDraftService {
      * @param {boolean} [isTerminalNight=false]
      * @returns {object}
      */
-    static evaluateNightTrigger(entry, effectiveDC, terrainTag = "forest", isTerminalNight = false) {
+    static evaluateNightTrigger(entry, effectiveDC, terrainTag = "forest", _isTerminalNight = false) {
         if (!entry) return entry;
         entry.effectiveDC = effectiveDC;
 
@@ -347,7 +347,7 @@ export class EncounterDraftService {
      * @param {string} [terrainTag="forest"]
      * @returns {object}
      */
-    static cycleNight(entry, isTerminalNight = false, terrainTag = "forest") {
+    static cycleNight(entry, _isTerminalNight = false, terrainTag = "forest") {
         if (!entry) return entry;
 
         if (entry.state === "green" || !entry.triggered) {
