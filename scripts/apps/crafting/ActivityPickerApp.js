@@ -217,7 +217,8 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         );
 
         for (const actor of myCharacters) {
-            if (!this._choices.get(actor.id)) {
+            const activityId = this._choices.get(actor.id);
+            if (!activityId) {
                 ui.notifications.warn(game.i18n.format("ionrift-respite.activityPickerApp.chooseActivityForActor", { actor: actor.name }));
                 return;
             }
