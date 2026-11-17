@@ -14,6 +14,7 @@ import {
 import { GatherYieldService } from "../../../../services/rest/forage/GatherYieldService.js";
 import { executePlayerRoll } from "../../../../services/ui/rollRequest/RollRequestManager.js";
 import { promptArmorSleepIfNeeded } from "../../../crafting/ActivityDetailBuilder.js";
+import { isCampfireMinigameEnabled } from "../../../../services/rest/flow/RestProfileSettings.js";
 
 export class TotmActivityDelegate {
     constructor(app) {

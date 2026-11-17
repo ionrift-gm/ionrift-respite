@@ -39,7 +39,7 @@ import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
 import { ItemOutcomeHandler } from "../../services/crafting/outcomes/ItemOutcomeHandler.js";
 import { CraftingDelegate } from "../delegates/crafting/CraftingDelegate.js";
 
-import { COOK_ACTIVITY_IDS, DIALOG_WIDTH, CRAFT_SPLIT_WIDTH, StationActivityDialog } from "./StationActivityDialog.js";
+import { COOK_ACTIVITY_IDS, DIALOG_WIDTH, CRAFT_SPLIT_WIDTH, StationActivityDialog, notifyStationMealChoicesUpdated } from "./StationActivityDialog.js";
 export const StationDialogActionMethods = {
     onOpenMonsterCookbook() {
         const dialog = this;
