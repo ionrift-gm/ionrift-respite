@@ -15,7 +15,6 @@
  * @param {string[]} skills - Skill abbreviations (e.g. ["dex", "str", "ath"])
  * @returns {string} Best skill abbreviation.
  */
-import { MODULE_ID } from "../../../data/moduleId.js";
 import { armDiceSoNiceSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 
 export {

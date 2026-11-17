@@ -1,11 +1,7 @@
 import { Logger } from "../../utils/Logger.js";
 import { RestFlowEngine, readTerrainBaseDc } from "../../services/rest/flow/RestFlowEngine.js";
-import { TerrainRegistry } from "../../services/events/resolve/TerrainRegistry.js";
 import { ActivityResolver } from "../../services/rest/flow/ActivityResolver.js";
 import { EventResolver } from "../../services/events/resolve/EventResolver.js";
-import { countPoolEventsForTerrain } from "../../services/events/catalog/EventCatalogLoader.js";
-import { pickPoolEvent } from "../events/AdHocEventDialogs.js";
-import { openEventPoolApp } from "../../services/events/catalog/EventPoolMigration.js";
 import { CraftingEngine } from "../../services/crafting/engine/CraftingEngine.js";
 import { applyCustomRecipesToEngine } from "../../services/crafting/recipes/RecipeCatalog.js";
 import { ResourcePoolRoller } from "../../services/rest/recovery/ResourcePoolRoller.js";
@@ -14,28 +10,17 @@ import {
     clearMealExhaustionFloors,
     clearDeprivationExhaustionFloors
 } from "../../services/meal/phase/MealExhaustionGuard.js";
-import { CampGearScanner } from "../../services/camp/gear/CampGearScanner.js";
 import {
     clearCampTokens,
-    hasCampfirePlaced,
     resetCampSession,
     getCampSceneId
 } from "../../services/camp/props/CompoundCampPlacer.js";
-import { CraftingPickerApp } from "../crafting/CraftingPickerApp.js";
-import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
 import { CraftingDelegate } from "../delegates/crafting/CraftingDelegate.js";
 import { MealDelegate } from "../delegates/meal/MealDelegate.js";
-import { sustenanceActorId } from "../delegates/meal/SustenanceMeterBinding.js";
 import { CopySpellDelegate } from "../delegates/crafting/CopySpellDelegate.js";
-import { GatherYieldService } from "../../services/rest/forage/GatherYieldService.js";
 import {
-    clearGatherDraft,
-    dailyChoiceStatus,
-    gatherAlreadyResolved,
     publishCampProgress
 } from "../../services/rest/session/campProgressState.js";
-import { ForageActivityValidator } from "../../services/travel/forage/ForageActivityValidator.js";
-import { isForagingEnabled, isHuntingEnabled } from "../../services/travel/settings/TravelSettings.js";
 import { RestSetupDebugJumps } from "../delegates/rest/debug/RestSetupDebugJumps.js";
 import { CampCeremonyDelegate } from "../delegates/camp/CampCeremonyDelegate.js";
 import { CampPlacementDelegate } from "../delegates/camp/CampPlacementDelegate.js";
@@ -54,21 +39,15 @@ import { RestSnapshotSync } from "../delegates/rest/sync/RestSnapshotSync.js";
 import { ActivityStationsDelegate } from "../delegates/rest/activity/ActivityStationsDelegate.js";
 import { EventsPhaseDelegate } from "../delegates/events/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "../delegates/crafting/WorkbenchDelegate.js";
-import { DetectMagicDelegate, collectPartyIdentifyEmbedData, spawnDetectMagicCastRipple } from "../delegates/crafting/DetectMagicDelegate.js";
-import { WEATHER_TABLE, getComfortTip, inferCanvasStationForActivity } from "../../data/RestConstants.js";
-import { isComfortEnabled } from "../../services/camp/gear/ComfortCalculator.js";
-import { buildCampConditionsBar } from "../../services/camp/gear/CampConditionsBarBuilder.js";
-import { deactivateStationLayer } from "../../services/camp/props/StationInteractionLayer.js";
+import { DetectMagicDelegate } from "../delegates/crafting/DetectMagicDelegate.js";
+import { inferCanvasStationForActivity } from "../../data/RestConstants.js";
 import {
-    closeOpenStationDialog,
-    StationActivityDialog
+    closeOpenStationDialog
 } from "../camp/StationActivityDialog.js";
 import { CampfireMakeCampDialog } from "../camp/CampfireMakeCampDialog.js";
 import { RestLedger } from "../../services/rest/flow/RestLedger.js";
-import { RestLedgerApp } from "./RestLedgerApp.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import { BivouacApp } from "../bivouac/BivouacApp.js";
-import { DowntimeLedgerApp } from "../downtime/DowntimeLedgerApp.js";
 import { emitRestSessionStarted } from "../../services/rest/session/RestSessionSync.js";
 import {
     registerActiveRestApp,
@@ -84,9 +63,7 @@ import {
     emitRestStarted,
     emitRestSnapshot,
     emitRestResolved,
-    emitPhaseChanged,
-    emitCampFirewoodPledge,
-    emitCampFirewoodReclaim
+    emitPhaseChanged
 } from "../../services/socket/SocketController.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 
@@ -615,7 +592,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     _findIncompleteTrainingCharacterId() { return this._session._findIncompleteTrainingCharacterId(); }
     _buildTrainingViewContext(characterId) { return this._training._buildTrainingViewContext(characterId); }
     _activityFireUiEnabled() { return this._campCeremony._activityFireUiEnabled(...arguments); }
-    _pickPitWorldPoint(options = {}) { return this._campPlacement._pickPitWorldPoint(...arguments); }
+    _pickPitWorldPoint(_options = {}) { return this._campPlacement._pickPitWorldPoint(...arguments); }
 
     static #onToggleShelter(event, target) { return RestSetupActionHandlers.onToggleShelter.call(this, event, target); }
     static #onSetupContinue(event, target) { this._session.onSetupContinue(event, target); }
@@ -676,7 +653,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onGrantDiscoveryItem(event, target) { return this._events.onGrantDiscoveryItem(event, target); }
     static async _applyTrainingXP(outcomes) { return this._session._applyTrainingXP(outcomes); }
     static _buildTrainingProgressBar(training) { return RestSetupActionHandlers._buildTrainingProgressBar(training); }
-    static async #onBeginShortRest(event, target) { return this._launchShortRestFromSetup(); }
+    static async #onBeginShortRest(_event, _target) { return this._launchShortRestFromSetup(); }
 
     /** Sole launch point for a short rest, for both the short and long submit paths. */
     async _launchShortRestFromSetup() {
@@ -721,7 +698,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static #onActivityDetailBack(event, target) { return RestSetupActionHandlers.onActivityDetailBack.call(this, event, target); }
     static async #onSubmitActivities(event, target) { return this._flowActions.onSubmitActivities(event, target); }
     static _formatCampFirewoodDonors(names) { return CampCeremonyDelegate.formatCampFirewoodDonors(names); }
-    static async #onSetFireLevel(event, target) { return await this._campCeremony.onSetFireLevel(...arguments); }
+    static async #onSetFireLevel(_event, _target) { return await this._campCeremony.onSetFireLevel(...arguments); }
     static #onMealSelectFood(event, target) { this._meals.onSelectFood(event, target); }
     static #onMealSelectWater(event, target) { this._meals.onSelectWater(event, target); }
     static async #onConsumeMealDay(event, target) { await this._meals.onConsumeMealDay(event, target); }
@@ -730,16 +707,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onSkipPendingSaves(event, target) { await this._meals.onSkipPendingSaves(event, target); }
     static #beginEventsCommit() { return this._events.beginEventsCommit(...arguments); }
     static #endEventsCommit() { return this._events.endEventsCommit(...arguments); }
-    static async #onRollEvents(event, target) { return await this._events.onRollEvents(...arguments); }
+    static async #onRollEvents(_event, _target) { return await this._events.onRollEvents(...arguments); }
     static async #finalizeEventsRoll() { return await this._events.finalizeEventsRoll(...arguments); }
-    static async #onImproviseEvent(event, target) { return await this._events.onImproviseEvent(...arguments); }
-    static async #onNightPasses(event, target) { return await this._events.onNightPasses(...arguments); }
-    static async #onImproviseNight(event, target) { return await this._events.onImproviseNight(...arguments); }
-    static async #onPickPoolEvent(event, target) { return await this._events.onPickPoolEvent(...arguments); }
-    static async #onSetEventsMode(event, target) { return await this._events.onSetEventsMode(...arguments); }
-    static async #onCommitEventsMode(event, target) { return await this._events.onCommitEventsMode(...arguments); }
-    static async #onAcknowledgeEncounter(event, target) { return await this._events.onAcknowledgeEncounter(...arguments); }
-    static async #onCompleteEncounter(event, target) { return await this._events.onCompleteEncounter(...arguments); }
+    static async #onImproviseEvent(_event, _target) { return await this._events.onImproviseEvent(...arguments); }
+    static async #onNightPasses(_event, _target) { return await this._events.onNightPasses(...arguments); }
+    static async #onImproviseNight(_event, _target) { return await this._events.onImproviseNight(...arguments); }
+    static async #onPickPoolEvent(_event, _target) { return await this._events.onPickPoolEvent(...arguments); }
+    static async #onSetEventsMode(_event, _target) { return await this._events.onSetEventsMode(...arguments); }
+    static async #onCommitEventsMode(_event, _target) { return await this._events.onCommitEventsMode(...arguments); }
+    static async #onAcknowledgeEncounter(_event, _target) { return await this._events.onAcknowledgeEncounter(...arguments); }
+    static async #onCompleteEncounter(_event, _target) { return await this._events.onCompleteEncounter(...arguments); }
     static #onHideWindow(event, target) { return RestSetupActionHandlers.onHideWindow.call(this, event, target); }
     static async #onExitStationChoiceReview(event, target) { return RestSetupActionHandlers.onExitStationChoiceReview.call(this, event, target); }
     static async #onDetectMagicScan(event, target) { return RestSetupActionHandlers.onDetectMagicScan.call(this, event, target); }
@@ -752,30 +729,30 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static #onResendCopySpellRoll(event, target) { this._copySpell.onResendRoll(event, target); }
     static async #onGmCopySpellFallback(event, target) { await this._copySpell.onGmFallback(event, target); }
     static async #onRollCopySpellArcana(event, target) { await this._copySpell.onRollArcana(event, target); }
-    static async #onDisasterChoice(event, target) { return await this._events.onDisasterChoice(...arguments); }
-    static async #onResolveTreeChoice(event, target) { return await this._events.onResolveTreeChoice(...arguments); }
-    static async #onSendTreeRollRequest(event, target) { return await this._events.onSendTreeRollRequest(...arguments); }
-    static async #onRollTreeForPlayer(event, target) { return await this._events.onRollTreeForPlayer(...arguments); }
-    static #onResendTreeRollRequest(event, target) { return this._events.onResendTreeRollRequest(...arguments); }
-    static #onCycleTreeRollMode(event, target) { return this._events.onCycleTreeRollMode(...arguments); }
+    static async #onDisasterChoice(_event, _target) { return await this._events.onDisasterChoice(...arguments); }
+    static async #onResolveTreeChoice(_event, _target) { return await this._events.onResolveTreeChoice(...arguments); }
+    static async #onSendTreeRollRequest(_event, _target) { return await this._events.onSendTreeRollRequest(...arguments); }
+    static async #onRollTreeForPlayer(_event, _target) { return await this._events.onRollTreeForPlayer(...arguments); }
+    static #onResendTreeRollRequest(_event, _target) { return this._events.onResendTreeRollRequest(...arguments); }
+    static #onCycleTreeRollMode(_event, _target) { return this._events.onCycleTreeRollMode(...arguments); }
     static #broadcastTreeRollModes() { return this._events.broadcastTreeRollModes(...arguments); }
-    static async #onRollEventForPlayer(event, target) { return await this._events.onRollEventForPlayer(...arguments); }
+    static async #onRollEventForPlayer(_event, _target) { return await this._events.onRollEventForPlayer(...arguments); }
     static async #onRollCampForPlayer(event, target) { return this._events.onRollCampForPlayer(event, target); }
-    static async #onApplyStallPenalty(event, target) { return await this._events.onApplyStallPenalty(...arguments); }
-    static #onTreeDcAdjUp(event, target) { return this._events.onTreeDcAdjUp(...arguments); }
-    static #onTreeDcAdjDown(event, target) { return this._events.onTreeDcAdjDown(...arguments); }
+    static async #onApplyStallPenalty(_event, _target) { return await this._events.onApplyStallPenalty(...arguments); }
+    static #onTreeDcAdjUp(_event, _target) { return this._events.onTreeDcAdjUp(...arguments); }
+    static #onTreeDcAdjDown(_event, _target) { return this._events.onTreeDcAdjDown(...arguments); }
     static async #showResourceLossApproval(unified) { return this._resolve.showResourceLossApproval(unified); }
     static #rehydrateItemLossProposal(eff) { return this._events.rehydrateItemLossProposal(eff); }
     static async #onResolveEvents(event, target) { return this._resolve.onResolveEvents(event, target); }
-    static async #onEnterDawn(event, target) { return this._dawn.enterDawn(); }
-    static async #onApplyMealBuffs(event, target) { return this._mealBuffs.applyAll(); }
+    static async #onEnterDawn(_event, _target) { return this._dawn.enterDawn(); }
+    static async #onApplyMealBuffs(_event, _target) { return this._mealBuffs.applyAll(); }
     static async #onApplyOneMealBuff(event, target) { return this._mealBuffs.applyOne(target?.dataset?.rowId); }
-    static async #onContinueToNight(event, target) { return this._mealBuffs.continueToNight(); }
-    static async #onReturnToNight(event, target) { return this._dawn.returnToNight(); }
+    static async #onContinueToNight(_event, _target) { return this._mealBuffs.continueToNight(); }
+    static async #onReturnToNight(_event, _target) { return this._dawn.returnToNight(); }
     static async #onCompleteDawn(event, target) { return this._dawn.completeDawn(event, target); }
     static async #onRollActorExhaustionSave(event, target) { return this._dawn.rollActor(target?.dataset?.actorId); }
-    static async #onRollAllExhaustionSaves(event, target) { return this._dawn.rollAll(); }
-    static #onWaiveAllExhaustionSaves(event, target) { return this._dawn.waiveAll(); }
+    static async #onRollAllExhaustionSaves(_event, _target) { return this._dawn.rollAll(); }
+    static #onWaiveAllExhaustionSaves(_event, _target) { return this._dawn.waiveAll(); }
     static #onToggleMustRollExhaustion(event, target) {
         const input = target?.matches?.("input") ? target : target?.querySelector?.("input");
         return this._dawn.toggleMustRoll(target?.dataset?.actorId, input?.checked ?? target?.checked);
@@ -796,11 +773,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onTrainingRoll(event, target) { return this._training.onTrainingRoll(event, target); }
     static _inferCanvasStationForActivity(activityId, actorId = null) { return inferCanvasStationForActivity(activityId, actorId); }
     static _resolveStationActorForUser(partyActors, restApp = null) { return ActivityStationsDelegate.resolveStationActorForUser(partyActors, restApp); }
-    static async #onLightCampfire(event, target) { await RestSetupApp.#onSelectCampFireLevel.call(this, event, { dataset: { fireLevel: "campfire" } }); }
+    static async #onLightCampfire(event, _target) { await RestSetupApp.#onSelectCampFireLevel.call(this, event, { dataset: { fireLevel: "campfire" } }); }
     static async #onCampLightFire(event, target) { return this._session.onCampLightFire(event, target); }
     static async #onCampPledgeFirewood(event, target) { return RestSetupActionHandlers.onCampPledgeFirewood.call(this, event, target); }
     static async #onCampReclaimFirewood(event, target) { return RestSetupActionHandlers.onCampReclaimFirewood.call(this, event, target); }
-    static async #onSelectCampFireLevel(event, target) { return await this._campPlacement.onSelectCampFireLevel(...arguments); }
+    static async #onSelectCampFireLevel(_event, _target) { return await this._campPlacement.onSelectCampFireLevel(...arguments); }
     static async #onDismissCampfireCanvasPanel() { return RestSetupActionHandlers.onDismissCampfireCanvasPanel.call(this); }
     static async #onRetryCampPitPlacement() { return await this._campPlacement.onRetryCampPitPlacement(...arguments); }
     static async #onDismissEventPoolNudge(event, target) { return RestSetupActionHandlers.onDismissEventPoolNudge.call(this, event, target); }
@@ -816,17 +793,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onDetectMagicScanTotm(event, target) { return RestSetupActionHandlers.onDetectMagicScanTotm.call(this, event, target); }
     static #onTotmCraftSelectRecipe(event, target) { return RestSetupActionHandlers.onTotmCraftSelectRecipe.call(this, event, target); }
     static #onTotmCraftSelectRisk(event, target) { return RestSetupActionHandlers.onTotmCraftSelectRisk.call(this, event, target); }
-    static async #onTotmCraftCommit(event, target) { return await this._crafting.onTotmCraftCommit(...arguments); }
+    static async #onTotmCraftCommit(_event, _target) { return await this._crafting.onTotmCraftCommit(...arguments); }
     static #onTotmCraftToggleMissing(event, target) { return RestSetupActionHandlers.onTotmCraftToggleMissing.call(this, event, target); }
     static #onTotmCraftClose(event, target) { this._totm.onTotmCraftClose(event, target); }
     static async #onTotmFeastServeNow() { return await this._crafting.onTotmFeastServeNow(...arguments); }
-    static async #onCampColdCamp(event, target) { return await this._campPlacement.onCampColdCamp(...arguments); }
-    static async #onSelectCampColdCamp(event, target) { return await this._campPlacement.onSelectCampColdCamp(...arguments); }
+    static async #onCampColdCamp(_event, _target) { return await this._campPlacement.onCampColdCamp(...arguments); }
+    static async #onSelectCampColdCamp(_event, _target) { return await this._campPlacement.onSelectCampColdCamp(...arguments); }
     static async #onConfirmCampColdCamp() { return await this._campPlacement.onConfirmCampColdCamp(...arguments); }
     static async #onPreviewCampFireLevel(event, target) { return RestSetupActionHandlers.onPreviewCampFireLevel.call(this, event, target); }
     static async #onContinueToCampLayout(event, target) { return RestSetupActionHandlers.onContinueToCampLayout.call(this, event, target); }
     static #onSwitchWorkflow(event, target) { return RestSetupActionHandlers.onSwitchWorkflow.call(this, event, target); }
-    static #onToggleExamine(event, target) {
+    static #onToggleExamine(_event, _target) {
         this._holdWindowHeight();
         if (this._selectedWorkflowStep === "examine") {
             this._selectedWorkflowStep = this._lastWorkflowStep || "activities";
@@ -859,13 +836,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
         this.render({ force: true });
     }
-    static async #onProceedFromMakeCamp(event, target) { return await this._campPlacement.onProceedFromMakeCamp(...arguments); }
-    static async #onReclaimCampfire(event, target) { return await this._campPlacement.onReclaimCampfire(...arguments); }
-    static async #onClearAllCampScene(event, target) { return await this._campPlacement.onClearAllCampScene(...arguments); }
-    static async #onClearMyCampGear(event, target) { return await this._campPlacement.onClearMyCampGear(...arguments); }
+    static async #onProceedFromMakeCamp(_event, _target) { return await this._campPlacement.onProceedFromMakeCamp(...arguments); }
+    static async #onReclaimCampfire(_event, _target) { return await this._campPlacement.onReclaimCampfire(...arguments); }
+    static async #onClearAllCampScene(_event, _target) { return await this._campPlacement.onClearAllCampScene(...arguments); }
+    static async #onClearMyCampGear(_event, _target) { return await this._campPlacement.onClearMyCampGear(...arguments); }
     static async reclaimCampGearFromDialog(restApp, event, target) { return RestSetupApp.#onReclaimCampGear.call(restApp, event, target); }
-    static async #onReclaimCampGear(event, target) { return await this._campPlacement.onReclaimCampGear(...arguments); }
-    static async #onReclaimCampStation(event, target) { return await this._campPlacement.onReclaimCampStation(...arguments); }
+    static async #onReclaimCampGear(_event, _target) { return await this._campPlacement.onReclaimCampGear(...arguments); }
+    static async #onReclaimCampStation(_event, _target) { return await this._campPlacement.onReclaimCampStation(...arguments); }
     static async #onToggleUiTheme(event, target) { return RestSetupActionHandlers.onToggleUiTheme.call(this, event, target); }
 }
 

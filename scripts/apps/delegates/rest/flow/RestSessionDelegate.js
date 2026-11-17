@@ -10,7 +10,6 @@ import { RestLedger } from "../../../../services/rest/flow/RestLedger.js";
 import { GatherYieldService } from "../../../../services/rest/forage/GatherYieldService.js";
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
 import { countInstalledEventsForTerrain, loadInstalledEventsInto } from "../../../../services/events/catalog/InstalledEventSource.js";
-import { CampGearScanner } from "../../../../services/camp/gear/CampGearScanner.js";
 import { isComfortEnabled } from "../../../../services/camp/gear/ComfortCalculator.js";
 import { notifyDetectMagicScanApplied } from "../../../../services/crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
 import { isSimpleStationsMode } from "../../../../services/rest/flow/RestProfileSettings.js";
@@ -34,18 +33,9 @@ import { isTrailerFilmingMode as _isTrailerFilmingMode } from "../layout/RestWin
 import { _removeRejoinBar } from "../../../../module.js";
 import {
     emitPhaseChanged,
-    emitArmorToggle,
-    emitCampLightFire,
-    emitTrainingStateUpdate
+    emitArmorToggle
 } from "../../../../services/socket/SocketController.js";
 import { getPartyActors } from "../../../../services/party/partyActors.js";
-import {
-    beddingStatusImage,
-    buildBeddingHideUpdates,
-    buildBeddingShowUpdates,
-    createBeddingScheduler,
-    clearAllBeddingPoses
-} from "../../../../services/rest/session/BeddingPose.js";
 import { RestSetupApp, _logGmRestSheet } from "../../../rest/RestSetupApp.js";
 
 export class RestSessionDelegate {

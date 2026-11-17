@@ -11,7 +11,7 @@
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     "no-undef": "error",
     "no-console": ["error", { "allow": ["warn", "error"] }],
-    "eqeqeq": ["error", "always"],
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
     "no-var": "error",
     "prefer-const": "warn",
     "semi": ["error", "always"],
@@ -21,7 +21,11 @@
   },
   "overrides": [
     {
-      "files": ["scripts/lib/Logger.js"],
+      "files": [
+        "scripts/utils/Logger.js",
+        "scripts/services/camp/fire/CampfireReconnectLog.js",
+        "scripts/services/events/catalog/EventPackValidation.js"
+      ],
       "rules": {
         "no-console": "off"
       }
@@ -64,6 +68,8 @@
     "Folder": "readonly",
     "JournalEntry": "readonly",
     "RollTable": "readonly",
-    "SimpleCalendar": "readonly"
+    "SimpleCalendar": "readonly",
+    "CompendiumCollection": "readonly",
+    "CALENDARIA": "readonly"
   }
 }

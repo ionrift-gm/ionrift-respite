@@ -7,16 +7,8 @@ import { RestSetupDebugJumps } from "./apps/delegates/rest/debug/RestSetupDebugJ
 import { ShortRestApp } from "./apps/rest/ShortRestApp.js";
 import { BivouacApp } from "./apps/bivouac/BivouacApp.js";
 import { DowntimeLedgerApp } from "./apps/downtime/DowntimeLedgerApp.js";
-import { TorchTokenLinker } from "./services/camp/props/TorchTokenLinker.js";
-import { placeTorch, placePerimeter, clearTorches, toggleTorches, placeCampfire, placeCamp } from "./services/camp/props/CampPropPlacer.js";
 import {
-    placePlayerGear,
-    placeStation,
-    canPlaceStation,
     clearCampTokens,
-    clearPlayerCampGear,
-    clearPlayerCampGearType,
-    clearSharedCampStation,
     resetCampSession,
     registerCampFurnitureZOrderGuards,
     clampCampFloorTokenInPreUpdate
@@ -33,13 +25,12 @@ import {
 import { initAfkBridge } from "./services/afk/AfkBridgeService.js";
 import { MealPhaseHandler } from "./services/meal/phase/MealPhaseHandler.js";
 import {
-    emitForceReload,
     emitRequestRestState,
     emitRestStarted,
     emitRestSnapshot,
     emitRestResolved,
     emitAfkUpdate,
-    registerSocketListener,
+    registerSocketListener
 } from "./services/socket/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/ui/settings/SettingsRegistrar.js";
 import { registerUiHooks, refreshZzzOverlay, refreshSpoilageBadgesOnOpenSheets } from "./services/ui/sheet/UiInjections.js";
@@ -548,7 +539,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
 });
 
 // Chat commands: /respite, /bivouac, /downtime
-Hooks.on("chatMessage", (log, message, chatData) => {
+Hooks.on("chatMessage", (log, message, _chatData) => {
     if (!game.user.isGM) return;
     const msg = message.trim().toLowerCase();
 

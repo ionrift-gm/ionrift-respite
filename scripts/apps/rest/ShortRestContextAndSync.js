@@ -2,31 +2,17 @@ import { Logger } from "../../utils/Logger.js";
 import { HitDieModifiers } from "../../services/rest/recovery/HitDieModifiers.js";
 import { HitDiceService } from "../../services/rest/recovery/HitDiceService.js";
 import { SpellSlotRecovery } from "../../services/rest/recovery/SpellSlotRecovery.js";
-import { confirmAbandonRest } from "./confirmAbandonRest.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 import { isWorkbenchIdentifyUiEnabled, matchesShelterSpell } from "../../data/RestConstants.js";
 import {
-    registerActiveShortRestApp,
-    clearActiveShortRestApp,
     _showGmShortRestIndicator,
-    _removeGmShortRestIndicator,
-    notifyShortRestActive,
-    showAfkPanel,
-    hideAfkPanelAfterRest,
-    setRespiteFlowActive
+    _removeGmShortRestIndicator
 } from "../../module.js";
 import { getPartyActors } from "../../services/party/partyActors.js";
-import { CalendarHandler } from "../../services/rest/session/CalendarHandler.js";
 import { SHORT_REST_STATE_SCHEMA } from "../../services/rest/session/restSessionSchemas.js";
 import {
-    registerRestSessionApp,
-    unregisterRestSessionApp,
-    emitRestSessionStarted,
     emitRestSessionSync,
     emitRestSessionDelta,
-    emitRestSessionResolved,
-    emitRestSessionAbandoned,
-    emitRestSessionDismissed,
     userControlsActor
 } from "../../services/rest/session/RestSessionSync.js";
 import * as RestAfkState from "../../services/rest/session/RestAfkState.js";
@@ -39,17 +25,9 @@ const MAX_VALUE_HD_KEY = "maxValueHitDice";
 /** Actor flag: pending Arcane/Natural Recovery selections for GM apply on rest complete. */
 const SPELL_RECOVERY_FLAG = "spellRecoveryPending";
 import { ImageResolver } from "../../utils/ImageResolver.js";
-import { WorkbenchDelegate } from "../delegates/crafting/WorkbenchDelegate.js";
-import {
-    collectPartyIdentifyEmbedData,
-    DetectMagicDelegate,
-    purgeDetectMagicRestArtifacts,
-    spawnDetectMagicCastRipple
-} from "../delegates/crafting/DetectMagicDelegate.js";
 import { getShortRestRechargeLabels } from "../../services/rest/recovery/ShortRestRecharge.js";
 import { RestPresentationHelper } from "../../utils/RestPresentationHelper.js";
 import { scanEligibleChefs } from "../../services/meal/buffs/ChefFeat.js";
-import { setNativeShortRestUnsuppressed } from "../../services/rest/flow/NativeRestPass.js";
 
 /** All shelter options for short rest. "none" is always shown. */
 const SHORT_REST_SHELTERS = [
@@ -62,7 +40,7 @@ const SHORT_REST_SHELTERS = [
 
 import { ShortRestActionMethods } from "./ShortRestActions.js";
 export const ShortRestContextAndSyncMethods = {
-    async _prepareContext(options) {
+    async _prepareContext(_options) {
         const partyActors = getPartyActors();
 
         if (this._isGM && partyActors.length) {

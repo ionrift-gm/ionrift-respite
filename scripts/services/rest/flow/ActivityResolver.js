@@ -1,15 +1,10 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
-import { getComfortDcMod, isComfortEnabled } from "../../camp/gear/ComfortCalculator.js";
+import { getComfortDcMod } from "../../camp/gear/ComfortCalculator.js";
 import {
-    applyFletchingYieldFloor,
-    getFletchingTier,
-    getFletchingYieldFormula,
-    isFletchingEnabled
+    getFletchingYieldFormula
 } from "../../crafting/settings/FletchingSettings.js";
 import { fletchAmmoKind } from "../../crafting/outcomes/FletchAmmoStack.js";
-import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../../crafting/settings/TrainingSettings.js";
-import { isProfessionActivityEnabled, isChefTreatCookingOnly } from "../../travel/settings/TravelSettings.js";
-import { hasChefFeat } from "../../meal/buffs/ChefFeat.js";
+import { getTrainingXpReduction } from "../../crafting/settings/TrainingSettings.js";
 import { GatherYieldService } from "../forage/GatherYieldService.js";
 import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 import { CARD_FADED_HINTS, cardHintNotPrepared } from "../../../data/activityCardHint.js";

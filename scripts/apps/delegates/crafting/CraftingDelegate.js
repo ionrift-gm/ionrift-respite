@@ -75,7 +75,7 @@ export class CraftingDelegate {
         this._app.render();
     }
 
-    async onCraft(event, target) {
+    async onCraft(_event, _target) {
         const app = this._app;
         if (app._craftingDrawerHasCrafted || !app._craftingDrawerRecipeId) return;
 
@@ -93,12 +93,12 @@ export class CraftingDelegate {
         app.render();
     }
 
-    onToggleMissing(event, target) {
+    onToggleMissing(_event, _target) {
         this._app._craftingDrawerShowMissing = !this._app._craftingDrawerShowMissing;
         this._app.render();
     }
 
-    onClose(event, target) {
+    onClose(_event, _target) {
         const app = this._app;
         const characterId = app._selectedCharacterId;
         const profession = app._craftingDrawerProfession;

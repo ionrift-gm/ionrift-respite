@@ -171,7 +171,7 @@ class DowntimePlanningMixin {
 }
 
 export class DowntimePlanningActions {
-    static async onToggleUiTheme(event, target) {
+    static async onToggleUiTheme(_event, _target) {
         let currentTheme = "glass";
         try {
             currentTheme = game.settings.get(MODULE_ID, "uiTheme") ?? "glass";
@@ -184,7 +184,7 @@ export class DowntimePlanningActions {
         }
     }
 
-    static async onAbandonDowntime(event, target) {
+    static async onAbandonDowntime(_event, _target) {
         if (!this._isGM) return;
 
         const confirmed = await confirmAbandonRest({
@@ -335,7 +335,7 @@ export class DowntimePlanningActions {
         this.render();
     }
 
-    static onToggleLogisticsDrawer(event, target) {
+    static onToggleLogisticsDrawer(_event, _target) {
         if (!this._isGM) return;
         this._campLogistics.toggleDrawer();
     }
@@ -653,7 +653,7 @@ export class DowntimePlanningActions {
         this.render();
     }
 
-    static async onRerollAllDraft(event, target) {
+    static async onRerollAllDraft(_event, _target) {
         if (!this._isGM) return;
         await this._initEncounterDraft();
         this.render();

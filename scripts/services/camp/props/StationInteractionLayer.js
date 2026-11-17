@@ -13,9 +13,9 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  *   deactivate()         ,  remove all overlays, clean up ticker
  */
 
-import { CAMP_STATIONS, getStationsForTerrain, STATION_RANGE_SQUARES, inferCanvasStationForActivity } from "../../../data/RestConstants.js";
+import { CAMP_STATIONS, getStationsForTerrain } from "../../../data/RestConstants.js";
 import { isSimpleStationsMode } from "../../rest/flow/RestProfileSettings.js";
-import { isGearDeployed, measureWorldDistanceFeet } from "./CompoundCampPlacer.js";
+import { isGearDeployed } from "./CompoundCampPlacer.js";
 import { getPartyActors } from "../../party/partyActors.js";
 import { getActiveRestSessionApp } from "../../rest/session/RestSessionSync.js";
 

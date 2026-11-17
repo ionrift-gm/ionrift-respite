@@ -1,31 +1,18 @@
 import {
     CampGearScanner,
     actorHasTinderbox,
-    isActorFirewoodItem,
-    isBedrollItem
+    isActorFirewoodItem
 } from "../../../services/camp/gear/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../../services/camp/fire/CampfireTokenLinker.js";
 import {
-    placeCampfire,
-    placeStation,
-    placePlayerGear,
     clearCampTokens,
-    clearCampfireSite,
-    relocateCampfireSite,
     clearPlayerCampGear,
     clearPlayerCampGearType,
     clearSharedCampStation,
     hasCampfirePlaced,
-    canPlaceStation,
-    validatePlayerGearDrop,
-    validateStationEquipmentDrop,
-    resetCampSession,
-    placeStationPlaceholders,
-    pickCampfirePitBaseTexture,
-    getStationPlaceholderPreviewsForPitCenter
+    canPlaceStation
 } from "../../../services/camp/props/CompoundCampPlacer.js";
 import { closeOpenStationDialog, refreshOpenStationDialog } from "../../camp/StationActivityDialog.js";
-import { CampfireMakeCampDialog } from "../../camp/CampfireMakeCampDialog.js";
 import { isComfortEnabled } from "../../../services/camp/gear/ComfortCalculator.js";
 import { isSimpleStationsMode, requiresMapCampFire } from "../../../services/rest/flow/RestProfileSettings.js";
 import {
@@ -35,20 +22,20 @@ import {
     emitActivityColdCampRequest,
     emitCampColdCampRequest,
     emitCampColdCampCommit,
-    emitCampGearPlace, emitCampGearPlaced, emitCampGearClearPlayer,
-    emitCampGearReclaim, emitCampStationPlace, emitCampStationPlaced,
-    emitCampStationReclaim, emitCampSceneCleared
+    emitCampGearPlaced,
+    emitCampGearClearPlayer,
+    emitCampGearReclaim,
+    emitCampStationPlaced,
+    emitCampStationReclaim,
+    emitCampSceneCleared
 } from "../../../services/socket/SocketController.js";
 import {
-    activateStationLayer,
     deactivateStationLayer
 } from "../../../services/camp/props/StationInteractionLayer.js";
-import { shouldShowCampPitNoticeLayer } from "../../../services/camp/props/CampPitNoticePolicy.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
-import { MODULE_ID } from "../../../data/moduleId.js";
 
 export const CampPlacementFireMethods = {
-    async onClearAllCampScene(event, target) {
+    async onClearAllCampScene(event, _target) {
         const app = this._app;
 
         event.preventDefault?.();
@@ -378,7 +365,7 @@ export const CampPlacementFireMethods = {
     
     },
 
-    async setColdCampDuringActivity({ fromPlayer = false } = {}) {
+    async setColdCampDuringActivity({ _fromPlayer = false } = {}) {
         const app = this._app;
 
         if (!game.user.isGM) return { ok: false };
@@ -558,7 +545,7 @@ export const CampPlacementFireMethods = {
     
     },
 
-    async onCampColdCamp(event, target) {
+    async onCampColdCamp(_event, _target) {
         const app = this._app;
 
         if (!game.user.isGM) return;
@@ -566,7 +553,7 @@ export const CampPlacementFireMethods = {
     
     },
 
-    async onSelectCampColdCamp(event, target) {
+    async onSelectCampColdCamp(_event, _target) {
         const app = this._app;
 
         if (app._phase === "activity") {
@@ -639,7 +626,7 @@ export const CampPlacementFireMethods = {
     
     },
 
-    async onProceedFromMakeCamp(event, target) {
+    async onProceedFromMakeCamp(_event, _target) {
         const app = this._app;
 
         if (!game.user.isGM) return;

@@ -8,7 +8,6 @@ import {
     scaleWeightsToTarget,
     sortForageEntries,
     tableResultCount,
-    ROLL_TABLE_GM_ONLY_OWNERSHIP,
     buildGmOnlyRollTableOwnership,
     ownershipNeedsUpdate,
     managedResultsMatchCreates,

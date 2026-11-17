@@ -1,36 +1,17 @@
 import { Logger } from "../../utils/Logger.js";
 import { HitDieModifiers } from "../../services/rest/recovery/HitDieModifiers.js";
 import { HitDiceService } from "../../services/rest/recovery/HitDiceService.js";
-import { SpellSlotRecovery } from "../../services/rest/recovery/SpellSlotRecovery.js";
-import { confirmAbandonRest } from "./confirmAbandonRest.js";
 import { MODULE_ID } from "../../data/moduleId.js";
-import { isWorkbenchIdentifyUiEnabled, matchesShelterSpell } from "../../data/RestConstants.js";
+import { isWorkbenchIdentifyUiEnabled } from "../../data/RestConstants.js";
 import {
-    registerActiveShortRestApp,
-    clearActiveShortRestApp,
     _showGmShortRestIndicator,
-    _removeGmShortRestIndicator,
-    notifyShortRestActive,
-    showAfkPanel,
-    hideAfkPanelAfterRest,
-    setRespiteFlowActive
+    _removeGmShortRestIndicator
 } from "../../module.js";
 import { getPartyActors } from "../../services/party/partyActors.js";
-import { CalendarHandler } from "../../services/rest/session/CalendarHandler.js";
-import { SHORT_REST_STATE_SCHEMA } from "../../services/rest/session/restSessionSchemas.js";
 import {
-    registerRestSessionApp,
-    unregisterRestSessionApp,
-    emitRestSessionStarted,
-    emitRestSessionSync,
-    emitRestSessionDelta,
-    emitRestSessionResolved,
-    emitRestSessionAbandoned,
-    emitRestSessionDismissed,
-    userControlsActor
+    emitRestSessionDelta
 } from "../../services/rest/session/RestSessionSync.js";
 import * as RestAfkState from "../../services/rest/session/RestAfkState.js";
-import { pushAllStateToAdapters } from "../../services/afk/AfkBridgeService.js";
 
 /** World setting: when Song of Rest HP is applied. */
 const SONG_TIMING_KEY = "songOfRestTiming";
@@ -38,18 +19,10 @@ const SONG_TIMING_KEY = "songOfRestTiming";
 const MAX_VALUE_HD_KEY = "maxValueHitDice";
 /** Actor flag: pending Arcane/Natural Recovery selections for GM apply on rest complete. */
 const SPELL_RECOVERY_FLAG = "spellRecoveryPending";
-import { ImageResolver } from "../../utils/ImageResolver.js";
-import { WorkbenchDelegate } from "../delegates/crafting/WorkbenchDelegate.js";
 import {
-    collectPartyIdentifyEmbedData,
-    DetectMagicDelegate,
-    purgeDetectMagicRestArtifacts,
     spawnDetectMagicCastRipple
 } from "../delegates/crafting/DetectMagicDelegate.js";
-import { getShortRestRechargeLabels } from "../../services/rest/recovery/ShortRestRecharge.js";
-import { RestPresentationHelper } from "../../utils/RestPresentationHelper.js";
 import { scanEligibleChefs } from "../../services/meal/buffs/ChefFeat.js";
-import { setNativeShortRestUnsuppressed } from "../../services/rest/flow/NativeRestPass.js";
 
 /** All shelter options for short rest. "none" is always shown. */
 const SHORT_REST_SHELTERS = [
@@ -174,7 +147,7 @@ export const ShortRestActionMethods = {
         return this._finishedUsers.has(actor.id) || this._finishedUsers.has(ownerUser.id);
     },
 
-    onToggleShortRestFinished(event, target) {
+    onToggleShortRestFinished(event, _target) {
         if (this._completionPhase) return;
         event.preventDefault?.();
         const party = getPartyActors();
@@ -382,7 +355,7 @@ export const ShortRestActionMethods = {
         this.render();
     },
 
-    async onClaimChefTreatFromBadge(event, target) {
+    async onClaimChefTreatFromBadge(event, _target) {
         if (this._completionPhase) return;
         if (!this._chefVolunteer) return;
         const remaining = this._chefVolunteer.mealCapacity - this._chefMealServedCount;
@@ -531,7 +504,7 @@ export const ShortRestActionMethods = {
         this.render();
     },
 
-    onClearSelectedCharacter(event, target) {
+    onClearSelectedCharacter(_event, _target) {
         if (!this._isGM) return;
         this._selectedCharacterId = null;
         if (this._activeTab === "workbench") {
@@ -583,7 +556,7 @@ export const ShortRestActionMethods = {
         }
     },
 
-    onWorkbenchIdentifyRemovePotion(event, target) {
+    onWorkbenchIdentifyRemovePotion(_event, _target) {
         if (this._completionPhase) return;
         const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
         const actorId = el?.dataset?.workbenchActorId;

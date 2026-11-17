@@ -68,7 +68,7 @@ export class RestFlowActions {
         return shuffled.slice(0, n);
     }
 
-    async onBeginRest(event, target) {
+    async onBeginRest(_event, _target) {
         const app = this._app;
 
         const form = app.element.querySelector("form");
@@ -345,7 +345,7 @@ export class RestFlowActions {
         app.render({ force: true });
     }
 
-    async onSubmitActivities(event, target) {
+    async onSubmitActivities(_event, _target) {
         const app = this._app;
 
         if ((app._fireLevel ?? "unlit") === "unlit" && !app._coldCampDecided && !app._engine?.safeRestSpot) {

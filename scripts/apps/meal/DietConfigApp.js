@@ -334,7 +334,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
     }
 
     /** @override */
-    _replaceHTML(result, content, options) {
+    _replaceHTML(result, content, _options) {
         const list = content.querySelector(".diet-actor-list");
         if (list) this.#scrollTop = list.scrollTop;
 
@@ -346,7 +346,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
         }
     }
 
-    _wireEvents(el, context) {
+    _wireEvents(el, _context) {
         el.querySelector(".diet-track-food-cb")?.addEventListener("change", async (ev) => {
             await game.settings.set(MODULE_ID, "trackFood", ev.target.checked);
             this.render({ force: true });
