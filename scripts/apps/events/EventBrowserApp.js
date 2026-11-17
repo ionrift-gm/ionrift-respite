@@ -451,7 +451,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
     }
 
     /** @override */
-    _replaceHTML(result, content, options) {
+    _replaceHTML(result, content, _options) {
         const prevChecklist = content.querySelector(".event-pool-checklist");
         const prevDetail = content.querySelector(".event-pool-detail");
         const checklistScroll = prevChecklist?.scrollTop ?? 0;

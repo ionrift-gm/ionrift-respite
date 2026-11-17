@@ -1,5 +1,5 @@
 import { TerrainRegistry } from "../../events/resolve/TerrainRegistry.js";
-import { WEATHER_TABLE, getComfortTip } from "../../../data/RestConstants.js";
+import { WEATHER_TABLE } from "../../../data/RestConstants.js";
 import { CampGearScanner } from "./CampGearScanner.js";
 import { isComfortEnabled, boostComfort, fireComfortDelta } from "./ComfortCalculator.js";
 import { getPartyActors } from "../../party/partyActors.js";

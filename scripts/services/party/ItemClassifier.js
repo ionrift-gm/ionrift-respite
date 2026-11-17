@@ -19,7 +19,6 @@ import {
     INGREDIENT_NAMES,
     SUSTENANCE_TYPES,
     DEFAULT_DIET,
-    DIET_PRESET_LABELS,
     DIET_PRESETS
 } from "./ItemClassifierConstants.js";
 export { PROVISION_ITEM_TYPES, STORAGE_TYPES };

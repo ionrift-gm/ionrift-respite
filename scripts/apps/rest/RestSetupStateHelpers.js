@@ -1,4 +1,3 @@
-import { Logger } from "../../utils/Logger.js";
 import { EventResolver } from "../../services/events/resolve/EventResolver.js";
 import { countPoolEventsForTerrain } from "../../services/events/catalog/EventCatalogLoader.js";
 import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
@@ -270,15 +269,15 @@ _shouldShowEventPoolNudge(terrainTag) {
 
     _campRestWindowTargetWidth() { return this._windowLayout.campRestWindowTargetWidth(...arguments); }
 
-    _repositionFilmingRestWindow(options = {}) { return this._windowLayout.repositionFilmingRestWindow(...arguments); }
+    _repositionFilmingRestWindow(_options = {}) { return this._windowLayout.repositionFilmingRestWindow(...arguments); }
 
-    _scheduleFilmingWindowReposition(options = {}) { return this._windowLayout.scheduleFilmingWindowReposition(...arguments); }
+    _scheduleFilmingWindowReposition(_options = {}) { return this._windowLayout.scheduleFilmingWindowReposition(...arguments); }
 
     _presetRestWindowForCampEntry() { return this._windowLayout.presetRestWindowForCampEntry(...arguments); }
 
-    _applyRestWindowPosition(pos, { smooth = false, filming = false, durationMs } = {}) { return this._windowLayout.applyRestWindowPosition(...arguments); }
+    _applyRestWindowPosition(pos, { _smooth = false, _filming = false, _durationMs } = {}) { return this._windowLayout.applyRestWindowPosition(...arguments); }
 
-    _animateFilmingRestWindowPosition(targetPos, durationMs = 420) { return this._windowLayout.animateFilmingRestWindowPosition(...arguments); }
+    _animateFilmingRestWindowPosition(targetPos, _durationMs = 420) { return this._windowLayout.animateFilmingRestWindowPosition(...arguments); }
 
     async _finalizeCampPhaseWindowLayout() { return await this._windowLayout.finalizeCampPhaseWindowLayout(...arguments); }
 
@@ -296,13 +295,13 @@ _shouldShowEventPoolNudge(terrainTag) {
         return this._windowLayout.beginRestWindowRecenterSuppression(...arguments);
     }
 
-    _endRestWindowRecenterSuppression(schedule = true) {
+    _endRestWindowRecenterSuppression(_schedule = true) {
         return this._windowLayout.endRestWindowRecenterSuppression(...arguments);
     }
 
-    _scheduleRestWindowRecenter(options = {}) { return this._windowLayout.scheduleRestWindowRecenter(...arguments); }
+    _scheduleRestWindowRecenter(_options = {}) { return this._windowLayout.scheduleRestWindowRecenter(...arguments); }
 
-    _recenterRestSetupWindow(options = {}) {
+    _recenterRestSetupWindow(_options = {}) {
         return this._windowLayout.recenterRestSetupWindow(...arguments);
     }
     _setShowCampfireCanvasPanel(_v) {
@@ -440,7 +439,7 @@ setStationFirePreviewLevel(level) {
     async _autoProcessRations() { return this._meals._autoProcessRations(); }
     _openCampfire() { return this._campCeremony._openCampfire(...arguments); }
 
-    _closeCampfire(options = {}) {
+    _closeCampfire(_options = {}) {
         return this._campCeremony._closeCampfire(...arguments);
     }
 
@@ -456,9 +455,9 @@ setStationFirePreviewLevel(level) {
 
     isStationFireMinigameTab() { return this._campCeremony.isStationFireMinigameTab(...arguments); }
 
-    mountStationFireMinigame(host, dialog = null) { return this._campCeremony.mountStationFireMinigame(...arguments); }
+    mountStationFireMinigame(host, _dialog = null) { return this._campCeremony.mountStationFireMinigame(...arguments); }
 
-    releaseStationFireMinigame(dialog = null) { return this._campCeremony.releaseStationFireMinigame(...arguments); }
+    releaseStationFireMinigame(_dialog = null) { return this._campCeremony.releaseStationFireMinigame(...arguments); }
 
     _totmCampfireMinigamePanelEnabled() { return this._campCeremony._totmCampfireMinigamePanelEnabled(...arguments); }
 
@@ -477,19 +476,19 @@ setStationFirePreviewLevel(level) {
         return this._campCeremony._partyFirewoodTotal(...arguments);
     }
 
-    _campPreviewFirewoodCost(level = null) {
+    _campPreviewFirewoodCost(_level = null) {
         return this._campCeremony._campPreviewFirewoodCost(...arguments);
     }
 
-    _portraitForCeremonyActor(actorId, userId) {
+    _portraitForCeremonyActor(_actorId, _userId) {
         return this._campCeremony._portraitForCeremonyActor(...arguments);
     }
 
-    _stagedWoodCountForActor(actorId) {
+    _stagedWoodCountForActor(_actorId) {
         return this._campCeremony._stagedWoodCountForActor(...arguments);
     }
 
-    _canReclaimCeremonyStagedSlot(slot) {
+    _canReclaimCeremonyStagedSlot(_slot) {
         return this._campCeremony._canReclaimCeremonyStagedSlot(...arguments);
     }
 
@@ -497,39 +496,39 @@ setStationFirePreviewLevel(level) {
         return this._campCeremony._buildMakeCampCeremonyRequirementSlots(...arguments);
     }
 
-    _maybeClearStagedWoodOnTierChange(newLevel) {
+    _maybeClearStagedWoodOnTierChange(_newLevel) {
         return this._campCeremony._maybeClearStagedWoodOnTierChange(...arguments);
     }
 
-    async clearCeremonyStagedWood({ silent = false } = {}) {
+    async clearCeremonyStagedWood({ _silent = false } = {}) {
         return await this._campCeremony.clearCeremonyStagedWood(...arguments);
     }
 
-    async stageCeremonyWood(userId, actorId) {
+    async stageCeremonyWood(_userId, _actorId) {
         return await this._campCeremony.stageCeremonyWood(...arguments);
     }
 
     async giftCeremonyWoodToFocusedActor() { return await this._campCeremony.giftCeremonyWoodToFocusedActor(...arguments); }
 
-    async unstageCeremonyWood(slotId) {
+    async unstageCeremonyWood(_slotId) {
         return await this._campCeremony.unstageCeremonyWood(...arguments);
     }
 
-    async _spendCeremonyStagedWood(cost) {
+    async _spendCeremonyStagedWood(_cost) {
         return await this._campCeremony._spendCeremonyStagedWood(...arguments);
     }
 
-    _syncCampCeremonyPreviewToEmbed(syncOpts = {}) {
+    _syncCampCeremonyPreviewToEmbed(_syncOpts = {}) {
         return this._campCeremony._syncCampCeremonyPreviewToEmbed(...arguments);
     }
 
-    _emitCampCeremonyPhaseSync(extra = {}) {
+    _emitCampCeremonyPhaseSync(_extra = {}) {
         return this._campCeremony._emitCampCeremonyPhaseSync(...arguments);
     }
 
     _campCeremonyMinigameEnabled() { return this._campCeremony._campCeremonyMinigameEnabled(...arguments); }
 
-    async _commitMakeCampCeremonyIgnite(opts = {}) { return await this._campCeremony._commitMakeCampCeremonyIgnite(...arguments); }
+    async _commitMakeCampCeremonyIgnite(_opts = {}) { return await this._campCeremony._commitMakeCampCeremonyIgnite(...arguments); }
 
     async _totmAdvanceCampAfterCeremonyIgnite() { return await this._campCeremony._totmAdvanceCampAfterCeremonyIgnite(...arguments); }
 
@@ -538,11 +537,11 @@ setStationFirePreviewLevel(level) {
         return this._campCeremony._syncTotmCampfireEmbedFromRest(...arguments);
     }
 
-    async applyActivityFireLevelFromMinigame(level) { return await this._campCeremony.applyActivityFireLevelFromMinigame(...arguments); }
+    async applyActivityFireLevelFromMinigame(_level) { return await this._campCeremony.applyActivityFireLevelFromMinigame(...arguments); }
 
-    _mountCampfireEmbed(mode, options = {}) { return this._campCeremony._mountCampfireEmbed(...arguments); }
+    _mountCampfireEmbed(mode, _options = {}) { return this._campCeremony._mountCampfireEmbed(...arguments); }
 
-    _tearDownCampfireEmbed(reason = "unknown") {
+    _tearDownCampfireEmbed(_reason = "unknown") {
         return this._campCeremony._tearDownCampfireEmbed(...arguments);
     }
     _bindMealDragDrop(el) { this._meals._bindMealDragDrop(el); }
@@ -617,10 +616,10 @@ _ensureTrainingStateForLockedChoices() {
     }
 
     _initTrainingState(characterId, activityId, actor) { this._session._initTrainingState(characterId, activityId, actor); }
-    async finalizeActivityChoiceFromStation(characterId, activityId, canvasStationId = null, options = {}) { return await this._stations.finalizeActivityChoiceFromStation(...arguments); }
+    async finalizeActivityChoiceFromStation(characterId, activityId, _canvasStationId = null, _options = {}) { return await this._stations.finalizeActivityChoiceFromStation(...arguments); }
     _refreshStationOverlayForFocusChange() { return this._stations._refreshStationOverlayForFocusChange(...arguments); }
 
-    _actorOwesActivityPhaseMealRations(actorId) { return this._stations._actorOwesActivityPhaseMealRations(...arguments); }
+    _actorOwesActivityPhaseMealRations(_actorId) { return this._stations._actorOwesActivityPhaseMealRations(...arguments); }
 
     _buildStationEmptyNoticeMap() { return this._stations._buildStationEmptyNoticeMap(...arguments); }
 
@@ -641,13 +640,13 @@ _ensureTrainingStateForLockedChoices() {
 
     getPartyStateForAdvisory() { return this._stations.getPartyStateForAdvisory(...arguments); }
 
-    getStationMealCardForActor(actorId) { return this._stations.getStationMealCardForActor(...arguments); }
+    getStationMealCardForActor(_actorId) { return this._stations.getStationMealCardForActor(...arguments); }
 
     _buildSatiatesLookup() { return this._stations._buildSatiatesLookup(...arguments); }
 
-    _autoTrimExcessWater(charId) { return this._stations._autoTrimExcessWater(...arguments); }
+    _autoTrimExcessWater(_charId) { return this._stations._autoTrimExcessWater(...arguments); }
 
-    getStationIdentifyEmbedContext(options = {}) { return this._stations.getStationIdentifyEmbedContext(...arguments); }
+    getStationIdentifyEmbedContext(_options = {}) { return this._stations.getStationIdentifyEmbedContext(...arguments); }
 
     canShowDetectMagicScanButtonFromParty() { return this._stations.canShowDetectMagicScanButtonFromParty(...arguments); }
 
@@ -659,11 +658,11 @@ _ensureTrainingStateForLockedChoices() {
 
     _clearDetectMagicScanSession(opts = {}) { this._detectMagic.clearScanSession(opts); }
 
-    async attuneWorkbenchItemForActor(actorId, itemId) { return await this._stations.attuneWorkbenchItemForActor(...arguments); }
+    async attuneWorkbenchItemForActor(_actorId, _itemId) { return await this._stations.attuneWorkbenchItemForActor(...arguments); }
 
-    async submitActivityMealRationsFromStation(actorId) { return await this._stations.submitActivityMealRationsFromStation(...arguments); }
+    async submitActivityMealRationsFromStation(_actorId) { return await this._stations.submitActivityMealRationsFromStation(...arguments); }
 
-    async unlockSustenance(actorId) { return await this._stations.unlockSustenance(...arguments); }
+    async unlockSustenance(_actorId) { return await this._stations.unlockSustenance(...arguments); }
 
     _getPlayerChoiceForCharacter(characterId) {
         for (const [userId, submission] of this._playerSubmissions) {
@@ -689,15 +688,15 @@ _ensureTrainingStateForLockedChoices() {
 
     getRestSnapshot() { return this._sync.getRestSnapshot(...arguments); }
 
-    getRestSnapshotForUser(userId) { return this._sync.getRestSnapshotForUser(...arguments); }
+    getRestSnapshotForUser(_userId) { return this._sync.getRestSnapshotForUser(...arguments); }
 
-    async receivePhaseChange(phase, phaseData = {}) { return await this._sync.receivePhaseChange(...arguments); }
+    async receivePhaseChange(phase, _phaseData = {}) { return await this._sync.receivePhaseChange(...arguments); }
 
-    receiveSubmissionUpdate(submissions) { return this._sync.receiveSubmissionUpdate(...arguments); }
+    receiveSubmissionUpdate(_submissions) { return this._sync.receiveSubmissionUpdate(...arguments); }
 
-    receiveRestSnapshot(snapshot) { return this._sync.receiveRestSnapshot(...arguments); }
+    receiveRestSnapshot(_snapshot) { return this._sync.receiveRestSnapshot(...arguments); }
 
-    receiveArmorToggle(actorId, itemId, isDoffed) { return this._sync.receiveArmorToggle(...arguments); }
+    receiveArmorToggle(_actorId, _itemId, _isDoffed) { return this._sync.receiveArmorToggle(...arguments); }
     async _spendPartyFirewoodForMakeCamp(cost, requestingUserId = null) { return this._session._spendPartyFirewoodForMakeCamp(cost, requestingUserId); }
 
     /** Sets fire tier now; firewood spends on Proceed to activities, not here. */
@@ -717,9 +716,9 @@ async _advanceCampToActivity() { return this._session._advanceCampToActivity(); 
 
     _campPlacementStillActive() { return this._campPlacement._campPlacementStillActive(...arguments); }
 
-    _pickPitWorldPoint(options = {}) { return this._campPlacement._pickPitWorldPoint(...arguments); }
+    _pickPitWorldPoint(_options = {}) { return this._campPlacement._pickPitWorldPoint(...arguments); }
 
-    async _commitStationsCampPlacement(worldX, worldY, options = {}) { return await this._campPlacement._commitStationsCampPlacement(...arguments); }
+    async _commitStationsCampPlacement(worldX, worldY, _options = {}) { return await this._campPlacement._commitStationsCampPlacement(...arguments); }
 
     async _startCampPitCursorFlow() { return await this._campPlacement._startCampPitCursorFlow(...arguments); }
 
@@ -744,13 +743,13 @@ _hydrateTotmCraftStateFromRest(characterId, profession) {
         this._totmCraftRecipeId = prior?.recipeId ?? null;
         return true;
     }
-    async _runSetCampFireLevelForGm(level, requestingUserId = null, gmOverride = false) {
+    async _runSetCampFireLevelForGm(level, _requestingUserId = null, _gmOverride = false) {
         return await this._campPlacement._runSetCampFireLevelForGm(...arguments);
     }
 
-    async changeFireLevelDuringActivity(level, { fromPlayer = false, requestingUserId = null, fromMinigame = false } = {}) { return await this._campPlacement.changeFireLevelDuringActivity(...arguments); }
+    async changeFireLevelDuringActivity(level, { _fromPlayer = false, _requestingUserId = null, _fromMinigame = false } = {}) { return await this._campPlacement.changeFireLevelDuringActivity(...arguments); }
 
-    async setColdCampDuringActivity({ fromPlayer = false } = {}) { return await this._campPlacement.setColdCampDuringActivity(...arguments); }
+    async setColdCampDuringActivity({ _fromPlayer = false } = {}) { return await this._campPlacement.setColdCampDuringActivity(...arguments); }
     _holdWindowHeight() {
         const height = this.element?.offsetHeight;
         if (height > 0) this.position.height = height;
@@ -798,11 +797,11 @@ _hydrateTotmCraftStateFromRest(characterId, profession) {
             }
         }
     }
-    _applyCampDragGhost(e, sourceEl) { return this._campPlacement._applyCampDragGhost(...arguments); }
+    _applyCampDragGhost(_e, _sourceEl) { return this._campPlacement._applyCampDragGhost(...arguments); }
 
-    _bindCampDragHandlers(html) { return this._campPlacement._bindCampDragHandlers(...arguments); }
+    _bindCampDragHandlers(_html) { return this._campPlacement._bindCampDragHandlers(...arguments); }
 
-    async _onCampCanvasDrop(event) { return await this._campPlacement._onCampCanvasDrop(...arguments); }
+    async _onCampCanvasDrop(_event) { return await this._campPlacement._onCampCanvasDrop(...arguments); }
 }
 
 export function applyRestSetupStateHelpers(TargetClass) {

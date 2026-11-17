@@ -7,7 +7,6 @@
  * @param {Actor} actor
  * @returns {boolean}
  */
-import { MODULE_ID } from "../../../data/moduleId.js";
 export function hasChefFeat(actor) {
     return actor?.items?.some(i =>
         i.type === "feat" && String(i.name ?? "").toLowerCase() === "chef"

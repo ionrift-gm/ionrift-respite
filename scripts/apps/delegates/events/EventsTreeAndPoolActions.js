@@ -5,32 +5,16 @@ import { resolveNightWatchMode } from "./nightWatchMode.js";
 import { pickPoolEvent } from "../../events/AdHocEventDialogs.js";
 import {
     emitPhaseChanged,
-    emitTreeRollRequest,
-    emitEventRollResult,
-    emitCampRollResult,
-    emitSubmissionUpdate,
-    emitActivityChoice,
-    emitRestSnapshot
+    emitTreeRollRequest
 } from "../../../services/socket/SocketController.js";
 import {
-    executePlayerRoll,
     rollForPlayer,
     pickBestSkill,
     SKILL_DISPLAY_NAMES,
-    waitForDiceSoNice,
     disableRollButton
 } from "../../../services/ui/rollRequest/RollRequestManager.js";
-import { GrantLedger } from "../../../services/crafting/outcomes/GrantLedger.js";
-import { ItemOutcomeHandler } from "../../../services/crafting/outcomes/ItemOutcomeHandler.js";
-import {
-    isStationLayerActive,
-    refreshStationEmptyNoticeFade,
-    refreshStationPortraitsFromChoices,
-    resetStationOverlaysLocal
-} from "../../../services/camp/props/StationInteractionLayer.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
-import { lockSubmittedActivities } from "../../../services/rest/session/campProgressState.js";
 import { _refreshGmRestIndicator } from "../../../module.js";
 
 export const eventsTreeAndPoolActions = {
@@ -60,7 +44,7 @@ export const eventsTreeAndPoolActions = {
         return countPoolEventsForTerrain(app._eventResolver, terrainTag);
     },
 
-    async onRollEvents(event, target) {
+    async onRollEvents(_event, _target) {
         const app = this._app;
 
         if (!app._forceEncounter && this._currentTerrainPoolCount() === 0) {
@@ -174,7 +158,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    async onImproviseEvent(event, target) {
+    async onImproviseEvent(_event, _target) {
         const app = this._app;
 
         if (!game.user.isGM) return;
@@ -228,7 +212,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    async onNightPasses(event, target) {
+    async onNightPasses(_event, _target) {
         const app = this._app;
 
         if (!game.user.isGM) return;
@@ -248,7 +232,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    async onImproviseNight(event, target) {
+    async onImproviseNight(_event, _target) {
         const app = this._app;
 
         if (!game.user.isGM) return;
@@ -274,7 +258,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    async onPickPoolEvent(event, target) {
+    async onPickPoolEvent(_event, _target) {
         const app = this._app;
 
         if (!game.user.isGM) return;
@@ -349,7 +333,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    async onAcknowledgeEncounter(event, target) {
+    async onAcknowledgeEncounter(_event, _target) {
         const app = this._app;
 
         await app._removeBeddingDown();
@@ -371,7 +355,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    async onCompleteEncounter(event, target) {
+    async onCompleteEncounter(_event, _target) {
         const app = this._app;
 
         app._awaitingCombat = false;
@@ -483,7 +467,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    async onSendTreeRollRequest(event, target) {
+    async onSendTreeRollRequest(_event, _target) {
         const app = this._app;
 
         if (!game.user.isGM) return;
@@ -570,7 +554,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    onResendTreeRollRequest(event, target) {
+    onResendTreeRollRequest(_event, _target) {
         const app = this._app;
 
         if (!game.user.isGM) return;
@@ -689,7 +673,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    async onApplyStallPenalty(event, target) {
+    async onApplyStallPenalty(_event, _target) {
         const app = this._app;
 
         if (!app._activeTreeState?.stallPenalty) return;
@@ -746,7 +730,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    onTreeDcAdjUp(event, target) {
+    onTreeDcAdjUp(_event, _target) {
         const app = this._app;
 
         if (!app._activeTreeState?.options) return;
@@ -759,7 +743,7 @@ export const eventsTreeAndPoolActions = {
     
     },
 
-    onTreeDcAdjDown(event, target) {
+    onTreeDcAdjDown(_event, _target) {
         const app = this._app;
 
         if (!app._activeTreeState?.options) return;

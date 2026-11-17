@@ -1,4 +1,3 @@
-import { MODULE_ID } from "../../data/moduleId.js";
 import { postRollAndSettle, presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 import { fireEncounterDcNudge } from "../delegates/camp/CampLogisticsDelegate.js";
 import { getPartyActors } from "../../services/party/partyActors.js";
@@ -505,7 +504,7 @@ export class DowntimeActivityAndNightActions {
         }
     }
 
-    static onProceedToResolutionFlow(event, target) {
+    static onProceedToResolutionFlow(_event, _target) {
         if (!this._isGM) return;
         const unready = this._unreadyParty();
         if (unready.length > 0) {
@@ -520,7 +519,7 @@ export class DowntimeActivityAndNightActions {
         this.render();
     }
 
-    static onReturnToPlanning(event, target) {
+    static onReturnToPlanning(_event, _target) {
         if (!this._isGM) return;
         const hasAnyRolls = Boolean(this._encounterDraft?.some(e => e.isRolled));
         if (hasAnyRolls) {

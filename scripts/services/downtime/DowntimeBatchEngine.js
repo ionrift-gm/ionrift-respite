@@ -59,8 +59,8 @@ export class DowntimeBatchEngine {
         forageDC = 12,
         huntDC = 14,
         enforceBedroll = true,
-        enforceTent = true,
-        enforceMessKit = true,
+        _enforceTent = true,
+        _enforceMessKit = true,
         exhaustionResults = []
     } = {}) {
         const partySize = partyActors.length;

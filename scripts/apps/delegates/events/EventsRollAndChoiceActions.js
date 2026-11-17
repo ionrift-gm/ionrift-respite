@@ -1,11 +1,5 @@
-import { DecisionTreeResolver } from "../../../services/events/resolve/DecisionTreeResolver.js";
-import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
-import { countPoolEventsForTerrain, listPoolEventsForTerrain } from "../../../services/events/catalog/EventCatalogLoader.js";
-import { resolveNightWatchMode } from "./nightWatchMode.js";
-import { pickPoolEvent } from "../../events/AdHocEventDialogs.js";
 import {
     emitPhaseChanged,
-    emitTreeRollRequest,
     emitEventRollResult,
     emitCampRollResult,
     emitSubmissionUpdate,
@@ -14,11 +8,7 @@ import {
 } from "../../../services/socket/SocketController.js";
 import {
     executePlayerRoll,
-    rollForPlayer,
-    pickBestSkill,
-    SKILL_DISPLAY_NAMES,
-    waitForDiceSoNice,
-    disableRollButton
+    rollForPlayer
 } from "../../../services/ui/rollRequest/RollRequestManager.js";
 import { GrantLedger } from "../../../services/crafting/outcomes/GrantLedger.js";
 import { ItemOutcomeHandler } from "../../../services/crafting/outcomes/ItemOutcomeHandler.js";
@@ -28,8 +18,6 @@ import {
     refreshStationPortraitsFromChoices,
     resetStationOverlaysLocal
 } from "../../../services/camp/props/StationInteractionLayer.js";
-import { getPartyActors } from "../../../services/party/partyActors.js";
-import { MODULE_ID } from "../../../data/moduleId.js";
 import { lockSubmittedActivities } from "../../../services/rest/session/campProgressState.js";
 import { _refreshGmRestIndicator } from "../../../module.js";
 
@@ -472,7 +460,7 @@ export const eventsRollAndChoiceActions = {
     
     },
 
-    async onFinalize(event, target) {
+    async onFinalize(_event, _target) {
         const app = this._app;
 
         // Warn if there are ungranted party discoveries

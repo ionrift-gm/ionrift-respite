@@ -202,7 +202,7 @@ export class HitDieModifiers {
      * @param {string} bardName Bard or party context (reserved for future use)
      * @returns {Promise<{ total: number, formula: string }>}
      */
-    static async rollSongBonus(songDie, bardName) {
+    static async rollSongBonus(songDie, _bardName) {
         const roll = new Roll(songDie);
         await roll.evaluate();
         return { total: Number(roll.total) || 0, formula: roll.formula };

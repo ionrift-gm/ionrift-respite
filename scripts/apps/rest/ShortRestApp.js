@@ -1,12 +1,10 @@
 import { ShortRestContextAndSyncMethods } from "./ShortRestContextAndSync.js";
 import { ShortRestActionMethods } from "./ShortRestActions.js";
 import { Logger } from "../../utils/Logger.js";
-import { HitDieModifiers } from "../../services/rest/recovery/HitDieModifiers.js";
 import { HitDiceService } from "../../services/rest/recovery/HitDiceService.js";
 import { SpellSlotRecovery } from "../../services/rest/recovery/SpellSlotRecovery.js";
 import { confirmAbandonRest } from "./confirmAbandonRest.js";
 import { MODULE_ID } from "../../data/moduleId.js";
-import { isWorkbenchIdentifyUiEnabled, matchesShelterSpell } from "../../data/RestConstants.js";
 import {
     registerActiveShortRestApp,
     clearActiveShortRestApp,
@@ -19,7 +17,6 @@ import {
 } from "../../module.js";
 import { getPartyActors } from "../../services/party/partyActors.js";
 import { CalendarHandler } from "../../services/rest/session/CalendarHandler.js";
-import { SHORT_REST_STATE_SCHEMA } from "../../services/rest/session/restSessionSchemas.js";
 import {
     registerRestSessionApp,
     unregisterRestSessionApp,
@@ -28,11 +25,9 @@ import {
     emitRestSessionDelta,
     emitRestSessionResolved,
     emitRestSessionAbandoned,
-    emitRestSessionDismissed,
-    userControlsActor
+    emitRestSessionDismissed
 } from "../../services/rest/session/RestSessionSync.js";
 import * as RestAfkState from "../../services/rest/session/RestAfkState.js";
-import { pushAllStateToAdapters } from "../../services/afk/AfkBridgeService.js";
 
 /** World setting: when Song of Rest HP is applied. */
 const SONG_TIMING_KEY = "songOfRestTiming";
@@ -40,17 +35,12 @@ const SONG_TIMING_KEY = "songOfRestTiming";
 const MAX_VALUE_HD_KEY = "maxValueHitDice";
 /** Actor flag: pending Arcane/Natural Recovery selections for GM apply on rest complete. */
 const SPELL_RECOVERY_FLAG = "spellRecoveryPending";
-import { ImageResolver } from "../../utils/ImageResolver.js";
 import { WorkbenchDelegate } from "../delegates/crafting/WorkbenchDelegate.js";
 import {
     collectPartyIdentifyEmbedData,
     DetectMagicDelegate,
-    purgeDetectMagicRestArtifacts,
-    spawnDetectMagicCastRipple
+    purgeDetectMagicRestArtifacts
 } from "../delegates/crafting/DetectMagicDelegate.js";
-import { getShortRestRechargeLabels } from "../../services/rest/recovery/ShortRestRecharge.js";
-import { RestPresentationHelper } from "../../utils/RestPresentationHelper.js";
-import { scanEligibleChefs } from "../../services/meal/buffs/ChefFeat.js";
 import { setNativeShortRestUnsuppressed } from "../../services/rest/flow/NativeRestPass.js";
 import { BaseShortRestApp } from "./BaseShortRestApp.js";
 
@@ -559,7 +549,7 @@ export class ShortRestApp extends BaseShortRestApp {
     /**
      * GM completes the short rest: song and spell recovery, then native short rest, then close.
      */
-    static async #onCompleteShortRest(event, target) {
+    static async #onCompleteShortRest(_event, _target) {
         if (!this._isGM) return;
         if (this._finalizeShortRestBusy || this._completeShortRestBusy) return;
         this._completeShortRestBusy = true;
@@ -775,7 +765,7 @@ export class ShortRestApp extends BaseShortRestApp {
     /**
      * GM abandons the short rest without completing it.
      */
-    static async #onAbandonShortRest(event, target) {
+    static async #onAbandonShortRest(_event, _target) {
         if (!this._isGM) return;
 
         const proceed = await confirmAbandonRest({

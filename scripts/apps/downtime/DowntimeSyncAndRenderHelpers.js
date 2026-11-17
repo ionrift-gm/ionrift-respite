@@ -446,7 +446,7 @@ class DowntimeSyncAndRenderMixin {
         return this._encounterDraft;
     }
 
-    async _prepareContext(options) {
+    async _prepareContext(_options) {
         drainPendingRestSessionDeltas("downtime");
         const isGM = this._isGM;
         const party = getPartyActors();

@@ -4,7 +4,6 @@
  */
 
 import { SpoilageClock } from "./SpoilageClock.js";
-import { MODULE_ID } from "../../../data/moduleId.js";
 
 const GUARD_FLAG = "__ionriftRespiteSpoilageGuard";
 

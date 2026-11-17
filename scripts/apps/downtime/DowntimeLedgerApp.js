@@ -597,7 +597,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
     static #onSwitchTab(event, target) { return DowntimePlanningActions.onSwitchTab.call(this, event, target); }
     static #onSwitchWorkflow(event, target) { return DowntimePlanningActions.onSwitchWorkflow.call(this, event, target); }
     static async #onRollExhaustionSave(event, target) { return DowntimePlanningActions.onRollExhaustionSave.call(this, event, target); }
-    static #onToggleExamine(event, target) {
+    static #onToggleExamine(_event, _target) {
         this._holdWindowHeight();
         const actorId = this._selectedCharacterId;
         if (!actorId) return;

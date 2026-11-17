@@ -2,7 +2,6 @@ import { registerItemEnrichments, SETTING_KEYS, MENU_KEYS, ENRICHMENT_KEYS } fro
 import { EventBrowserApp } from "../../../apps/events/EventBrowserApp.js";
 import { ActivityConfigApp } from "../../../apps/crafting/ActivityConfigApp.js";
 import { RecoveryConfigApp } from "../../../apps/rest/RecoveryConfigApp.js";
-import { isComfortEnabled } from "../../camp/gear/ComfortCalculator.js";
 import { PlayerRestrictionsApp } from "../../../apps/rest/PlayerRestrictionsApp.js";
 import { RecipeEditorApp } from "../../../apps/crafting/RecipeEditorApp.js";
 import { ItemProvisionsApp } from "../../../apps/meal/ItemProvisionsApp.js";

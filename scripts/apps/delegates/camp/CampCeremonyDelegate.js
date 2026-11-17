@@ -3,30 +3,15 @@ import { CampCeremonyContextMethods } from "./CampCeremonyContextBuilder.js";
 import { Logger } from "../../../utils/Logger.js";
 import {
     CampGearScanner,
-    actorHasTinderbox,
-    countActorFirewood,
-    findConsumableFirewoodItem,
-    isActorFirewoodItem,
-    isFireCantripItem
+    isActorFirewoodItem
 } from "../../../services/camp/gear/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../../services/camp/fire/CampfireTokenLinker.js";
 import { logCampfireReconnect } from "../../../services/camp/fire/CampfireReconnectLog.js";
-import { ItemOutcomeHandler } from "../../../services/crafting/outcomes/ItemOutcomeHandler.js";
 import {
-    emitPhaseChanged,
-    emitCampLightFire,
-    emitActivityFireLevelRequest,
-    emitSocketMessage
+    emitPhaseChanged
 } from "../../../services/socket/SocketController.js";
-import { isComfortEnabled, COMFORT_TIERS } from "../../../services/camp/gear/ComfortCalculator.js";
-import { buildCampCeremonyPhasePayload } from "../../../services/camp/gear/campCeremonySync.js";
+import { isComfortEnabled } from "../../../services/camp/gear/ComfortCalculator.js";
 import { isCampfireMinigameEnabled, isSimpleStationsMode, requiresMapCampFire } from "../../../services/rest/flow/RestProfileSettings.js";
-import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
-import { hasCampfirePlaced } from "../../../services/camp/props/CompoundCampPlacer.js";
-import { WEATHER_TABLE, SHELTER_SPELLS } from "../../../data/RestConstants.js";
-import { CampfireEmbed } from "../../camp/CampfireEmbed.js";
-import { getPartyActors } from "../../../services/party/partyActors.js";
-import { registerCampfireEmbed, clearCampfireEmbed } from "../../../module.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
 const FIRE_LEVELS = Object.freeze(["unlit", "embers", "campfire", "bonfire"]);

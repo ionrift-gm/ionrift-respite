@@ -16,16 +16,16 @@ export class SystemAdapter {
     get supportsShortRest() { return true; }
 
     /** @returns {{ value: number, max: number }} */
-    getHP(actor) { this._notImpl("getHP"); }
+    getHP(_actor) { this._notImpl("getHP"); }
 
     /** @returns {number} Character level */
-    getLevel(actor) { this._notImpl("getLevel"); }
+    getLevel(_actor) { this._notImpl("getLevel"); }
 
     /** @returns {number} Ability modifier for the given key (e.g. "str") */
-    getAbilityMod(actor, key) { this._notImpl("getAbilityMod"); }
+    getAbilityMod(_actor, _key) { this._notImpl("getAbilityMod"); }
 
     /** @returns {number} Proficiency bonus */
-    getProficiencyBonus(actor) { this._notImpl("getProficiencyBonus"); }
+    getProficiencyBonus(_actor) { this._notImpl("getProficiencyBonus"); }
 
     /**
      * Total saving throw bonus for a given save key.
@@ -34,7 +34,7 @@ export class SystemAdapter {
      * @param {string} saveKey
      * @returns {number}
      */
-    getSaveBonus(actor, saveKey) { this._notImpl("getSaveBonus"); }
+    getSaveBonus(_actor, _saveKey) { this._notImpl("getSaveBonus"); }
 
     /**
      * Translate a system-agnostic or DnD5e skill abbreviation into the
@@ -45,45 +45,45 @@ export class SystemAdapter {
     normalizeSkillKey(skillKey) { return skillKey; }
 
     /** @returns {number} Total skill modifier */
-    getSkillTotal(actor, skillKey) { this._notImpl("getSkillTotal"); }
+    getSkillTotal(_actor, _skillKey) { this._notImpl("getSkillTotal"); }
 
     /** @returns {boolean} Whether the actor is proficient in the skill */
-    isSkillProficient(actor, skillKey) { this._notImpl("isSkillProficient"); }
+    isSkillProficient(_actor, _skillKey) { this._notImpl("isSkillProficient"); }
 
     /** @returns {string[]} All skill keys the actor has */
-    getSkillKeys(actor) { this._notImpl("getSkillKeys"); }
+    getSkillKeys(_actor) { this._notImpl("getSkillKeys"); }
 
     /** @returns {{ current: number, max: number }} Hit dice or equivalent recovery resource */
-    getHitDice(actor) { this._notImpl("getHitDice"); }
+    getHitDice(_actor) { this._notImpl("getHitDice"); }
 
     /** @returns {boolean} Whether the actor has any spell slots or equivalent */
-    hasSpellSlots(actor) { this._notImpl("hasSpellSlots"); }
+    hasSpellSlots(_actor) { this._notImpl("hasSpellSlots"); }
 
     /** @returns {number} Exhaustion level (0-6 for 5e, or equivalent) */
-    getExhaustion(actor) { this._notImpl("getExhaustion"); }
+    getExhaustion(_actor) { this._notImpl("getExhaustion"); }
 
     /**
      * @param {string} name - item name to search (case-insensitive)
      * @returns {Object|null} The found item, or null
      */
-    findItemByName(actor, name) { this._notImpl("findItemByName"); }
+    findItemByName(_actor, _name) { this._notImpl("findItemByName"); }
 
     /** @returns {boolean} */
-    hasItemByName(actor, name) { this._notImpl("hasItemByName"); }
+    hasItemByName(_actor, _name) { this._notImpl("hasItemByName"); }
 
     /**
      * @returns {{ name: string, weight: string }|null}
      * weight is "light", "medium", or "heavy"
      */
-    getEquippedArmor(actor) { this._notImpl("getEquippedArmor"); }
+    getEquippedArmor(_actor) { this._notImpl("getEquippedArmor"); }
 
     /** @returns {boolean} Whether the actor is proficient with the given tool */
-    isToolProficient(actor, toolKey) { this._notImpl("isToolProficient"); }
+    isToolProficient(_actor, _toolKey) { this._notImpl("isToolProficient"); }
 
     /**
      * @returns {number} Gold pieces (or equivalent primary currency).
      */
-    getCurrency(actor) { this._notImpl("getCurrency"); }
+    getCurrency(_actor) { this._notImpl("getCurrency"); }
 
     /**
      * Deduct gold (or equivalent) from the actor.
@@ -91,10 +91,10 @@ export class SystemAdapter {
      * @param {number} amount
      * @returns {Promise}
      */
-    async deductCurrency(actor, amount) { this._notImpl("deductCurrency"); }
+    async deductCurrency(_actor, _amount) { this._notImpl("deductCurrency"); }
 
     /** @returns {Promise} */
-    async applyHPRestore(actor, amount) { this._notImpl("applyHPRestore"); }
+    async applyHPRestore(_actor, _amount) { this._notImpl("applyHPRestore"); }
 
     /**
      * Apply HP damage (reduce HP by amount, floor at 0).
@@ -109,10 +109,10 @@ export class SystemAdapter {
     }
 
     /** @returns {Promise} */
-    async applyHDRestore(actor, count) { this._notImpl("applyHDRestore"); }
+    async applyHDRestore(_actor, _count) { this._notImpl("applyHDRestore"); }
 
     /** @returns {Promise} */
-    async applyExhaustionDelta(actor, delta) { this._notImpl("applyExhaustionDelta"); }
+    async applyExhaustionDelta(_actor, _delta) { this._notImpl("applyExhaustionDelta"); }
 
     /**
      * Apply temporary HP to the actor. Only sets if new value exceeds current.
@@ -120,13 +120,13 @@ export class SystemAdapter {
      * @param {number} amount
      * @returns {Promise}
      */
-    async applyTempHP(actor, amount) { this._notImpl("applyTempHP"); }
+    async applyTempHP(_actor, _amount) { this._notImpl("applyTempHP"); }
 
     /** @returns {{ preShort: string|null, preLong: string|null, preCompleted: string|null }} */
     getRestHookNames() { this._notImpl("getRestHookNames"); }
 
     /** Mutate the system rest result to prevent default HP/HD recovery */
-    suppressDefaultRecovery(result) { this._notImpl("suppressDefaultRecovery"); }
+    suppressDefaultRecovery(_result) { this._notImpl("suppressDefaultRecovery"); }
 
     /**
      * Whether the system exposes hookable rest events that Respite can intercept.
@@ -141,7 +141,7 @@ export class SystemAdapter {
      * @param {"long"|"short"} restType
      * @returns {Promise}
      */
-    async triggerNativeRest(actor, restType) { this._notImpl("triggerNativeRest"); }
+    async triggerNativeRest(_actor, _restType) { this._notImpl("triggerNativeRest"); }
 
     /**
      * Build system-appropriate ActiveEffect changes for a buff type.
@@ -149,7 +149,7 @@ export class SystemAdapter {
      * @param {Object} params - buff-specific parameters
      * @returns {Object[]} Array of AE change objects { key, mode, value, priority }
      */
-    getActiveEffectChanges(buffType, params) { return []; }
+    getActiveEffectChanges(_buffType, _params) { return []; }
 
     /**
      * Remove activities that are incompatible with the current system.
@@ -164,7 +164,7 @@ export class SystemAdapter {
      * @param {Actor} actor
      * @returns {boolean}
      */
-    hasSpellbook(actor) { return false; }
+    hasSpellbook(_actor) { return false; }
 
     /**
      * Whether the actor is a spellcaster (has any spell slots or casting entries).
@@ -187,7 +187,7 @@ export class SystemAdapter {
      * @param {Actor} actor
      * @returns {string[]}
      */
-    getToolProficiencies(actor) { return []; }
+    getToolProficiencies(_actor) { return []; }
 
     /**
      * Returns cantrip names that can light a campfire.

@@ -1,48 +1,26 @@
-import { Logger } from "../../../../utils/Logger.js";
-import { CopySpellHandler } from "../../../../services/crafting/outcomes/CopySpellHandler.js";
 import { MealPhaseHandler } from "../../../../services/meal/phase/MealPhaseHandler.js";
 import { enqueueProvision } from "../../../../services/meal/buffs/MealBuffBeat.js";
 import {
     evaluateDayRations,
     rationSkipLines,
-    restTerrainMealRules,
-    restTerrainTag
+    restTerrainMealRules
 } from "../../../../services/meal/phase/RationNeed.js";
 import {
-    activateStationLayer,
     isStationLayerActive,
     refreshStationEmptyNoticeFade,
-    refreshStationDetectMagicGlow,
-    refreshStationMealPortraits,
-    refreshStationPortraitsFromChoices,
-    resetStationOverlaysLocal,
-    setStationPlayerState
+    refreshStationPortraitsFromChoices
 } from "../../../../services/camp/props/StationInteractionLayer.js";
 import {
-    refreshOpenStationDialog,
-    notifyStationMealChoicesUpdated,
-    StationActivityDialog
+    notifyStationMealChoicesUpdated
 } from "../../../camp/StationActivityDialog.js";
-import { CampfireMakeCampDialog } from "../../../camp/CampfireMakeCampDialog.js";
 import {
-    getStationsForTerrain,
-    buildPartyState,
-    isWorkbenchExamineUiEnabled,
-    getStationOfferedActivityIds,
-    inferCanvasStationForActivity
+    getStationOfferedActivityIds
 } from "../../../../data/RestConstants.js";
 import { isGearDeployed } from "../../../../services/camp/props/CompoundCampPlacer.js";
 import { isSimpleRestProfile, isSimpleStationsMode } from "../../../../services/rest/flow/RestProfileSettings.js";
 import { CraftingPickerApp } from "../../../crafting/CraftingPickerApp.js";
 import {
-    collectPartyIdentifyEmbedData,
-    computeCanShowDetectMagicScanButton,
-    computeCanTriggerDetectMagicScan
-} from "../../crafting/DetectMagicDelegate.js";
-import {
     emitRestSnapshot,
-    emitActivityChoice,
-    emitCopySpellProposal,
     emitSubmissionUpdate,
     emitSocketMessage
 } from "../../../../services/socket/SocketController.js";
@@ -50,8 +28,7 @@ import { getPartyActors } from "../../../../services/party/partyActors.js";
 import { _refreshGmRestIndicator, _refreshRejoinBar } from "../../../../module.js";
 import { _noteEngineFreePath } from "../../../rest/RestSetupApp.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
-import { activityFocusAfterCommit, publishCampProgress } from "../../../../services/rest/session/campProgressState.js";
-import { getFletchingTier, getFletchingTierLabel } from "../../../../services/crafting/settings/FletchingSettings.js";
+import { publishCampProgress } from "../../../../services/rest/session/campProgressState.js";
 
 export const ActivityStationsDetailMethods = {
     async attuneWorkbenchItemForActor(actorId, itemId) {

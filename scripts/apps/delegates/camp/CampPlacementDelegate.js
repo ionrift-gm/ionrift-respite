@@ -1,8 +1,5 @@
 import { CampPlacementFireMethods } from "./CampPlacementFireActions.js";
 import {
-    CampGearScanner,
-    actorHasTinderbox,
-    isActorFirewoodItem,
     isBedrollItem
 } from "../../../services/camp/gear/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../../services/camp/fire/CampfireTokenLinker.js";
@@ -10,14 +7,9 @@ import {
     placeCampfire,
     placeStation,
     placePlayerGear,
-    clearCampTokens,
     clearCampfireSite,
     relocateCampfireSite,
-    clearPlayerCampGear,
-    clearPlayerCampGearType,
-    clearSharedCampStation,
     hasCampfirePlaced,
-    canPlaceStation,
     validatePlayerGearDrop,
     validateStationEquipmentDrop,
     resetCampSession,
@@ -25,20 +17,15 @@ import {
     pickCampfirePitBaseTexture,
     getStationPlaceholderPreviewsForPitCenter
 } from "../../../services/camp/props/CompoundCampPlacer.js";
-import { closeOpenStationDialog, refreshOpenStationDialog } from "../../camp/StationActivityDialog.js";
+import { closeOpenStationDialog } from "../../camp/StationActivityDialog.js";
 import { CampfireMakeCampDialog } from "../../camp/CampfireMakeCampDialog.js";
 import { isComfortEnabled } from "../../../services/camp/gear/ComfortCalculator.js";
-import { isSimpleStationsMode, requiresMapCampFire } from "../../../services/rest/flow/RestProfileSettings.js";
+import { isSimpleStationsMode } from "../../../services/rest/flow/RestProfileSettings.js";
 import {
     emitPhaseChanged,
-    emitActivityFireLevelRequest,
-    emitCampFireLevelRequest,
-    emitActivityColdCampRequest,
-    emitCampColdCampRequest,
-    emitCampColdCampCommit,
-    emitCampGearPlace, emitCampGearPlaced, emitCampGearClearPlayer,
-    emitCampGearReclaim, emitCampStationPlace, emitCampStationPlaced,
-    emitCampStationReclaim, emitCampSceneCleared
+    emitCampGearPlace,
+    emitCampStationPlace,
+    emitCampStationPlaced
 } from "../../../services/socket/SocketController.js";
 import {
     activateStationLayer,
@@ -600,7 +587,7 @@ export class CampPlacementDelegate {
         return true;
     }
 
-    async onReclaimCampfire(event, target) {
+    async onReclaimCampfire(event, _target) {
         const app = this._app;
 
         event.preventDefault?.();

@@ -1,4 +1,3 @@
-import { MODULE_ID } from "../../data/moduleId.js";
 import { getPartyActors } from "../../services/party/partyActors.js";
 import { ImageResolver } from "../../utils/ImageResolver.js";
 import { DowntimeBatchEngine } from "../../services/downtime/DowntimeBatchEngine.js";
@@ -196,7 +195,7 @@ export class DowntimeResolutionActions {
         this.render();
     }
 
-    static async onToggleNightsVariant(event, target) {
+    static async onToggleNightsVariant(_event, _target) {
         if (!this._isGM) return;
         this._totalNights = this._totalNights === 1 ? 7 : 1;
         this._activePacingNight = 1;
@@ -231,7 +230,7 @@ export class DowntimeResolutionActions {
         this.render();
     }
 
-    static onNextPacingNight(event, target) {
+    static onNextPacingNight(_event, _target) {
         if (!this._isGM) return;
         const total = this._totalNights || (this._isGrittyLongRest ? 7 : 1);
         const maxStep = total + 1;
@@ -264,7 +263,7 @@ export class DowntimeResolutionActions {
         this.render();
     }
 
-    static onPreviousPacingNight(event, target) {
+    static onPreviousPacingNight(_event, _target) {
         if (!this._isGM) return;
         if (this._sendoffOpen) {
             this._sendoffOpen = false;
@@ -293,7 +292,7 @@ export class DowntimeResolutionActions {
         }
     }
 
-    static async onMinimizeForCombat(event, target) {
+    static async onMinimizeForCombat(_event, _target) {
         if (!this._isGM) return;
         this._awaitingCombat = true;
         this._saveSessionState();
@@ -303,7 +302,7 @@ export class DowntimeResolutionActions {
         this.close({ retainGmRestApp: true });
     }
 
-    static onCompleteCombatForNight(event, target) {
+    static onCompleteCombatForNight(_event, _target) {
         if (!this._isGM) return;
         this._completedCombatNights.add(this._activePacingNight);
         this._awaitingCombat = false;
@@ -349,7 +348,7 @@ export class DowntimeResolutionActions {
         this.render();
     }
 
-    static async onRollAllExhaustionSaves(event, target) {
+    static async onRollAllExhaustionSaves(_event, _target) {
         if (!this._isGM) return;
         const party = getPartyActors();
         for (const actor of party) {
@@ -363,7 +362,7 @@ export class DowntimeResolutionActions {
         this.render();
     }
 
-    static onWaiveAllExhaustionSaves(event, target) {
+    static onWaiveAllExhaustionSaves(_event, _target) {
         if (!this._isGM) return;
         const party = getPartyActors();
         for (const actor of party) {
@@ -417,7 +416,7 @@ export class DowntimeResolutionActions {
         this.render();
     }
 
-    static async onResolveDowntime(event, target) {
+    static async onResolveDowntime(_event, _target) {
         if (!this._isGM) return;
 
         const party = getPartyActors();

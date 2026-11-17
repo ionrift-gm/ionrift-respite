@@ -157,7 +157,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
     }
 
     /** @override */
-    async _prepareContext(options = {}) {
+    async _prepareContext(_options = {}) {
         const auditorItems = ProvisionsAuditScanner.scanWorldOverrides();
         const auditorCount = auditorItems.length;
 
@@ -380,7 +380,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         zone?.classList.add("drag-hover");
     }
 
-    _onDragLeave(event) {
+    _onDragLeave(_event) {
         const zone = this.element.querySelector(".respite-item-dropzone");
         zone?.classList.remove("drag-hover");
     }
@@ -446,7 +446,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         this.render({ force: true });
     }
 
-    static _onAuditorRefresh(event, target) {
+    static _onAuditorRefresh(_event, _target) {
         this.render({ force: true });
     }
 
@@ -507,7 +507,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         perishableFields.style.display = checked ? "flex" : "none";
     }
 
-    static async _onSaveAction(event, target) {
+    static async _onSaveAction(event, _target) {
         event.preventDefault();
         if (!this._item) return;
 
@@ -619,7 +619,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         }
     }
 
-    static async _onClearAction(event, target) {
+    static async _onClearAction(event, _target) {
         event.preventDefault();
         if (!this._item) return;
 

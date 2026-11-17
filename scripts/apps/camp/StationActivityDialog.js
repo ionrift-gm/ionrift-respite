@@ -4,41 +4,13 @@ import { Logger } from "../../utils/Logger.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 
 import {
-    ACTIVITY_ICONS,
-    applyActivityPortraitAssignments,
-    buildActivityAssignments,
     buildPartyState,
-    foldOrphanedAssignmentsOntoOther,
-    getActivityAdvisory,
-    DETECT_MAGIC_BTN_LABEL_GM,
-    DETECT_MAGIC_BTN_LABEL_PLAYER,
-    DETECT_MAGIC_BTN_LABEL_DISMISS,
-    DETECT_MAGIC_BTN_TITLE_GM,
     isWorkbenchExamineUiEnabled,
     isWorkbenchIdentifyUiEnabled
 } from "../../data/RestConstants.js";
 import { cardHintTakenBy } from "../../data/activityCardHint.js";
-import { buildActivityListItem, buildActivityDetailContext, promptArmorSleepIfNeeded } from "../crafting/ActivityDetailBuilder.js";
-import {
-    computeCanShowDetectMagicScanButton,
-    computeCanTriggerDetectMagicScan,
-    getDetectMagicPlayerAccessReason,
-    spawnDetectMagicCastRipple
-} from "../delegates/crafting/DetectMagicDelegate.js";
 import { canPlaceStation, actorHasBrewingTools } from "../../services/camp/props/CompoundCampPlacer.js";
-import { getPartyActors, getFoodBuffPartyActors } from "../../services/party/partyActors.js";
-import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
-import { formatMealBuffPreview } from "../../services/meal/buffs/MealBuffPresets.js";
-import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../../services/crafting/engine/CraftCommitSummary.js";
-import { buildCraftRecipeListContext } from "../../services/crafting/engine/CraftRecipeListBuilder.js";
-import { patchCraftingRiskUi } from "../../services/crafting/engine/CraftingRiskUiPatch.js";
-import { emitFeastServeRequest, emitActivityColdCampRequest, emitSocketMessage } from "../../services/socket/SocketController.js";
-import { CampGearScanner, isTinderboxItem, isActorFirewoodItem } from "../../services/camp/gear/CampGearScanner.js";
-import { isStationLayerActive } from "../../services/camp/props/StationInteractionLayer.js";
-import { guardEmbedItems } from "../../services/crafting/outcomes/MintGuard.js";
-import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
-import { ItemOutcomeHandler } from "../../services/crafting/outcomes/ItemOutcomeHandler.js";
-import { CraftingDelegate } from "../delegates/crafting/CraftingDelegate.js";
+import { getPartyActors } from "../../services/party/partyActors.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 

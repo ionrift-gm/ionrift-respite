@@ -454,7 +454,7 @@ export async function registerReadyTokenAndResumeFlow(ctx) {
     }
 
     // When combat ends and a rest is awaiting combat resolution, resume the rest flow
-    Hooks.on("deleteCombat", (combat, options, userId) => {
+    Hooks.on("deleteCombat", (_combat, _options, _userId) => {
         if (getActiveRestSetupApp()?._awaitingCombat) {
             getActiveRestSetupApp()._awaitingCombat = false;
             getActiveRestSetupApp()._combatAcknowledged = true;
@@ -499,7 +499,7 @@ export function registerDnd5eRestHooks(ctx) {
      * GMs can always rest normally. Players see a notification
      * directing them to the GM-managed Respite flow.
      */
-    function _blockPlayerRest(actor, config) {
+    function _blockPlayerRest(_actor, _config) {
         if (game.user.isGM) return true;
         if (!game.settings.get(MODULE_ID, "interceptRests")) return true;
     

@@ -12,14 +12,8 @@ import { ItemClassifier } from "../../../services/party/ItemClassifier.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../../services/camp/props/StationInteractionLayer.js";
 import { stampDeprivationExhaustionFloor } from "../../../services/meal/phase/MealExhaustionGuard.js";
-import { CampGearScanner } from "../../../services/camp/gear/CampGearScanner.js";
-import { RestLedger } from "../../../services/rest/flow/RestLedger.js";
-import { SKILL_NAMES } from "../../../data/RestConstants.js";
-import { boostComfort, fireComfortDelta } from "../../../services/camp/gear/ComfortCalculator.js";
-import { notifyStationMealChoicesUpdated } from "../../camp/StationActivityDialog.js";
 import { isTrailerFilmingMode as _isTrailerFilmingMode } from "../rest/layout/RestWindowLayout.js";
-import { emitPhaseChanged, emitSocketMessage } from "../../../services/socket/SocketController.js";
-import { RestSetupApp } from "../../rest/RestSetupApp.js";
+import { emitSocketMessage } from "../../../services/socket/SocketController.js";
 import { presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 
 export class MealDelegate {
@@ -165,7 +159,7 @@ export class MealDelegate {
         app.render();
     }
 
-    async onConsumeMealDay(event, target) {
+    async onConsumeMealDay(_event, _target) {
         const app = this._app;
         if (!app._mealChoices) app._mealChoices = new Map();
         const characterIds = app._isGM
@@ -404,7 +398,7 @@ export class MealDelegate {
         ui.notifications.info(game.i18n.localize("ionrift-respite.mealDelegate.choicesSubmitted"));
     }
 
-        async onSubmitMealChoices(event, target) {
+        async onSubmitMealChoices(_event, _target) {
         const app = this._app;
         if (app._isGM) return;
 
@@ -750,7 +744,7 @@ export class MealDelegate {
         await app._mealBuffs.continueAfterMeals();
     }
 
-        async onSkipPendingSaves(event, target) {
+        async onSkipPendingSaves(_event, _target) {
         const app = this._app;
         if (!app._pendingDehydrationSaves?.length) return;
 

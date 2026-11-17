@@ -6,7 +6,7 @@ export class CopySpellDelegate {
         this._app = app;
     }
 
-    onApprove(event, target) {
+    onApprove(_event, _target) {
         const app = this._app;
         if (!app._copySpellProposal) return;
         CopySpellHandler.approveProposal(app._copySpellProposal);
@@ -14,36 +14,36 @@ export class CopySpellDelegate {
         app.render();
     }
 
-    onDecline(event, target) {
+    onDecline(_event, _target) {
         const app = this._app;
         if (!app._copySpellProposal) return;
         CopySpellHandler.declineProposal(app._copySpellProposal, app);
     }
 
-    async onProcessGm(event, target) {
+    async onProcessGm(_event, _target) {
         if (!game.user.isGM) return;
         await CopySpellHandler.processGmProposal(this._app);
         await this._app._saveRestState();
     }
 
-    async onDismiss(event, target) {
+    async onDismiss(_event, _target) {
         if (!game.user.isGM) return;
         CopySpellHandler.clearGmProposal(this._app);
         await this._app._saveRestState();
     }
 
-    onResendRoll(event, target) {
+    onResendRoll(_event, _target) {
         if (!game.user.isGM) return;
         CopySpellHandler.resendRollPrompt(this._app);
     }
 
-    async onGmFallback(event, target) {
+    async onGmFallback(_event, _target) {
         if (!game.user.isGM) return;
         await CopySpellHandler.gmRollFallback(this._app);
         await this._app._saveRestState();
     }
 
-    async onRollArcana(event, target) {
+    async onRollArcana(_event, _target) {
         if (game.user.isGM) return;
         await CopySpellHandler.executePlayerRoll(this._app);
     }
