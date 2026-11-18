@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.4.3] - 2026-11-18
+
+### Fixed
+- Serving a cooked meal to the party from the Cooking Station now refreshes meal choices and completes without error.
+- Submitting downtime choices from the player Activity Picker no longer fails when validating follow-up selections.
+- Switching to the Fire tab in Theatre of the Mind camp mode no longer errors when checking campfire settings.
+- Pack meal-buff overlays now load their handlers without error.
+- Fixed stray whitespace in the workbench identify panel.
+
 ## [4.4.2] - 2026-11-16
 
 ### Added
