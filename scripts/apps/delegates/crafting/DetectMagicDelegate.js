@@ -115,6 +115,95 @@ function actorSpellItems(actor) {
 }
 
 /**
+ * On PF2e prepared spellcasting entries (Wizard, Cleric, Druid, Witch), a cantrip in the
+ * spellbook is only castable when slotted into `slots.slot0.prepared`. Spontaneous, innate,
+ * focus, and simplified test actors without `slots.slot0.prepared` remain available.
+ * @param {Actor} actor
+ * @param {Item} spellItem
+ * @returns {boolean}
+ */
+function isPf2eCantripPrepared(actor, spellItem) {
+    const locId = spellItem?.system?.location?.value;
+    if (!locId) return true;
+    const entry = actor?.items?.get?.(locId)
+        ?? (Array.isArray(actor?.items) ? actor.items.find(x => x?.id === locId) : null);
+    if (!entry || entry.system?.prepared?.value !== "prepared") return true;
+    const slot0Prep = entry.system?.slots?.slot0?.prepared;
+    if (!slot0Prep || typeof slot0Prep !== "object") return true;
+    const preparedList = Array.isArray(slot0Prep) ? slot0Prep : Object.values(slot0Prep);
+    if (preparedList.length === 0) return true;
+    return preparedList.some(slot => slot?.id === spellItem.id);
+}
+
+/**
+ * Determines a PF2e actor's heightened Detect Magic cantrip rank and capability tier.
+ * Cantrips automatically heighten to half the character's level rounded up:
+ * - Rank 1-2 (Level 1-4): "presence" (presence or absence of magic only; no item highlight)
+ * - Rank 3   (Level 5-6): "rank"     (learns rank/level of strongest magic; no item highlight)
+ * - Rank 4+  (Level 7+):  "pinpoint" (pinpoints unidentified magic items in inventory)
+ *
+ * @param {Actor|null} actor
+ * @returns {{ rank: number, level: number, capability: "presence"|"rank"|"pinpoint" }}
+ */
+export function getPf2eDetectMagicCastRank(actor) {
+    const access = getNamedSpellAccess(actor, "detect magic");
+    const canCast = access.state === "available";
+    const actorLevel = Math.max(1, Number(actor?.level ?? actor?.system?.details?.level?.value ?? 1) || 1);
+    const autoRank = Math.max(1, Math.ceil(actorLevel / 2));
+
+    let maxExplicit = 0;
+    for (const sp of actorSpellItems(actor)) {
+        if (!spellItemMatchesName(sp, "detect magic")) continue;
+        const explicit = Number(
+            sp?.rank
+            ?? sp?.system?.location?.heightenedLevel
+            ?? sp?.system?.level?.value
+            ?? 0
+        );
+        if (Number.isFinite(explicit) && explicit > maxExplicit) {
+            maxExplicit = explicit;
+        }
+    }
+    const rank = Math.max(autoRank, maxExplicit || 1);
+    const capability = rank >= 4 ? "pinpoint" : (rank === 3 ? "rank" : "presence");
+    return { canCast, state: access.state, rank, level: actorLevel, capability };
+}
+
+/**
+ * Resolves which party member casts Detect Magic on PF2e and at what heightened rank.
+ * If `preferredActorId` has Detect Magic available, uses that actor so switching portraits
+ * lets a specific caster's rank govern the scan; otherwise selects the highest-rank party caster.
+ *
+ * @param {Actor[]} partyActors
+ * @param {string|null} [preferredActorId]
+ * @param {{ requireOwner?: boolean }} [opts]
+ * @returns {{ actor: Actor, caster: Actor, rank: number, castRank: number, level: number, capability: "presence"|"rank"|"pinpoint" }|null}
+ */
+export function resolvePf2eDetectMagicCaster(partyActors, preferredActorId = null, opts = {}) {
+    const requireOwner = !!opts.requireOwner;
+    const eligible = [];
+    for (const actor of partyActors ?? []) {
+        if (!actor) continue;
+        if (requireOwner && !actor.isOwner) continue;
+        const rankInfo = getPf2eDetectMagicCastRank(actor);
+        if (!rankInfo.canCast) continue;
+        eligible.push({
+            actor,
+            caster: actor,
+            castRank: rankInfo.rank,
+            ...rankInfo
+        });
+    }
+    if (!eligible.length) return null;
+    if (preferredActorId) {
+        const preferred = eligible.find(e => e.actor.id === preferredActorId);
+        if (preferred) return preferred;
+    }
+    eligible.sort((a, b) => (b.rank - a.rank) || (b.level - a.level));
+    return eligible[0];
+}
+
+/**
  * Per-actor access for Identify / Detect Magic.
  * @param {Actor} actor
  * @param {string} spellNameLower
@@ -158,6 +247,9 @@ export function getNamedSpellAccess(actor, spellNameLower) {
             ? (isPf2eCantrip ? 0 : (i.system?.level?.value ?? 1))
             : (i.system?.level ?? 0);
         if (level === 0 || isPf2eCantrip) {
+            if (isPf2eCantrip && Pf2eWorkbenchExamineService.isPf2e() && !isPf2eCantripPrepared(actor, i)) {
+                continue;
+            }
             return {
                 state: "available",
                 badge: "",
@@ -510,8 +602,14 @@ export function collectPartyIdentifyEmbedData(partyActors, options = {}) {
     return { unidentifiedItems, identifyCasters, detectMagicCasters };
 }
 
-/** GM always; players only with an owned Detect Magic caster. */
+/**
+ * D&D 5e: GM always; players only with an owned Detect Magic caster.
+ * PF2e: requires an actual party Detect Magic caster (its behaviour depends on who casts it and at what rank).
+ */
 export function computeCanTriggerDetectMagicScan(partyActors) {
+    if (Pf2eWorkbenchExamineService.isPf2e()) {
+        return Boolean(resolvePf2eDetectMagicCaster(partyActors, null, { requireOwner: !game.user?.isGM }));
+    }
     if (game.user?.isGM) return true;
     const { detectMagicCasters } = collectPartyIdentifyEmbedData(partyActors);
     if (!detectMagicCasters.length) return false;
@@ -519,7 +617,7 @@ export function computeCanTriggerDetectMagicScan(partyActors) {
     return partyActors.some(a => ids.has(a.id) && a.isOwner);
 }
 
-/** GM always; players only when a controllable caster exists. */
+/** GM always sees the button (disabled on PF2e if nobody has Detect Magic); players when controllable. */
 export function computeCanShowDetectMagicScanButton(partyActors) {
     if (game.user?.isGM) return true;
     return computeCanTriggerDetectMagicScan(partyActors);
@@ -527,10 +625,10 @@ export function computeCanShowDetectMagicScanButton(partyActors) {
 
 
 export function getDetectMagicPlayerAccessReason(partyActors) {
-    if (game.user?.isGM) return null;
+    if (!Pf2eWorkbenchExamineService.isPf2e() && game.user?.isGM) return null;
     let blockedCaption = null;
     for (const actor of partyActors) {
-        if (!actor.isOwner) continue;
+        if (!game.user?.isGM && !actor.isOwner) continue;
         const access = getNamedSpellAccess(actor, "detect magic");
         if (access.state === "available") return access.caption;
         if (!blockedCaption) blockedCaption = access.caption;
@@ -545,6 +643,15 @@ export function getDetectMagicPlayerAccessReason(partyActors) {
  * @returns {string}
  */
 export function getDetectMagicDisabledTooltip(partyActors, focusActor = null) {
+    if (Pf2eWorkbenchExamineService.isPf2e()) {
+        const unprepared = (partyActors ?? []).find(
+            a => (game.user?.isGM || a.isOwner) && getNamedSpellAccess(a, "detect magic").state === "unprepared"
+        );
+        if (unprepared) {
+            return `${unprepared.name} has Detect Magic in their spellbook, though it is not prepared.`;
+        }
+        return game.i18n.localize("ionrift-respite.detectMagicDelegate.nobodyHasDetectMagic");
+    }
     if (game.user?.isGM) return "";
     const actor = focusActor
         || partyActors.find(a => a.isOwner && getNamedSpellAccess(a, "detect magic").state !== "unavailable")
@@ -614,9 +721,10 @@ export class DetectMagicDelegate {
         const skipSave = !!opts.skipSave;
         void purgeDetectMagicRestArtifacts(this._resolvePartyActors());
         this._app._magicScanResults = null;
+        this._app._magicScanMeta = null;
         this._app._magicScanComplete = false;
         this._app._workbench?.clearAll();
-    notifyDetectMagicScanCleared();
+        notifyDetectMagicScanCleared();
         if (game.user?.isGM) {
             emitDetectMagicScanCleared();
             if (!skipSave) {
@@ -636,7 +744,8 @@ export class DetectMagicDelegate {
         emitDetectMagicScanBroadcast({
             results: this._app._magicScanResults ?? [],
             partyActorIds,
-            magicScanComplete: true
+            magicScanComplete: true,
+            scanMeta: this._app._magicScanMeta ?? null
         });
         notifyDetectMagicScanApplied(this._app, partyActorIds);
         if (game.user.isGM) {
@@ -660,13 +769,26 @@ export class DetectMagicDelegate {
         await purgeDetectMagicRestArtifacts(partyActors);
         if (!clearUi || !this.scanComplete) return;
         this._app._magicScanResults = null;
+        this._app._magicScanMeta = null;
         this._app._magicScanComplete = false;
-    notifyDetectMagicScanCleared();
+        notifyDetectMagicScanCleared();
     }
 
-    async runScan(getPartyActors) {
+    async castDetectMagic(actorId, getPartyActors) {
+        if (this._app._magicScanComplete) {
+            this.clearScanSession();
+            this._app.render?.();
+            return;
+        }
+        await this.runScan(getPartyActors, { preferredCasterId: actorId });
+    }
+
+    async runScan(getPartyActors, opts = {}) {
         const party = getPartyActors();
-        if (!game.user?.isGM && !computeCanTriggerDetectMagicScan(party)) {
+        const isPf2e = Pf2eWorkbenchExamineService.isPf2e();
+        const preferredCasterId = opts.preferredCasterId ?? this._app._selectedCharacterId ?? null;
+
+        if ((!game.user?.isGM || isPf2e) && !computeCanTriggerDetectMagicScan(party)) {
             const { detectMagicCasters } = collectPartyIdentifyEmbedData(party);
             ui.notifications.warn(
                 detectMagicCasters.length
@@ -676,8 +798,24 @@ export class DetectMagicDelegate {
             return;
         }
 
-    // Players: invoke the spell on their character so animations and SFX fire normally.
-        if (!game.user?.isGM) {
+        let scanMeta = null;
+        if (isPf2e) {
+            const casterInfo = resolvePf2eDetectMagicCaster(party, preferredCasterId, {
+                requireOwner: !game.user?.isGM
+            });
+            if (!casterInfo) {
+                ui.notifications.warn(game.i18n.localize("ionrift-respite.detectMagicDelegate.nobodyHasDetectMagic"));
+                return;
+            }
+            scanMeta = {
+                systemId: "pf2e",
+                casterId: casterInfo.actor.id,
+                casterName: casterInfo.actor.name,
+                castRank: casterInfo.rank,
+                pf2eCapability: casterInfo.capability
+            };
+        } else if (!game.user?.isGM) {
+            // D&D 5e players: invoke the spell on their character so animations and SFX fire normally.
             const caster = party.find(a => a.isOwner && actorHasNamedSpellAccess(a, "detect magic"));
             if (caster) {
                 const spellItem = caster.items.find(
@@ -695,10 +833,18 @@ export class DetectMagicDelegate {
 
         const { DetectMagicScanner } = await import("../../../services/crafting/detectMagic/DetectMagicScanner.js");
         const actorIds = party.map(a => a.id);
-        const results = DetectMagicScanner.scanParty(actorIds);
+        const results = DetectMagicScanner.scanParty(actorIds, scanMeta);
         this._app._magicScanResults = results;
+        this._app._magicScanMeta = scanMeta;
         this._app._magicScanComplete = true;
-        if (results.length === 0) {
+        if (isPf2e) {
+            const hasUnidMagic = results.some(block =>
+                (block.items ?? []).some(it => !it.identified && !(it.isDeceptiveIllusion && Number(it.rank || 1) >= scanMeta.castRank))
+            );
+            if (!hasUnidMagic) {
+                ui.notifications.info(`${scanMeta.casterName} casts Detect Magic (Rank ${scanMeta.castRank}): no unfamiliar magical auras detected.`);
+            }
+        } else if (results.length === 0) {
             ui.notifications.info(game.i18n.localize("ionrift-respite.detectMagicDelegate.noMagicalItemsDetected"));
         }
         this._app.render();

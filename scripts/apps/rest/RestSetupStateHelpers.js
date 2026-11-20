@@ -6,7 +6,7 @@ import { hasCampfirePlaced } from "../../services/camp/props/CompoundCampPlacer.
 import { GatherYieldService } from "../../services/rest/forage/GatherYieldService.js";
 import { dailyChoiceStatus, publishCampProgress } from "../../services/rest/session/campProgressState.js";
 import { ForageActivityValidator } from "../../services/travel/forage/ForageActivityValidator.js";
-import { isForagingEnabled, isHuntingEnabled } from "../../services/travel/settings/TravelSettings.js";
+import { canGatherInTerrain } from "../../services/travel/settings/TravelSettings.js";
 import { TerrainRegistry } from "../../services/events/resolve/TerrainRegistry.js";
 import { isComfortEnabled } from "../../services/camp/gear/ComfortCalculator.js";
 import { buildCampConditionsBar } from "../../services/camp/gear/CampConditionsBarBuilder.js";
@@ -769,7 +769,7 @@ _hydrateTotmCraftStateFromRest(characterId, profession) {
         const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
         const setupSafeHaven = terrainTag === "tavern"
             || Boolean(this._effectiveSafeRestSpot?.() ?? this._engine?.safeRestSpot ?? this._engine?.isSafeHaven);
-        const gatherOn = !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled());
+        const gatherOn = canGatherInTerrain(terrainTag, { safeRestSpot: setupSafeHaven });
         const { gatherDone, activityDone } = dailyChoiceStatus(this, actorId, gatherOn);
         let trackFoodOn = false;
         let sustenanceDone = false;

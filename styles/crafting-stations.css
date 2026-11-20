@@ -7117,6 +7117,35 @@
     padding: 0.25rem 0;
 }
 
+.wb-pf2e-dm-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.38rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.wb-pf2e-dm-banner i {
+    font-size: 0.75rem;
+    opacity: 0.85;
+    flex-shrink: 0;
+}
+
+.wb-pf2e-dm-banner.is-present {
+    background: rgba(168, 85, 247, 0.12);
+    border-color: rgba(192, 132, 252, 0.42);
+    color: #f3e8ff;
+}
+
+.wb-pf2e-dm-banner.is-present i {
+    color: #c084fc;
+}
+
 .wb-pf2e-skill-chips {
     display: flex;
     flex-wrap: wrap;

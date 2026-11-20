@@ -546,7 +546,11 @@ export class PF2eAdapter extends SystemAdapter {
 
         try {
             if (game.pf2e?.actions?.restForTheNight) {
-                await game.pf2e.actions.restForTheNight({ actors: actor, skipDialog: true });
+                await game.pf2e.actions.restForTheNight({
+                    actors: actor,
+                    skipDialog: true,
+                    ionriftInternalRest: true
+                });
             }
         } catch (err) {
             console.warn("ionrift-respite | PF2eAdapter: restForTheNight() failed:", err);

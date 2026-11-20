@@ -6,7 +6,7 @@ import { isSimpleStationsMode } from "../services/rest/flow/RestProfileSettings.
 import { isFletchingEnabled } from "../services/crafting/settings/FletchingSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/crafting/settings/TrainingSettings.js";
 import { isPrayMeditateEnabled } from "../services/rest/flow/ActivityResolver.js";
-import { isForagingEnabled, isHuntingEnabled } from "../services/travel/settings/TravelSettings.js";
+import { isForagingEnabled, isHuntingEnabled, getTerrainGatherAvailability } from "../services/travel/settings/TravelSettings.js";
 import { MODULE_ID } from "./moduleId.js";
 import { clipCardHintName } from "./activityCardHint.js";
 
@@ -455,6 +455,10 @@ export function getStationsForTerrain(terrainTag, safeRestSpot = false, options 
         }
     }
 
+    const { canForage, canHunt } = safeRestSpot
+        ? { canForage: false, canHunt: false }
+        : getTerrainGatherAvailability(terrainTag);
+
     // Second pass: build adjusted station list.
     const result = [];
     for (const station of CAMP_STATIONS) {
@@ -464,8 +468,18 @@ export function getStationsForTerrain(terrainTag, safeRestSpot = false, options 
         let label = station.terrainLabel?.[terrainTag] ?? station.label;
         let activities = [...(station.activities ?? [])];
         let tagline = station.tagline;
-        if ((isTavern || safeRestSpot) && station.id === "bedroll") {
-            activities = activities.filter(id => id !== "act_rest_fully");
+        if (station.id === "bedroll") {
+            if (isTavern || safeRestSpot) {
+                activities = activities.filter(id => id !== "act_rest_fully");
+            }
+            if (!canForage) {
+                activities = activities.filter(id => id !== "act_forage");
+                tagline = tagline.replace(/,\s*forage/i, "");
+            }
+            if (!canHunt) {
+                activities = activities.filter(id => id !== "act_hunt");
+                tagline = tagline.replace(/,\s*hunt/i, "");
+            }
         }
         if (safeRestSpot && station.id === "weapon_rack") {
             label = "Supply Table";

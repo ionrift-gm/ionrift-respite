@@ -343,15 +343,17 @@ export function dispatch(data, ctx) {
 
         case SOCKET_TYPES.DETECT_MAGIC_SCAN_BROADCAST: {
             const results = data.results ?? [];
+            const scanMeta = data.scanMeta ?? null;
             const partyActorIds = data.partyActorIds ?? [];
             const dmApp = ctx.activeRestSetupApp ?? ctx.activePlayerRestApp ?? ctx.activeShortRestApp;
             if (dmApp) {
                 dmApp._magicScanResults = results;
+                dmApp._magicScanMeta = scanMeta;
                 dmApp._magicScanComplete = !!data.magicScanComplete;
                 if (dmApp.rendered) void dmApp.render(false);
             }
             notifyDetectMagicScanApplied(
-                { _magicScanResults: results, _magicScanComplete: !!data.magicScanComplete },
+                { _magicScanResults: results, _magicScanMeta: scanMeta, _magicScanComplete: !!data.magicScanComplete },
                 partyActorIds
             );
             break;
@@ -361,6 +363,7 @@ export function dispatch(data, ctx) {
             const clrApp = ctx.activeRestSetupApp ?? ctx.activePlayerRestApp ?? ctx.activeShortRestApp;
             if (clrApp) {
                 clrApp._magicScanResults = null;
+                clrApp._magicScanMeta = null;
                 clrApp._magicScanComplete = false;
                 clrApp._workbenchIdentifyStaging?.clear();
                 clrApp._workbenchIdentifyAcknowledge?.clear();

@@ -5,7 +5,8 @@ import { areEncountersEnabled } from "../../../services/rest/flow/ActivityEligib
 import {
     isForagingEnabled,
     isHuntingEnabled,
-    isProfessionActivityEnabled
+    isProfessionActivityEnabled,
+    getTerrainGatherAvailability
 } from "../../../services/travel/settings/TravelSettings.js";
 import { ItemOutcomeHandler } from "../../../services/crafting/outcomes/ItemOutcomeHandler.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
@@ -55,7 +56,7 @@ export class CampLogisticsDelegate {
 
     /* ── Context injection ── */
 
-    static computeVisibilityFlags({ trackFood = null } = {}) {
+    static computeVisibilityFlags({ trackFood = null, terrainTag = null } = {}) {
         let foodOn = trackFood;
         if (foodOn === null || foodOn === undefined) {
             try {
@@ -65,8 +66,9 @@ export class CampLogisticsDelegate {
                 foodOn = true;
             }
         }
-        const showForage = isForagingEnabled();
-        const showHunt = isHuntingEnabled();
+        const terrainGather = terrainTag ? getTerrainGatherAvailability(terrainTag) : null;
+        const showForage = terrainGather ? terrainGather.canForage : isForagingEnabled();
+        const showHunt = terrainGather ? terrainGather.canHunt : isHuntingEnabled();
         const showFood = Boolean(foodOn);
         const showGear = isComfortEnabled();
         const showFirewood = showGear || areEncountersEnabled() || isProfessionActivityEnabled({ category: "profession" });
@@ -83,7 +85,10 @@ export class CampLogisticsDelegate {
 
     /** Merge logistics context properties into the template data object. */
     mergeContext(ctx) {
-        const flags = CampLogisticsDelegate.computeVisibilityFlags({ trackFood: ctx.trackFood });
+        const flags = CampLogisticsDelegate.computeVisibilityFlags({
+            trackFood: ctx.trackFood,
+            terrainTag: ctx.selectedTerrain ?? ctx.terrainTag ?? null
+        });
         if (flags.hideLogisticsButton && this._drawerOpen) {
             this._drawerOpen = false;
         }
@@ -161,14 +166,14 @@ export class CampLogisticsDelegate {
             await ItemOutcomeHandler.grantItemsToActor(recipient, [{
                 name: "Kindling",
                 type: "loot",
-                img: "icons/commodities/wood/wood-pile-brown.webp",
+                img: "icons/commodities/wood/kindling-sticks-brown.webp",
                 quantity: qty,
                 system: {
                     quantity: qty,
-                    description: { value: "Dry kindling and firewood gathered or salvaged for camp fuel." }
+                    description: { value: "<p>A bundle of dry twigs</p>" }
                 },
                 flags: {
-                    [MODULE_ID]: { firewoodType: "kindling" }
+                    [MODULE_ID]: { itemRef: "kindling", category: "camp_fuel", firewoodType: "kindling" }
                 }
             }]);
 

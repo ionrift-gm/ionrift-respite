@@ -28,6 +28,8 @@ const DM_RUN_CLASSES = ["only", "start", "mid", "end"];
 let _dmGlowSessionActive = false;
 /** @type {Set<string>} */
 const _dmGlowPartyActorIds = new Set();
+/** @type {{ systemId?: string|null, casterId?: string|null, casterName?: string|null, castRank?: number|null, pf2eCapability?: string|null }|null} */
+let _dmGlowScanMeta = null;
 
 /** @type {Map<string, ReturnType<typeof setTimeout>>} */
 const _dmGlowRefreshTimers = new Map();
@@ -37,6 +39,7 @@ const INV_TAB_SCHOOL_ATTR = "data-ionrift-dm-tab-school";
 
 /** Remove legacy body halos from older builds (tab highlight is CSS-only now). */
 function stripLegacyInvTabHalos() {
+    if (typeof document === "undefined") return;
     for (const el of document.querySelectorAll("[data-ionrift-dm-inv-halo]")) {
         el.remove();
     }
@@ -47,11 +50,23 @@ function stripLegacyInvTabHalos() {
 }
 
 function stripAllDetectMagicInventoryTabGlows() {
+    if (typeof document === "undefined") return;
     stripLegacyInvTabHalos();
-    for (const el of document.querySelectorAll(`a.${INV_TAB_GLOW_CLASS}`)) {
+    for (const el of document.querySelectorAll(`a.${INV_TAB_GLOW_CLASS}, .${INV_TAB_GLOW_CLASS}`)) {
         el.classList.remove(INV_TAB_GLOW_CLASS);
         el.removeAttribute(INV_TAB_SCHOOL_ATTR);
+        restoreTabTooltip(el);
     }
+}
+
+function restoreTabTooltip(tab) {
+    if (!tab?.dataset || tab.dataset.ionriftDmOrigTooltip === undefined) return;
+    if (tab.dataset.ionriftDmOrigTooltip) {
+        tab.setAttribute("data-tooltip", tab.dataset.ionriftDmOrigTooltip);
+    } else {
+        tab.removeAttribute("data-tooltip");
+    }
+    delete tab.dataset.ionriftDmOrigTooltip;
 }
 
 /** @type {DetectMagicInventoryGlowAdapter|null} */
@@ -85,14 +100,117 @@ const builtinAdapter = {
 };
 
 /**
+ * Computes the live Detect Magic sheet glow state for an actor.
+ *
+ * Strict PF2e Rank Gating (matches Tripwire's exploration Detect Magic):
+ * - Only UNIDENTIFIED magical items trigger camp Detect Magic glow on PF2e
+ *   (already-identified party magic items do not clutter the sheet).
+ * - Rank 1-2 (`presence`, Caster Level 1-4): `tabGlow: true`, `rowGlowMap: empty`
+ *   (player knows unfamiliar magic radiates from the pack, not which item).
+ * - Rank 3 (`rank`, Caster Level 5-6): `tabGlow: true` with strongest Rank/Level
+ *   in tooltip, `rowGlowMap: empty` (still cannot pinpoint the item).
+ * - Rank 4+ (`pinpoint`, Caster Level 7+): `tabGlow: true`, `rowGlowMap` populated
+ *   with unidentified magical item rows.
+ *
+ * @param {string} actorId
+ * @param {object|null} [metaOverride]
+ * @returns {{ active: boolean, mode: "none"|"tab-only"|"pinpoint", tabGlow: boolean, tabSchool: string|null, tabTooltip: string, rowGlowMap: Map<string, string>, strongestRank: number|null, strongestLevel: number|null }}
+ */
+export function computeActorDetectMagicGlowState(actorId, metaOverride = null) {
+    const empty = {
+        active: false,
+        mode: "none",
+        tabGlow: false,
+        tabSchool: null,
+        tabTooltip: "",
+        rowGlowMap: new Map(),
+        strongestRank: null,
+        strongestLevel: null
+    };
+    if (!actorId) return empty;
+    const meta = metaOverride ?? _dmGlowScanMeta;
+    const systemId = meta?.systemId ?? (typeof game !== "undefined" ? game?.system?.id : null) ?? "dnd5e";
+
+    if (systemId === "pf2e") {
+        if (!_dmGlowSessionActive && !metaOverride) return empty;
+        if (!metaOverride && !_dmGlowPartyActorIds.has(actorId)) return empty;
+        const actor = game?.actors?.get?.(actorId);
+        if (!actor) return empty;
+
+        const castRank = Math.max(1, Number(meta?.castRank) || 1);
+        const capability = meta?.pf2eCapability
+            ?? (castRank >= 4 ? "pinpoint" : (castRank === 3 ? "rank" : "presence"));
+        const casterLabel = meta?.casterName ? ` · ${meta.casterName}` : "";
+
+        const unidMagic = DetectMagicScanner.collectAllMagicItems(actor).filter(it => {
+            if (it.identified) return false;
+            if (it.isDeceptiveIllusion && Number(it.rank || 1) >= castRank) return false;
+            return true;
+        });
+
+        if (unidMagic.length === 0) return empty;
+
+        const top = [...unidMagic].sort(
+            (a, b) => (Number(b.rank || 1) - Number(a.rank || 1)) || (Number(b.level || 1) - Number(a.level || 1))
+        )[0];
+        const tabSchool = normalizeSchoolSlug(top.school);
+
+        if (capability !== "pinpoint") {
+            const tabTooltip = capability === "rank"
+                ? `Detect Magic (Rank ${castRank}${casterLabel}): Unfamiliar magic radiates from this inventory (strongest: Rank ${top.rank ?? 1}, Item Level ${top.level ?? 1}).`
+                : `Detect Magic (Rank ${castRank}${casterLabel}): An unfamiliar magical presence radiates from somewhere in this inventory.`;
+            return {
+                active: true,
+                mode: "tab-only",
+                tabGlow: true,
+                tabSchool,
+                tabTooltip,
+                rowGlowMap: new Map(),
+                strongestRank: top.rank ?? 1,
+                strongestLevel: top.level ?? 1
+            };
+        }
+
+        const rowGlowMap = new Map();
+        for (const it of unidMagic) {
+            rowGlowMap.set(it.itemId, normalizeSchoolSlug(it.school));
+        }
+        return {
+            active: true,
+            mode: "pinpoint",
+            tabGlow: true,
+            tabSchool,
+            tabTooltip: `Detect Magic (Rank ${castRank}${casterLabel}): Unidentified magical item(s) highlighted in inventory.`,
+            rowGlowMap,
+            strongestRank: top.rank ?? 1,
+            strongestLevel: top.level ?? 1
+        };
+    }
+
+    // D&D 5e / default: highlight all magical items in inventory
+    const m = (_dmGlowSessionActive && _dmGlowPartyActorIds.has(actorId))
+        ? DetectMagicScanner.getLiveGlowItemSchoolMap(actorId)
+        : _glowByActor.get(actorId);
+    if (!m?.size) return empty;
+    return {
+        active: true,
+        mode: "pinpoint",
+        tabGlow: true,
+        tabSchool: [...m.values()][0] ?? "unknown",
+        tabTooltip: "",
+        rowGlowMap: m,
+        strongestRank: null,
+        strongestLevel: null
+    };
+}
+
+/**
  * @param {string} actorId
  * @returns {Map<string, string>|undefined}
  */
 function getEffectiveGlowItemMap(actorId) {
-    if (_dmGlowSessionActive && _dmGlowPartyActorIds.has(actorId)) {
-        return DetectMagicScanner.getLiveGlowItemSchoolMap(actorId);
-    }
-    return _glowByActor.get(actorId);
+    const state = computeActorDetectMagicGlowState(actorId);
+    return state.rowGlowMap.size ? state.rowGlowMap : undefined;
 }
 
 /**
@@ -201,27 +319,38 @@ function updateInventoryTabDetectMagicGlow(html, app, actorId) {
 
     const seen = new Set();
     const tabs = [];
+    const tabSelector = [
+        "nav.sheet-navigation a[data-tab=\"inventory\"]",
+        "nav.tabs a.item[data-tab=\"inventory\"]",
+        "nav.tabs a[data-tab=\"inventory\"]",
+        "a.item.control[data-tab=\"inventory\"]",
+        "a.item[data-tab=\"inventory\"]",
+        "[data-tab=\"inventory\"][role=\"tab\"]"
+    ].join(", ");
     for (const root of roots) {
         if (!root?.querySelectorAll) continue;
-        for (const tab of root.querySelectorAll(
-            "nav.tabs a.item[data-tab=\"inventory\"], nav.tabs a[data-tab=\"inventory\"], a.item.control[data-tab=\"inventory\"]"
-        )) {
+        for (const tab of root.querySelectorAll(tabSelector)) {
             if (seen.has(tab)) continue;
             seen.add(tab);
             tabs.push(tab);
         }
     }
 
-    const m = getEffectiveGlowItemMap(actorId);
-    const active = !!m?.size;
-    const school = active ? ([...m.values()][0] ?? "unknown") : null;
+    const glowState = computeActorDetectMagicGlowState(actorId);
 
     for (const tab of tabs) {
         tab.classList.remove(INV_TAB_GLOW_CLASS);
         tab.removeAttribute(INV_TAB_SCHOOL_ATTR);
-        if (active && school) {
+        restoreTabTooltip(tab);
+        if (glowState.tabGlow && glowState.tabSchool) {
             tab.classList.add(INV_TAB_GLOW_CLASS);
-            tab.setAttribute(INV_TAB_SCHOOL_ATTR, school);
+            tab.setAttribute(INV_TAB_SCHOOL_ATTR, glowState.tabSchool);
+            if (glowState.tabTooltip) {
+                if (tab.dataset && tab.dataset.ionriftDmOrigTooltip === undefined) {
+                    tab.dataset.ionriftDmOrigTooltip = tab.getAttribute("data-tooltip") ?? "";
+                }
+                tab.setAttribute("data-tooltip", glowState.tabTooltip);
+            }
         }
     }
 }
@@ -281,6 +410,7 @@ function onActorSheetRenderGlow(app, html) {
 const GLOW_SHEET_HOOKS = [
     "renderActorSheet",
     "renderActorSheetV2",
+    "renderCharacterSheetPF2e",
     "renderActorSheet5eCharacter2",
     "renderActorSheet5eCharacter",
     "renderActorSheet5eNPC2",
@@ -392,6 +522,18 @@ export function getDetectMagicInventoryGlowAdapter() {
  */
 export function notifyDetectMagicScanApplied(restApp, partyActorIds) {
     _dmGlowSessionActive = !!restApp?._magicScanComplete;
+    const firstBlock = Array.isArray(restApp?._magicScanResults) && restApp._magicScanResults.length > 0
+        ? restApp._magicScanResults[0]
+        : null;
+    _dmGlowScanMeta = restApp?._magicScanMeta ?? (firstBlock?.castRank
+        ? {
+            systemId: firstBlock.systemId ?? null,
+            casterId: firstBlock.casterId ?? null,
+            casterName: firstBlock.casterName ?? null,
+            castRank: firstBlock.castRank ?? null,
+            pf2eCapability: firstBlock.pf2eCapability ?? null
+        }
+        : null);
     _dmGlowPartyActorIds.clear();
     for (const id of partyActorIds ?? []) {
         if (id) _dmGlowPartyActorIds.add(id);
@@ -399,7 +541,8 @@ export function notifyDetectMagicScanApplied(restApp, partyActorIds) {
     getDetectMagicInventoryGlowAdapter().onScanApplied?.({
         results: restApp?._magicScanResults ?? null,
         magicScanComplete: !!restApp?._magicScanComplete,
-        partyActorIds: partyActorIds ?? []
+        partyActorIds: partyActorIds ?? [],
+        scanMeta: _dmGlowScanMeta
     });
     refreshStationDetectMagicGlow(restApp);
 }
@@ -407,6 +550,7 @@ export function notifyDetectMagicScanApplied(restApp, partyActorIds) {
 /** Called when the rest session clears Detect Magic state (new rest, close, or reset). */
 export function notifyDetectMagicScanCleared() {
     _dmGlowSessionActive = false;
+    _dmGlowScanMeta = null;
     for (const tid of _dmGlowRefreshTimers.values()) window.clearTimeout(tid);
     _dmGlowRefreshTimers.clear();
     getDetectMagicInventoryGlowAdapter().onScanCleared?.();

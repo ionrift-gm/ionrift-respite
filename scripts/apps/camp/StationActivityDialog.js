@@ -613,7 +613,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const fireLevel = restApp?._fireLevel ?? restSession?.fireLevel ?? "unlit";
         const isFireLit = !!(fireLevel && fireLevel !== "unlit");
         const resolverOpts = restApp?._activityResolverOpts?.({ isFireLit, fireLevel })
-            ?? { isFireLit, fireLevel, ...(restApp?._forageResolverOpts?.() ?? {}) };
+            ?? {
+                isFireLit,
+                fireLevel,
+                terrainTag: restSession?.terrainTag ?? null,
+                safeRestSpot: Boolean(restSession?.safeRestSpot),
+                ...(restApp?._forageResolverOpts?.() ?? {})
+            };
         const { available: allAvail, faded: allFaded } = activityResolver
             .getAvailableActivitiesWithFaded(actor, restType, resolverOpts);
 

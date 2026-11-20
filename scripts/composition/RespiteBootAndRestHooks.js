@@ -597,3 +597,104 @@ export function registerDnd5eRestHooks(ctx) {
     });
     
 }
+
+/**
+ * Determines whether a PF2e `restForTheNight(options)` call originated from the
+ * primary PF2e Party Sheet rather than an individual character sheet.
+ * @param {object} [options]
+ * @returns {boolean}
+ */
+function _isPf2ePartyRestCall(options) {
+    if (!options || typeof options !== "object") return false;
+    const evTarget = options.event?.target ?? options.event?.currentTarget ?? null;
+    if (evTarget?.closest?.(".actor.party, .party-sheet")) return true;
+    const actors = options.actors;
+    if (actors?.type === "party") return true;
+    const party = game.actors?.party;
+    if (Array.isArray(actors) && party?.members?.length > 0 && actors === party.members) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Wraps `game.pf2e.actions.restForTheNight` (and Stamina's `takeABreather`) so
+ * `interceptRests` works on PF2e, where the system exposes action functions
+ * instead of cancellable pre-rest Hooks:
+ * - Non-GM players are blocked before PF2e opens its "Rest for the night?" dialog.
+ * - GM clicks on the PF2e Party Sheet Rest button funnel into `RestSetupApp`.
+ * - Internal Respite rest completion (`ionriftInternalRest: true`) passes through.
+ *
+ * Safe to call multiple times; wraps each action function at most once.
+ * @param {object} ctx
+ * @returns {boolean} True when PF2e actions were present and wrapped.
+ */
+export function installPf2eRestInterception(ctx) {
+    const {
+        MODULE_ID, getRespiteFlowActive, canStartRest, RestSetupApp
+    } = ctx;
+
+    const actions = game.pf2e?.actions;
+    if (!actions || typeof actions !== "object") return false;
+
+    if (typeof actions.restForTheNight === "function" && !actions.restForTheNight._ionriftWrapped) {
+        const origRestForTheNight = actions.restForTheNight;
+        const wrappedRestForTheNight = async function ionriftRestForTheNight(options = {}) {
+            if (options?.ionriftInternalRest || (getRespiteFlowActive?.() && options?.skipDialog)) {
+                return origRestForTheNight.call(this, options);
+            }
+            if (!game.settings.get(MODULE_ID, "interceptRests")) {
+                return origRestForTheNight.call(this, options);
+            }
+            if (!game.user?.isGM) {
+                ui.notifications.warn(
+                    game.i18n.localize("ionrift-respite.restStart.playerRestBlocked")
+                );
+                return [];
+            }
+            if (_isPf2ePartyRestCall(options)) {
+                if (canStartRest?.("long") && RestSetupApp) {
+                    new RestSetupApp({ restType: "long" }).render({ force: true });
+                }
+                return [];
+            }
+            return origRestForTheNight.call(this, options);
+        };
+        wrappedRestForTheNight._ionriftWrapped = true;
+        wrappedRestForTheNight._ionriftOriginal = origRestForTheNight;
+        actions.restForTheNight = wrappedRestForTheNight;
+        if (typeof actions.has === "function" && actions.has("restForTheNight")) {
+            actions.set("restForTheNight", wrappedRestForTheNight);
+        }
+    }
+
+    if (typeof actions.takeABreather === "function" && !actions.takeABreather._ionriftWrapped) {
+        const origTakeABreather = actions.takeABreather;
+        const wrappedTakeABreather = async function ionriftTakeABreather(options = {}) {
+            if (options?.ionriftInternalRest) {
+                return origTakeABreather.call(this, options);
+            }
+            if (!game.user?.isGM && game.settings.get(MODULE_ID, "interceptRests")) {
+                ui.notifications.warn(
+                    game.i18n.localize("ionrift-respite.restStart.playerRestBlocked")
+                );
+                return [];
+            }
+            return origTakeABreather.call(this, options);
+        };
+        wrappedTakeABreather._ionriftWrapped = true;
+        wrappedTakeABreather._ionriftOriginal = origTakeABreather;
+        actions.takeABreather = wrappedTakeABreather;
+        if (typeof actions.has === "function" && actions.has("takeABreather")) {
+            actions.set("takeABreather", wrappedTakeABreather);
+        }
+    }
+
+    return Boolean(actions.restForTheNight?._ionriftWrapped);
+}
+
+export function registerPf2eRestHooks(ctx) {
+    installPf2eRestInterception(ctx);
+    Hooks.once("setup", () => installPf2eRestInterception(ctx));
+    Hooks.once("ready", () => installPf2eRestInterception(ctx));
+}

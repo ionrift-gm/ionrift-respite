@@ -99,6 +99,7 @@ export class RestSnapshotSync {
             })),
             magicScanComplete: !!app._magicScanComplete,
             magicScanResults: app._magicScanComplete ? (app._magicScanResults ?? []) : null,
+            magicScanMeta: app._magicScanComplete ? (app._magicScanMeta ?? null) : null,
             coldCampDecided: app._coldCampDecided ?? false,
             campFirePreviewLevel: app._coldCampDecided ? null : (app._campFirePreviewLevel ?? null),
             coldCampPreview: app._coldCampDecided ? false : !!app._coldCampPreview,
@@ -687,11 +688,13 @@ export class RestSnapshotSync {
         if ("magicScanComplete" in snapshot) {
             if (snapshot.magicScanComplete) {
                 app._magicScanResults = snapshot.magicScanResults ?? [];
+                app._magicScanMeta = snapshot.magicScanMeta ?? null;
                 app._magicScanComplete = true;
                 notifyDetectMagicScanApplied(app, getPartyActors().map(a => a.id));
             } else {
                 const hadComplete = app._magicScanComplete;
                 app._magicScanResults = null;
+                app._magicScanMeta = null;
                 app._magicScanComplete = false;
                 if (hadComplete) notifyDetectMagicScanCleared();
             }

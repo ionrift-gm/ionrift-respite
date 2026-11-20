@@ -6,7 +6,8 @@ import {
     isProfessionActivityEnabled,
     isChefTreatCookingOnly,
     isForagingEnabled,
-    isHuntingEnabled
+    isHuntingEnabled,
+    getTerrainGatherAvailability
 } from "../../travel/settings/TravelSettings.js";
 import { hasChefFeat } from "../../meal/buffs/ChefFeat.js";
 
@@ -128,11 +129,17 @@ export class ActivityEligibility {
         // Fletching toggle
         if (id === "act_fletch" && !isFletchingEnabled()) return true;
 
-        // Foraging toggle
-        if (activity.id === "act_forage" && !isForagingEnabled()) return true;
+        // Foraging toggle + terrain eligibility (built/safe-haven terrains like dungeon/urban disallow foraging)
+        if (activity.id === "act_forage") {
+            if (!isForagingEnabled()) return true;
+            if (options.terrainTag && !getTerrainGatherAvailability(options.terrainTag).canForage) return true;
+        }
 
-        // Hunting toggle
-        if (activity.id === "act_hunt" && !isHuntingEnabled()) return true;
+        // Hunting toggle + terrain eligibility (built/safe-haven terrains like dungeon/urban disallow hunting)
+        if (activity.id === "act_hunt") {
+            if (!isHuntingEnabled()) return true;
+            if (options.terrainTag && !getTerrainGatherAvailability(options.terrainTag).canHunt) return true;
+        }
 
         // Copy Spell toggle
         if (id === "act_scribe") {

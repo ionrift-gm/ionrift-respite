@@ -9,8 +9,10 @@ import {
     computeCanShowDetectMagicScanButton,
     computeCanTriggerDetectMagicScan,
     getDetectMagicDisabledTooltip,
-    getDetectMagicPlayerAccessReason
+    getDetectMagicPlayerAccessReason,
+    resolvePf2eDetectMagicCaster
 } from "./DetectMagicDelegate.js";
+import { computeActorDetectMagicGlowState } from "../../../services/crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
 import {
     DETECT_MAGIC_BTN_LABEL_DISMISS,
     DETECT_MAGIC_BTN_LABEL_GM,
@@ -161,20 +163,93 @@ export class WorkbenchDelegate {
         const wb = this.getDragContext(actorId, collectPartyIdentifyEmbedData, getPartyActors);
         const app = this._app;
         const isGmUser = !!(game.user?.isGM || app._isGM);
+        const isPf2e = Pf2eWorkbenchExamineService.isPf2e();
         const scanComplete = !!app._magicScanComplete;
         const magicScanActive = scanComplete;
         const focusActor = game.actors.get(actorId) ?? null;
-        const arcane = buildArcaneWorkbenchAccess(focusActor, { magicScanActive, isGmUser });
+        const arcane = buildArcaneWorkbenchAccess(focusActor, { magicScanActive, isGmUser: isGmUser && !isPf2e });
         const canTriggerDetectMagicScan = magicScanActive
             ? true
-            : (isGmUser || computeCanTriggerDetectMagicScan(party));
+            : (isPf2e ? computeCanTriggerDetectMagicScan(party) : (isGmUser || computeCanTriggerDetectMagicScan(party)));
         const detectMagicDisabledTooltip = canTriggerDetectMagicScan
             ? ""
             : getDetectMagicDisabledTooltip(party, focusActor);
+
+        let detectMagicPill = arcane.detectMagicPill;
+        let pf2eCastTooltip = "";
+        let pf2eDetectMagicBanner = null;
+
+        if (isPf2e) {
+            const previewCaster = resolvePf2eDetectMagicCaster(party, actorId, { requireOwner: !isGmUser });
+            if (!magicScanActive) {
+                if (previewCaster) {
+                    const isSelf = previewCaster.actor.id === actorId;
+                    detectMagicPill = isSelf
+                        ? `Rank ${previewCaster.rank}`
+                        : `${previewCaster.actor.name} · R${previewCaster.rank}`;
+                    const tierHint = previewCaster.capability === "pinpoint"
+                        ? "pinpoints unidentified magic items in inventory"
+                        : (previewCaster.capability === "rank"
+                            ? "reveals strongest aura rank only; Rank 4+ pinpoints items"
+                            : "senses magical presence only; Rank 4+ pinpoints items");
+                    pf2eCastTooltip = `Cast Detect Magic via ${previewCaster.actor.name} (Rank ${previewCaster.rank}: ${tierHint}).`;
+                } else {
+                    detectMagicPill = arcane.detectMagicAccess.state === "unprepared" ? "Not prepared" : "No Caster";
+                }
+            } else {
+                const firstBlock = Array.isArray(app._magicScanResults) && app._magicScanResults.length > 0
+                    ? app._magicScanResults[0]
+                    : null;
+                const activeMeta = app._magicScanMeta ?? (firstBlock?.castRank
+                    ? {
+                        systemId: "pf2e",
+                        casterId: firstBlock.casterId ?? null,
+                        casterName: firstBlock.casterName ?? null,
+                        castRank: firstBlock.castRank,
+                        pf2eCapability: firstBlock.pf2eCapability ?? null
+                    }
+                    : (previewCaster
+                        ? {
+                            systemId: "pf2e",
+                            casterId: previewCaster.actor.id,
+                            casterName: previewCaster.actor.name,
+                            castRank: previewCaster.rank,
+                            pf2eCapability: previewCaster.capability
+                        }
+                        : { systemId: "pf2e", castRank: 1, pf2eCapability: "presence", casterName: null }));
+                const glowState = focusActor ? computeActorDetectMagicGlowState(focusActor.id, activeMeta) : null;
+                const castRank = Math.max(1, Number(activeMeta.castRank) || 1);
+                const capability = activeMeta.pf2eCapability ?? (castRank >= 4 ? "pinpoint" : (castRank === 3 ? "rank" : "presence"));
+                const casterPrefix = activeMeta.casterName ? `${activeMeta.casterName} · ` : "";
+                const targetName = focusActor?.name ?? "this character";
+                let bannerText;
+                if (!glowState?.active) {
+                    bannerText = `${casterPrefix}Detect Magic (Rank ${castRank}): No unfamiliar magical auras detected in ${targetName}'s gear.`;
+                } else if (capability === "pinpoint") {
+                    bannerText = `${casterPrefix}Detect Magic (Rank ${castRank}): Unidentified magical item(s) pinpointed and highlighted in ${targetName}'s inventory.`;
+                } else if (capability === "rank") {
+                    bannerText = `${casterPrefix}Detect Magic (Rank 3): Unfamiliar magic radiates from ${targetName}'s gear (strongest: Rank ${glowState.strongestRank ?? 1}, Item Level ${glowState.strongestLevel ?? 1}). Item pinpointing requires Rank 4.`;
+                } else {
+                    bannerText = `${casterPrefix}Detect Magic (Rank ${castRank}): Unfamiliar magic radiates somewhere in ${targetName}'s gear. Item pinpointing requires Rank 4.`;
+                }
+                pf2eDetectMagicBanner = {
+                    hasPresence: Boolean(glowState?.active),
+                    capability,
+                    castRank,
+                    casterName: activeMeta.casterName ?? null,
+                    text: bannerText
+                };
+            }
+        }
+
         return {
             ...partyData,
             ...wb,
             ...arcane,
+            detectMagicPill,
+            pf2eCastTooltip,
+            pf2eDetectMagicBanner,
+            detectMagicAvailable: isPf2e ? canTriggerDetectMagicScan : arcane.detectMagicAvailable,
             isGmUser,
             magicScanActive,
             canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(party) || isGmUser,
@@ -182,12 +257,12 @@ export class WorkbenchDelegate {
             detectMagicDisabledTooltip,
             detectMagicScanButtonLabel: scanComplete
                 ? DETECT_MAGIC_BTN_LABEL_DISMISS
-                : (isGmUser ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
+                : (isGmUser && !isPf2e ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
             detectMagicScanButtonTitle: magicScanActive
                 ? "Dismiss scan"
-                : (isGmUser
+                : (pf2eCastTooltip || (isGmUser && !isPf2e
                     ? DETECT_MAGIC_BTN_TITLE_GM
-                    : (detectMagicDisabledTooltip || getDetectMagicPlayerAccessReason(party) || "")),
+                    : (detectMagicDisabledTooltip || getDetectMagicPlayerAccessReason(party) || ""))),
             magicScanResults: app._magicScanResults ?? [],
             magicScanComplete: scanComplete
         };

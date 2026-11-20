@@ -8,6 +8,7 @@ import { holdsForSendoff } from "../../services/rest/gritty/SendoffBuffBeat.js";
 import { CampGearScanner } from "../../services/camp/gear/CampGearScanner.js";
 import { isComfortEnabled } from "../../services/camp/gear/ComfortCalculator.js";
 import { areEncountersEnabled } from "../../services/rest/flow/ActivityEligibility.js";
+import { canGatherInTerrain } from "../../services/travel/settings/TravelSettings.js";
 import { bulletTip } from "./DowntimeSustenanceBuilder.js";
 
 export function buildDowntimePartyAndNightContext(app, {
@@ -706,21 +707,29 @@ export function buildDowntimePartyAndNightContext(app, {
             ...(() => {
                 let trackFood = true;
                 try { trackFood = !!game.settings.get(MODULE_ID, "trackFood"); } catch { /* ignore */ }
-                const logisticsFlags = CampLogisticsDelegate.computeVisibilityFlags({ trackFood });
+                const logisticsFlags = CampLogisticsDelegate.computeVisibilityFlags({
+                    trackFood,
+                    terrainTag: app._terrainTag ?? null
+                });
                 if (logisticsFlags.hideLogisticsButton && app._campLogistics._drawerOpen) {
                     app._campLogistics._drawerOpen = false;
                 }
+                const showGatherStep = (haven === "wilderness") && canGatherInTerrain(app._terrainTag);
                 const showSustenanceStep = (haven === "wilderness") && trackFood;
-                const selectedWorkflowStep = (app._selectedWorkflowStep === "sustenance" && !showSustenanceStep)
-                    ? "activities"
-                    : app._selectedWorkflowStep;
+                let selectedWorkflowStep = app._selectedWorkflowStep;
+                if (selectedWorkflowStep === "gather" && !showGatherStep) {
+                    selectedWorkflowStep = "activities";
+                }
+                if (selectedWorkflowStep === "sustenance" && !showSustenanceStep) {
+                    selectedWorkflowStep = "activities";
+                }
                 return {
                     ...logisticsFlags,
                     logisticsDrawerOpen: app._campLogistics._drawerOpen,
                     encountersEnabled: areEncountersEnabled(),
                     hideEncounterDcStepper: !areEncountersEnabled(),
                     selectedWorkflowStep,
-                    showGatherStep: haven === "wilderness",
+                    showGatherStep,
                     showSustenanceStep
                 };
             })(),

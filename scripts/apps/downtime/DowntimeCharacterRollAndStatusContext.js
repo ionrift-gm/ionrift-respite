@@ -3,6 +3,7 @@ import { ActivityRegistry } from "../../data/downtime/ActivityRegistry.js";
 import { buildSkillCheckSummary } from "../../services/downtime/DowntimeSkillCheck.js";
 import { craftPlanNeedsEscape } from "../../services/downtime/craftPlanEscape.js";
 import { applySustenancePlan, clonePours } from "../../services/meal/phase/SustenanceEditPlan.js";
+import { canGatherInTerrain } from "../../services/travel/settings/TravelSettings.js";
 import { bulletTip, buildSustenanceDiegetic } from "./DowntimeSustenanceBuilder.js";
 
 export function buildCharacterRollAndStatusContext(app, actor, { haven, isCivilized, scanResult, workbenchIdentifyUiEnabled }, sus) {
@@ -457,10 +458,11 @@ export function buildCharacterRollAndStatusContext(app, actor, { haven, isCivili
             const isStarving = sustenanceRequired && (foodShortfallDays > 0);
             const isDehydrated = sustenanceRequired && (waterShortfallDays > 0);
             const isSustenanceRisk = isStarving || isDehydrated;
+            const gatherRequired = (haven === "wilderness") && canGatherInTerrain(app._terrainTag);
             const isDefensePending = hasDefenseRolls && !!fortifySummary && !fortifySummary.isAllRolled;
             const isSkillCheckPending = hasSkillChecks && !skillCheckSummary.isAllRolled;
             const isCraftPending = hasCraftingActivities && !isAllCraftsResolved;
-            const isGatheringPending = (haven === "wilderness") && gatheringSummary && !gatheringSummary.isAllRolled;
+            const isGatheringPending = gatherRequired && gatheringSummary && !gatheringSummary.isAllRolled;
 
             const isPendingRolls = isDefensePending || isSkillCheckPending || isCraftPending || isGatheringPending;
             const mealsLocked = !sustenanceRequired || app._mealsLockedActorIds.has(actor.id);
@@ -614,7 +616,7 @@ export function buildCharacterRollAndStatusContext(app, actor, { haven, isCivili
                 hydratedDaysCount,
                 waterPintsRemainingInPack,
                 tier1Done: isCommitted && isAllActivitiesRolled && isAllCraftsResolved,
-                tier2Done: (haven === "civilized") || (gatheringSummary ? gatheringSummary.isAllRolled : true),
+                tier2Done: !gatherRequired || (gatheringSummary ? gatheringSummary.isAllRolled : true),
                 tier3Done: mealsLocked,
                 mealsLocked,
                 isFullySubmitted: isReady,

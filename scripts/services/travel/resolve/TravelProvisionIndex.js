@@ -6,6 +6,7 @@ import { buildFolderPathMap } from "../../packs/registry/CompendiumFolderIndex.j
 import { ProvisionsCustomPack, PROVISIONS_CUSTOM_PACK_ID } from "../../meal/provisions/ProvisionsCustomPack.js";
 import { isHomebrewProvisionOnly } from "../settings/TravelSettings.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { BASE_RESPITE_ITEMS } from "../../../data/baseRespiteItems.js";
 
 const MODULE_PACK_ID = "ionrift-respite.respite-items";
 
@@ -183,7 +184,27 @@ export async function loadTravelProvisionBatches() {
         const shippedPackIds = [MODULE_PACK_ID, ...getRegisteredProvisionPackIds()];
         for (const packId of shippedPackIds) {
             const pack = game.packs.get(packId);
-            if (!pack) continue;
+            if (!pack) {
+                const sysId = game?.system?.id ?? "";
+                if (packId === MODULE_PACK_ID && sysId && sysId !== "dnd5e") {
+                    const fallbackEntries = Object.entries(BASE_RESPITE_ITEMS).map(([ref, item]) => ({
+                        _id: ref,
+                        id: ref,
+                        name: item.name,
+                        img: item.img,
+                        type: item.type,
+                        system: item.system,
+                        flags: item.flags
+                    }));
+                    batches.push({
+                        entries: fallbackEntries,
+                        folderPathMap: { pathFor: () => null },
+                        overrideRefs: false,
+                        packId: MODULE_PACK_ID
+                    });
+                }
+                continue;
+            }
             const index = await pack.getIndex({ fields: INDEX_FIELDS });
             batches.push({
                 entries: compendiumIndexToArray(index),

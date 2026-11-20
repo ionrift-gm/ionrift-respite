@@ -4,6 +4,9 @@
  * @returns {boolean}
  */
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { TerrainRegistry } from "../../events/resolve/TerrainRegistry.js";
+
+const BUILT_OR_SAFE_TERRAIN_FALLBACKS = new Set(["dungeon", "urban", "tavern"]);
 export function isProfessionsEnabled() {
     try {
         return !!game.settings.get(MODULE_ID, "enableProfessions");
@@ -64,6 +67,54 @@ export function getTravelGatherAvailability(terrainActivities) {
         canForage: allowed.includes("forage") && isForagingEnabled(),
         canHunt: allowed.includes("hunt") && isHuntingEnabled()
     };
+}
+
+/**
+ * Resolves forage and hunt availability for a specific terrain tag by reading
+ * its TerrainRegistry `travelActivities` / `category` (with safe fallback for
+ * built/safe-haven tags when TerrainRegistry has not initialized yet).
+ *
+ * @param {string|null|undefined} terrainTag
+ * @returns {{ canForage: boolean, canHunt: boolean }}
+ */
+export function getTerrainGatherAvailability(terrainTag) {
+    if (!terrainTag) {
+        return getTravelGatherAvailability(["forage", "hunt"]);
+    }
+    const clean = String(terrainTag).trim().toLowerCase();
+    const terrain = TerrainRegistry.get?.(terrainTag) ?? TerrainRegistry.get?.(clean);
+    let allowed;
+    if (terrain) {
+        if (Array.isArray(terrain.travelActivities)) {
+            allowed = terrain.travelActivities;
+        } else if (terrain.travelAvailable === false) {
+            allowed = [];
+        } else {
+            const category = TerrainRegistry.getCategory?.(terrain.id ?? clean) ?? "wilderness";
+            allowed = (category === "built" || category === "safe-haven" || category === "custom")
+                ? []
+                : ["forage", "hunt"];
+        }
+    } else if (BUILT_OR_SAFE_TERRAIN_FALLBACKS.has(clean)) {
+        allowed = [];
+    } else {
+        allowed = ["forage", "hunt"];
+    }
+    return getTravelGatherAvailability(allowed);
+}
+
+/**
+ * True when at least one gathering activity (forage or hunt) is permitted in
+ * the terrain and the rest is not at a safe rest spot / safe haven.
+ *
+ * @param {string|null|undefined} terrainTag
+ * @param {{ safeRestSpot?: boolean }} [options]
+ * @returns {boolean}
+ */
+export function canGatherInTerrain(terrainTag, { safeRestSpot = false } = {}) {
+    if (safeRestSpot) return false;
+    const { canForage, canHunt } = getTerrainGatherAvailability(terrainTag);
+    return canForage || canHunt;
 }
 
 /**

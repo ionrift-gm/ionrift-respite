@@ -198,6 +198,26 @@ export function resolvePf2eEventDC(authored5eDc = 12, levelOrActors = 1, adapter
 }
 
 /**
+ * Extracts the natural d20 face value from a Foundry Roll instance when rolled on a single d20.
+ *
+ * @param {Roll|null|undefined} roll
+ * @returns {number|null}
+ */
+export function getNatD20FromRoll(roll) {
+    if (!roll) return null;
+    const die = roll.dice?.[0] ?? roll.terms?.[0] ?? null;
+    if (!die) return null;
+    if (Array.isArray(die.results) && die.results.length === 1) {
+        const val = die.results[0]?.result;
+        if (typeof val === "number" && Number.isFinite(val)) return val;
+    }
+    if (typeof die.total === "number" && Number.isFinite(die.total) && (!Array.isArray(die.results) || die.results.length <= 1)) {
+        return die.total;
+    }
+    return null;
+}
+
+/**
  * Evaluates a PF2e group skill check using victory-point degrees of success
  * (critSuccess = +2, success = +1, failure = 0, critFailure = -1) so untrained
  * characters (who add +0 level in PF2e) do not drag down trained specialists via

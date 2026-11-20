@@ -6,7 +6,7 @@ import {
 import { isBedrollItem, isTentItem, isMessKitItem } from "../../../services/camp/gear/CampGearScanner.js";
 import { isPf2eSystem } from "../../../services/camp/gear/Pf2eComfortRules.js";
 import { isSimpleStationsMode } from "../../../services/rest/flow/RestProfileSettings.js";
-import { isForagingEnabled, isHuntingEnabled } from "../../../services/travel/settings/TravelSettings.js";
+import { canGatherInTerrain } from "../../../services/travel/settings/TravelSettings.js";
 import { buildActivityListItem } from "../../crafting/ActivityDetailBuilder.js";
 import * as RestAfkState from "../../../services/rest/session/RestAfkState.js";
 import { releaseGatherFromActivity } from "../../../services/rest/session/campProgressState.js";
@@ -282,8 +282,10 @@ export function buildTotmStationCards(app, partyActors, partyState, safeRestSpot
 
             // A finished activity or craft closes the activity list. Gather is a
             // separate choice, so forage and hunt stay available on that step.
-            const showGather = !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled());
-            const currentWorkflowStep = app._selectedWorkflowStep ?? (showGather ? "gather" : "activities");
+            const terrain = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
+            const showGather = canGatherInTerrain(terrain, { safeRestSpot: setupSafeHaven });
+            const rawStep = app._selectedWorkflowStep ?? (showGather ? "gather" : "activities");
+            const currentWorkflowStep = (rawStep === "gather" && !showGather) ? "activities" : rawStep;
             const onGatherStep = currentWorkflowStep === "gather" && showGather;
             const charLocked = !onGatherStep && (
                 app._lockedCharacters?.has(app._selectedCharacterId)
@@ -302,7 +304,6 @@ export function buildTotmStationCards(app, partyActors, partyState, safeRestSpot
             // Tiles do not carry expanded state ,  the grid is hidden entirely when detail is open.
 
             const tileMap = new Map(unionTiles.map(t => [t.id, t]));
-            const terrain = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
             const terrainStations = getStationsForTerrain(terrain, safeRestSpot);
 
             if (onGatherStep) {

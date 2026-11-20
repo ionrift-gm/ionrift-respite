@@ -1,4 +1,4 @@
-import { isHomebrewProvisionOnly } from "../settings/TravelSettings.js";
+import { isHomebrewProvisionOnly, getTerrainGatherAvailability } from "../settings/TravelSettings.js";
 import { ForageTableSync } from "./ForageTableSync.js";
 
 /**
@@ -26,6 +26,7 @@ export class ForageActivityValidator {
      */
     static isForageAvailable(travelResolver, terrainTag) {
         if (!travelResolver || !terrainTag) return false;
+        if (!getTerrainGatherAvailability(terrainTag).canForage) return false;
         if (ForageTableSync.tableHasDrawableResults(terrainTag)) return true;
 
         const hasPackPool = ForageActivityValidator.hasValidPool(
@@ -39,12 +40,13 @@ export class ForageActivityValidator {
 
     /**
      * True when hunt can produce yields for this terrain.
-     * Shipped and imported tables count when homebrew-only mode is off.
+     * Built/safe-haven terrains (e.g. dungeon, urban, tavern) never offer hunting.
      * @param {import("../resolve/TravelResolver.js").TravelResolver} travelResolver
      * @param {string} terrainTag
      */
     static isHuntAvailable(travelResolver, terrainTag) {
         if (!travelResolver || !terrainTag) return false;
+        if (!getTerrainGatherAvailability(terrainTag).canHunt) return false;
         if (!isHomebrewProvisionOnly()) return true;
 
         const hasBasePool = travelResolver.basePoolCoverage.includes(`${terrainTag}_hunt`)

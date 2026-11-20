@@ -9,7 +9,7 @@ import { RestDockContext } from "../../../utils/RestDockContext.js";
 import { WEATHER_TABLE, SHELTER_SPELLS, isWorkbenchIdentifyUiEnabled, matchesShelterSpell, getStationOfferedActivityIds } from "../../../data/RestConstants.js";
 import { isComfortEnabled } from "../../../services/camp/gear/ComfortCalculator.js";
 import { isSimpleStationsMode, isCampfireMinigameEnabled } from "../../../services/rest/flow/RestProfileSettings.js";
-import { isForagingEnabled, isHuntingEnabled } from "../../../services/travel/settings/TravelSettings.js";
+import { canGatherInTerrain } from "../../../services/travel/settings/TravelSettings.js";
 import { buildActivityDetailContext } from "../../crafting/ActivityDetailBuilder.js";
 import { closeStationDialogIfDifferentActor } from "../../camp/StationActivityDialog.js";
 import { buildCopySpellRollContext } from "../../../services/ui/rollRequest/RollRequestView.js";
@@ -408,7 +408,11 @@ export class RestPrepareContext {
 
         // Whether meal context data should be built this render pass.
         // True when the real phase is "meal" OR the stepper is previewing sustenance.
-        const showGatherStep = !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled());
+        const activeTerrainTag = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
+        const resolvedTerrainLabel = app._terrainLabel
+            ?? TerrainRegistry.get(activeTerrainTag)?.label
+            ?? (activeTerrainTag.charAt(0).toUpperCase() + activeTerrainTag.slice(1));
+        const showGatherStep = canGatherInTerrain(activeTerrainTag, { safeRestSpot: setupSafeHaven });
         const hideActivitiesStep = computePartyOnlyFreeTime(app, partyActors);
         const _defaultWorkflowStep = showGatherStep
             ? "gather"
@@ -417,7 +421,13 @@ export class RestPrepareContext {
         const _resolvedWorkflowStep = (() => {
             if (app._phase === "meal" && showSustenanceStep) return "sustenance";
             if (app._phase !== "activity" && app._phase !== "camp") return null;
-            let step = (_rawWorkflowStep === "sustenance" && !showSustenanceStep) ? "activities" : _rawWorkflowStep;
+            let step = _rawWorkflowStep;
+            if (step === "gather" && !showGatherStep) {
+                step = (hideActivitiesStep && showSustenanceStep) ? "sustenance" : "activities";
+            }
+            if (step === "sustenance" && !showSustenanceStep) {
+                step = "activities";
+            }
             if (step === "activities" && hideActivitiesStep && (showGatherStep || showSustenanceStep)) {
                 const focusId = app._selectedCharacterId ?? partyActors[0]?.id ?? null;
                 const { gatherDone } = dailyChoiceStatus(app, focusId, showGatherStep);
@@ -515,8 +525,8 @@ export class RestPrepareContext {
             phaseLabel,
             ...RestPresentationHelper.resolveRestHeaderContext({
                 type: (app._restVariant ?? "normal") === "gritty" ? "downtime" : "long",
-                terrainTag: app._selectedTerrain ?? app._engine?.terrainTag ?? "forest",
-                terrainLabel: app._terrainLabel ?? "Forest",
+                terrainTag: activeTerrainTag,
+                terrainLabel: resolvedTerrainLabel,
                 phase: app._phase,
                 phaseLabel,
                 phaseSteps,
@@ -660,10 +670,10 @@ export class RestPrepareContext {
             setupStep: app._setupStep ?? 1,
             selectedTerrain: app._selectedTerrain ?? "forest",
             ...ImageResolver.resolveRestBannerContext(
-                app._selectedTerrain ?? app._engine?.terrainTag ?? "forest",
+                activeTerrainTag,
                 app._phase ?? "setup"
             ),
-            selectedTerrainLabel: app._terrainLabel ?? "Forest",
+            selectedTerrainLabel: resolvedTerrainLabel,
             supportsShortRest: game.ionrift?.respite?.adapter?.supportsShortRest ?? true,
             selectedRestType: app._selectedRestType ?? "long",
             selectedRestTypeLabel: app._selectedRestType === "short" ? game.i18n.localize("ionrift-respite.restPrepare.restType.short") : game.i18n.localize("ionrift-respite.restPrepare.restType.long"),
@@ -697,7 +707,7 @@ export class RestPrepareContext {
             ...(() => {
                 const actorId = app._selectedCharacterId
                     ?? (app._isGM ? getPartyActors()[0]?.id : (app._myCharacterIds?.values().next().value ?? getPartyActors()[0]?.id));
-                const gatherOn = !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled());
+                const gatherOn = showGatherStep;
                 const { gatherDone, activityDone } = dailyChoiceStatus(app, actorId, gatherOn);
                 const trackFoodOn = showSustenanceStep;
                 let sustenanceDone = false;

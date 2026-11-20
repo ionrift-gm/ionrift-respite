@@ -1,8 +1,20 @@
+import { MODULE_ID } from "../../../data/moduleId.js";
 import {
     Pf2eWorkbenchExamineService,
     classifyPf2eItemKind,
     isPf2eItemUnidentified
 } from "./Pf2eWorkbenchExamineService.js";
+
+const PF2E_SCHOOL_SLUGS = Object.freeze({
+    abjuration: "abj",
+    conjuration: "con",
+    divination: "div",
+    enchantment: "enc",
+    evocation: "evo",
+    illusion: "ill",
+    necromancy: "nec",
+    transmutation: "trs"
+});
 
 /**
  * DetectMagicScanner
@@ -54,17 +66,35 @@ export class DetectMagicScanner {
                 const isUnid = isPf2eItemUnidentified(item);
                 const unidName = item.system?.identification?.unidentified?.name ?? item.system?.unidentified?.name;
                 const quartermasterLatent = summarise?.(item);
+                const qmLatentRaw = item.getFlag?.("ionrift-quartermaster", "latentMagic")
+                    ?? item.flags?.["ionrift-quartermaster"]?.latentMagic;
                 const trueName = quartermasterLatent?.originalName ?? quartermasterLatent?.trueName ?? item.name;
                 const displayName = isUnid ? (unidName || item.name) : item.name;
+                const rawTraits = item.system?.traits?.value ?? item.traits ?? [];
+                const traitList = [
+                    ...(rawTraits instanceof Set ? [...rawTraits] : (Array.isArray(rawTraits) ? rawTraits : [])),
+                    ...(Array.isArray(qmLatentRaw?.originalTraits) ? qmLatentRaw.originalTraits : [])
+                ].map(t => String(typeof t === "string" ? t : t?.value ?? "").toLowerCase().trim()).filter(Boolean);
+                const traitSchool = traitList.find(t => t in PF2E_SCHOOL_SLUGS) ?? null;
+                const level = Math.max(1, Number(item.system?.level?.value ?? item.level ?? qmLatentRaw?.level ?? 1) || 1);
+                const originCastRank = Number(item.flags?.pf2e?.origin?.castRank ?? 0);
+                const rank = originCastRank > 0 ? originCastRank : Math.max(1, Math.ceil(level / 2));
+                const isDeceptiveIllusion = traitList.includes("illusion") && Boolean(
+                    item.flags?.[MODULE_ID]?.deceptiveIllusion
+                    || item.flags?.["ionrift-tripwire"]?.deceptiveIllusion
+                );
                 items.push({
                     itemId: item.id,
                     displayName,
                     trueName,
-                    school: item.system?.school ?? null,
+                    school: item.system?.school ?? traitSchool ?? null,
                     rarity: quartermasterLatent?.originalRarity ?? item.system?.traits?.rarity ?? item.rarity ?? null,
                     img: item.img ?? "icons/svg/mystery-man.svg",
                     requiresAttunement: false,
-                    identified: !isUnid
+                    identified: !isUnid,
+                    level,
+                    rank,
+                    isDeceptiveIllusion
                 });
                 continue;
             }
@@ -137,9 +167,10 @@ export class DetectMagicScanner {
     /**
      * Scan all party actors for magical items.
      * @param {string[]} actorIds - Actor IDs to scan
-     * @returns {Object[]} Array of { actorId, actorName, items: [...] }
+     * @param {Object|null} [scanMeta] - Optional caster/rank metadata (e.g. PF2e castRank & pf2eCapability)
+     * @returns {Object[]} Array of { actorId, actorName, items: [...], ...scanMeta }
      */
-    static scanParty(actorIds) {
+    static scanParty(actorIds, scanMeta = null) {
         const results = [];
 
         for (const actorId of actorIds) {
@@ -153,7 +184,14 @@ export class DetectMagicScanner {
                     actorId,
                     actorName: actor.name,
                     actorImg: actor.img,
-                    items: magic
+                    items: magic,
+                    ...(scanMeta ? {
+                        systemId: scanMeta.systemId ?? null,
+                        casterId: scanMeta.casterId ?? null,
+                        casterName: scanMeta.casterName ?? null,
+                        castRank: scanMeta.castRank ?? null,
+                        pf2eCapability: scanMeta.pf2eCapability ?? null
+                    } : {})
                 });
             }
         }

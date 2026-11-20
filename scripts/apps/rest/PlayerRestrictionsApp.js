@@ -13,7 +13,11 @@ const RESTRICTION_TOGGLES = [
         key: "interceptRests",
         get label() { return game.i18n.localize("ionrift-respite.playerRestrictions.interceptRests.label"); },
         icon: "fas fa-hand-paper",
-        get hint() { return game.i18n.localize("ionrift-respite.playerRestrictions.interceptRests.hint"); }
+        get hint() {
+            return game.system?.id === "pf2e"
+                ? game.i18n.localize("ionrift-respite.playerRestrictions.interceptRests.hintPf2e")
+                : game.i18n.localize("ionrift-respite.playerRestrictions.interceptRests.hint");
+        }
     },
     {
         key: "lockPlayerQuantity",
@@ -23,12 +27,21 @@ const RESTRICTION_TOGGLES = [
     },
     {
         key: "lockAttuneOutsideRest",
-        get label() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.label"); },
+        get label() {
+            return game.system?.id === "pf2e"
+                ? game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.labelPf2e")
+                : game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.label");
+        },
         icon: "fas fa-gem",
-        get hint() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.hint"); }
+        get hint() {
+            return game.system?.id === "pf2e"
+                ? game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.hintPf2e")
+                : game.i18n.localize("ionrift-respite.playerRestrictions.lockAttuneOutsideRest.hint");
+        }
     },
     {
         key: "lockSpellPrepOutsideRest",
+        dnd5eOnly: true,
         get label() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockSpellPrepOutsideRest.label"); },
         icon: "fas fa-book",
         get hint() { return game.i18n.localize("ionrift-respite.playerRestrictions.lockSpellPrepOutsideRest.hint"); }
@@ -50,11 +63,17 @@ export class PlayerRestrictionsApp extends foundry.applications.api.ApplicationV
 
     /** @override */
     async _prepareContext() {
+        const isDnd5e = !game.system?.id || game.system.id === "dnd5e";
         return {
-            toggles: RESTRICTION_TOGGLES.map(t => ({
-                ...t,
-                value: game.settings.get(MODULE_ID, t.key)
-            }))
+            toggles: RESTRICTION_TOGGLES
+                .filter(t => !t.dnd5eOnly || isDnd5e)
+                .map(t => ({
+                    key: t.key,
+                    label: t.label,
+                    icon: t.icon,
+                    hint: t.hint,
+                    value: game.settings.get(MODULE_ID, t.key)
+                }))
         };
     }
 

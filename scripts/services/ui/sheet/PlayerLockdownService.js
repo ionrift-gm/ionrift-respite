@@ -119,6 +119,7 @@ function readCurrentPrepared(item, path) {
  * @returns {boolean}
  */
 export function shouldBlockSpellPrepChange(item, changes) {
+    if (game.system?.id && game.system.id !== "dnd5e") return false;
     if (item?.type !== "spell") return false;
     const actor = item.parent;
     if (!actor || actor.type !== "character") return false;
@@ -150,10 +151,11 @@ export function injectPlayerLockdownClasses(app, html) {
         ?? app.element;
     if (!el) return;
 
+    const isDnd5e = !game.system?.id || game.system.id === "dnd5e";
     el.classList.toggle("respite-lock-quantity", !!readSetting("lockPlayerQuantity"));
     el.classList.toggle("respite-lock-attune", !!readSetting("lockAttuneOutsideRest") && !isRestActive());
     el.classList.toggle("respite-lock-spellprep",
-        !!readSetting("lockSpellPrepOutsideRest") && !canChangeSpellPrepNow(actor));
+        isDnd5e && !!readSetting("lockSpellPrepOutsideRest") && !canChangeSpellPrepNow(actor));
 }
 
 /** Re-renders open character sheets so lock classes follow rest start and end. */
@@ -211,6 +213,17 @@ export function registerLockdownHooks() {
 
         if (changes?.system?.attuned !== undefined && readSetting("lockAttuneOutsideRest") && !isRestActive()) {
             ui.notifications.warn(game.i18n.localize("ionrift-respite.playerLockdown.warnAttunementRestOnly"));
+            return false;
+        }
+
+        const pf2eInvested = changes?.system?.equipped?.invested ?? changes?.["system.equipped.invested"];
+        if (
+            pf2eInvested !== undefined
+            && Boolean(pf2eInvested) !== Boolean(item.system?.equipped?.invested)
+            && readSetting("lockAttuneOutsideRest")
+            && !isRestActive()
+        ) {
+            ui.notifications.warn(game.i18n.localize("ionrift-respite.playerLockdown.warnInvestmentRestOnly"));
             return false;
         }
 

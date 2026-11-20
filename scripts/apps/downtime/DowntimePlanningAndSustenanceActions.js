@@ -16,6 +16,7 @@ import {
     removeLastPour
 } from "../../services/meal/phase/SustenanceEditPlan.js";
 import { sustenanceActorId } from "../delegates/meal/SustenanceMeterBinding.js";
+import { canGatherInTerrain, getTerrainGatherAvailability } from "../../services/travel/settings/TravelSettings.js";
 
 class DowntimePlanningMixin {
     _holdWindowHeight() {
@@ -154,7 +155,7 @@ class DowntimePlanningMixin {
                 unready.push(`${actor.name} (${fortifyDaysCount - fortifyResolvedCount}d defenses pending)`);
                 continue;
             }
-            if (this._budgetDelegate.haven === "wilderness") {
+            if (this._budgetDelegate.haven === "wilderness" && canGatherInTerrain(this._terrainTag)) {
                 const sched = this._gatheringSchedule.get(actor.id) ?? [];
                 // Camp days are a skip. They have no roll, same as the Gather check.
                 if (sched.some(d => d.mode !== "skip" && !d.rolled)) {
@@ -705,10 +706,14 @@ export class DowntimePlanningActions {
             return;
         }
 
-        let newMode;
-        if (dayEntry.mode === "forage") newMode = "hunt";
-        else if (dayEntry.mode === "hunt") newMode = "skip";
-        else newMode = "forage";
+        const { canForage, canHunt } = getTerrainGatherAvailability(this._terrainTag);
+        const allowedModes = [
+            ...(canForage ? ["forage"] : []),
+            ...(canHunt ? ["hunt"] : []),
+            "skip"
+        ];
+        const currentIdx = allowedModes.indexOf(dayEntry.mode);
+        const newMode = allowedModes[(currentIdx + 1) % allowedModes.length];
 
         dayEntry.mode = newMode;
         dayEntry.rolled = false;

@@ -29,7 +29,7 @@
                 data-action="stationDetectMagicScan"
                 {{#unless canTriggerDetectMagicScan}}disabled{{/unless}}
                 {{#if workbenchSubmitPending}}disabled aria-disabled="true"{{/if}}
-                data-tooltip="{{#if workbenchSubmitPending}}{{localize "ionrift-respite.workbenchIdentify.waitSubmit"}}{{else}}{{#if magicScanActive}}{{localize "ionrift-respite.workbenchIdentify.dismissScan"}}{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}{{localize "ionrift-respite.workbenchIdentify.castDetectMagicGm"}}{{else}}{{localize "ionrift-respite.workbenchIdentify.castDetectMagic"}}{{/if}}{{else}}{{detectMagicDisabledTooltip}}{{/if}}{{/if}}{{/if}}">
+                data-tooltip="{{#if workbenchSubmitPending}}{{localize "ionrift-respite.workbenchIdentify.waitSubmit"}}{{else}}{{#if magicScanActive}}{{localize "ionrift-respite.workbenchIdentify.dismissScan"}}{{else}}{{#if canTriggerDetectMagicScan}}{{#if pf2eCastTooltip}}{{pf2eCastTooltip}}{{else}}{{#if isGmUser}}{{localize "ionrift-respite.workbenchIdentify.castDetectMagicGm"}}{{else}}{{localize "ionrift-respite.workbenchIdentify.castDetectMagic"}}{{/if}}{{/if}}{{else}}{{detectMagicDisabledTooltip}}{{/if}}{{/if}}{{/if}}">
                 <i class="fas {{#if magicScanActive}}fa-eye-slash{{else}}fa-eye{{/if}}" aria-hidden="true"></i>
                 <span class="btn-detect-magic-text">{{#if magicScanActive}}{{localize "ionrift-respite.workbenchIdentify.dismiss"}}{{else}}{{localize "ionrift-respite.workbenchIdentify.detectMagic"}}{{/if}}</span>
                 {{#if detectMagicPill}}
@@ -50,6 +50,12 @@
 
     {{#if isPf2eWorkbench}}
     <div class="wb-pf2e-examine-panel">
+        {{#if pf2eDetectMagicBanner}}
+        <div class="wb-pf2e-dm-banner{{#if pf2eDetectMagicBanner.hasPresence}} is-present{{else}} is-clear{{/if}}">
+            <i class="fas {{#if pf2eDetectMagicBanner.hasPresence}}fa-wand-magic-sparkles{{else}}fa-eye{{/if}}" aria-hidden="true"></i>
+            <span>{{pf2eDetectMagicBanner.text}}</span>
+        </div>
+        {{/if}}
         <div class="wb-pf2e-skill-chips" role="group" aria-label="Identification Skill">
             {{#each pf2eSkillChips}}
             <button type="button"

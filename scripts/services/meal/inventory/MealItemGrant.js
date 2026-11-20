@@ -24,13 +24,13 @@ export async function grantMealItem(actor, itemData, slotRef, opts = {}) {
     const ledger = activeGrantLedger();
     const separateItem = opts.separateItem === true;
     const qty = itemData.system?.quantity ?? 1;
-    const itemDoc = {
+    const itemDoc = ItemOutcomeHandler.coerceItemForActiveSystem({
         name: itemData.name,
         type: itemData.type ?? "loot",
         img: itemData.img ?? "icons/svg/item-bag.svg",
         system: { ...(itemData.system ?? {}), quantity: qty },
         flags: itemData.flags ?? {}
-    };
+    });
     const grant = [{ ...itemDoc, quantity: qty }];
     guardEmbedItems(grant);
     const perform = () => {

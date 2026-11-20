@@ -151,6 +151,7 @@ export function isTorchItem(item) {
 const FIRE_CANTRIP_IDENTIFIERS = new Set([
     "create-bonfire",
     "produce-flame",
+    "ignition",
     "fire-bolt",
     "prestidigitation",
     "control-flames",
@@ -164,7 +165,10 @@ const FIRE_CANTRIP_IDENTIFIERS = new Set([
  * @returns {boolean}
  */
 export function isFireCantripItem(item, fireCantrips = []) {
-    if (!item || item.type !== "spell" || (item.system?.level !== 0)) return false;
+    if (!item || item.type !== "spell") return false;
+    const isCantrip = item.system?.level === 0
+        || (Array.isArray(item.system?.traits?.value) && item.system.traits.value.includes("cantrip"));
+    if (!isCantrip) return false;
     if (getRespiteFlag(item, "isFireCantrip") === true) return true;
     const ref = getRespiteFlag(item, "itemRef");
     if (typeof ref === "string" && FIRE_CANTRIP_IDENTIFIERS.has(ref.toLowerCase())) return true;
@@ -174,6 +178,10 @@ export function isFireCantripItem(item, fireCantrips = []) {
     }
     const src = getDocSourceId(item);
     if (src && [...FIRE_CANTRIP_IDENTIFIERS].some(cid => src.endsWith(`.${cid}`) || src.endsWith(`/${cid}`))) {
+        return true;
+    }
+    const lowerName = (item.name ?? "").toLowerCase().trim();
+    if (lowerName === "ignition" || lowerName === "produce flame" || lowerName === "prestidigitation") {
         return true;
     }
     return fireCantrips.includes(item.name);

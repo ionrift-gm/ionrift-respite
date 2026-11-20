@@ -1,4 +1,4 @@
-import { registerReadyTokenAndResumeFlow, registerDnd5eRestHooks } from "./composition/RespiteBootAndRestHooks.js";
+import { registerReadyTokenAndResumeFlow, registerDnd5eRestHooks, registerPf2eRestHooks } from "./composition/RespiteBootAndRestHooks.js";
 import { Logger as RespiteLog } from "./utils/Logger.js";
 import { CalendarHandler } from "./services/rest/session/CalendarHandler.js";
 import { TerrainRegistry } from "./services/events/resolve/TerrainRegistry.js";
@@ -811,6 +811,13 @@ registerDnd5eRestHooks({
     canStartRest: _canStartRest,
     RestSetupApp,
     reassertMealExhaustionFloor
+});
+
+registerPf2eRestHooks({
+    MODULE_ID,
+    getRespiteFlowActive: () => respiteFlowActive,
+    canStartRest: _canStartRest,
+    RestSetupApp
 });
 
 function _showRejoinNotification(app) {

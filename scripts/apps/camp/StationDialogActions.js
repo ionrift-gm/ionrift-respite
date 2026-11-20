@@ -609,8 +609,9 @@ export const StationDialogActionMethods = {
         spawnDetectMagicCastRipple(btn);
         if (this._restApp._magicScanComplete) {
             this._restApp._clearDetectMagicScanSession();
-        } else {
-            if (!this._restApp.runDetectMagicScan) return;
+        } else if (this._restApp._detectMagic?.runScan) {
+            await this._restApp._detectMagic.runScan(getPartyActors, { preferredCasterId: this._actor?.id ?? null });
+        } else if (this._restApp.runDetectMagicScan) {
             await this._restApp.runDetectMagicScan();
         }
         await this.render(true);

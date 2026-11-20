@@ -26,6 +26,7 @@ import { loadInstalledEventsInto } from "../../services/events/catalog/Installed
 import { WEATHER_TABLE, isWorkbenchIdentifyUiEnabled } from "../../data/RestConstants.js";
 import { CampGearScanner } from "../../services/camp/gear/CampGearScanner.js";
 import { isComfortEnabled, boostComfort } from "../../services/camp/gear/ComfortCalculator.js";
+import { getTerrainGatherAvailability } from "../../services/travel/settings/TravelSettings.js";
 import {
     isPf2eSystem,
     getPf2eFortitudeSaveDC,
@@ -82,7 +83,9 @@ class DowntimeSyncAndRenderMixin {
     _getOrCreateGatheringSchedule(actorId) {
         let schedule = this._gatheringSchedule.get(actorId);
         if (!Array.isArray(schedule) || schedule.length !== GATHERING_DAYS) {
-            schedule = normalizeGatheringSchedule(schedule, "forage");
+            const { canForage, canHunt } = getTerrainGatherAvailability(this._terrainTag);
+            const defaultMode = canForage ? "forage" : (canHunt ? "hunt" : "skip");
+            schedule = normalizeGatheringSchedule(schedule, defaultMode);
             this._gatheringSchedule.set(actorId, schedule);
         }
         return schedule;
@@ -753,10 +756,14 @@ class DowntimeSyncAndRenderMixin {
                             this._gatheringSchedule.set(payload.actorId, payload.schedule);
                         }
                     } else if (existingEntry) {
-                        let nextMode;
-                        if (existingEntry.mode === "forage") nextMode = "hunt";
-                        else if (existingEntry.mode === "hunt") nextMode = "skip";
-                        else nextMode = "forage";
+                        const { canForage, canHunt } = getTerrainGatherAvailability(this._terrainTag);
+                        const allowedModes = [
+                            ...(canForage ? ["forage"] : []),
+                            ...(canHunt ? ["hunt"] : []),
+                            "skip"
+                        ];
+                        const currentIdx = allowedModes.indexOf(existingEntry.mode);
+                        const nextMode = allowedModes[(currentIdx + 1) % allowedModes.length];
                         existingEntry.mode = payload.mode ?? nextMode;
                         existingEntry.rolled = false;
                         existingEntry.rollTotal = null;

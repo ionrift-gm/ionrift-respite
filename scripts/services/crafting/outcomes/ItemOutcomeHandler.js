@@ -7,8 +7,10 @@ import { isHomebrewProvisionOnly } from "../../travel/settings/TravelSettings.js
 import { PROVISIONS_CUSTOM_PACK_ID } from "../../meal/provisions/ProvisionsCustomPack.js";
 import { getRegisteredProvisionPackIds } from "../../travel/resolve/TravelProvisionIndex.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { BASE_RESPITE_ITEMS } from "../../../data/baseRespiteItems.js";
 import { findFletchAmmoStack } from "./FletchAmmoStack.js";
 import { isPf2eSystem } from "../../camp/gear/Pf2eComfortRules.js";
+import { coerceOverlayItemForSystem } from "/modules/ionrift-library/scripts/services/packs/overlayItemCoerce.js";
 
 const MODULE_PACK_ID = "ionrift-respite.respite-items";
 
@@ -81,8 +83,6 @@ export class ItemOutcomeHandler {
             const qty = grant.quantity ?? 1;
             if (qty <= 0) continue;
 
-            const grantType = grant.type ?? "loot";
-
             ItemOutcomeHandler._stampPerishableHarvestDate(grant);
 
             const useCohortSuffix = isSpoilageNameSuffixEnabled();
@@ -97,10 +97,22 @@ export class ItemOutcomeHandler {
                 }
             }
 
+            const preparedItem = ItemOutcomeHandler.coerceItemForActiveSystem({
+                name: grant.name,
+                type: grant.type ?? "loot",
+                img: grant.img ?? "icons/svg/item-bag.svg",
+                system: {
+                    ...(grant.system ?? {}),
+                    quantity: qty
+                },
+                flags: grant.flags ?? {}
+            });
+            const effectiveType = preparedItem.type ?? grant.type ?? "loot";
+
             const pinned = grant.stackOntoId ? actor.items.get(grant.stackOntoId) : null;
             const existing = pinned ?? (useCohortSuffix
-                ? ItemOutcomeHandler._findCohortSuffixMergeTarget(actor, grant, grantType)
-                : ItemOutcomeHandler._findMetadataMergeTarget(actor, grant, grantType));
+                ? ItemOutcomeHandler._findCohortSuffixMergeTarget(actor, grant, effectiveType)
+                : ItemOutcomeHandler._findMetadataMergeTarget(actor, grant, effectiveType));
 
             if (existing) {
                 // Stack onto existing: increment quantity + merge flags
@@ -126,21 +138,9 @@ export class ItemOutcomeHandler {
                 toUpdate.push(updateData);
                 summary.push({ name: existing.name ?? grant.name, quantity: qty, stacked: true });
             } else {
-                // Create new item with correct quantity.
-                // Spread system first, then override quantity so the rolled
-                // count always wins over any quantity baked into itemData.
-                const itemData = this._normalize([{
-                    name: grant.name,
-                    type: grant.type ?? "loot",
-                    img: grant.img ?? "icons/svg/item-bag.svg",
-                    system: {
-                        ...(grant.system ?? {}),
-                        quantity: qty,
-                    },
-                    flags: grant.flags ?? {}
-                }]);
-                toCreate.push(...itemData);
-                summary.push({ name: grant.name, quantity: qty, stacked: false });
+                // Create new item with correct quantity and active-system schema.
+                toCreate.push(preparedItem);
+                summary.push({ name: preparedItem.name ?? grant.name, quantity: qty, stacked: false });
             }
         }
 
@@ -404,14 +404,24 @@ export class ItemOutcomeHandler {
         // 4. Inline fallback
         if (itemEntry.itemData) return itemEntry.itemData;
 
-        // 5. Built-in fallback for refs without compendium entries yet
+        // 5. Shipped base respite-items fallback (for non-dnd5e worlds where the
+        // dnd5e-typed respite-items LevelDB pack is not mounted by Foundry)
+        if (!isHomebrewProvisionOnly() && BASE_RESPITE_ITEMS[ref]) {
+            return foundry?.utils?.deepClone
+                ? foundry.utils.deepClone(BASE_RESPITE_ITEMS[ref])
+                : structuredClone(BASE_RESPITE_ITEMS[ref]);
+        }
+
+        // 6. Built-in fallback for refs without compendium entries yet
         const fallback = FALLBACK_ITEMS[ref];
         if (fallback) {
             Logger.log(`ItemOutcomeHandler | Resolved "${ref}" via built-in fallback`);
-            return { ...fallback };
+            return foundry?.utils?.deepClone
+                ? foundry.utils.deepClone(fallback)
+                : structuredClone(fallback);
         }
 
-        // 6. Last resort: synthesize a generic loot item from the ref name
+        // 7. Last resort: synthesize a generic loot item from the ref name
         console.warn(`ItemOutcomeHandler | Unresolved itemRef "${ref}", creating generic loot`);
         return {
             name: ref.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
@@ -443,10 +453,26 @@ export class ItemOutcomeHandler {
         if (itemRef) {
             const fromRef = await this._fromCompendium(itemRef);
             if (fromRef) return fromRef;
+            if (!isHomebrewProvisionOnly() && BASE_RESPITE_ITEMS[itemRef]) {
+                return foundry?.utils?.deepClone
+                    ? foundry.utils.deepClone(BASE_RESPITE_ITEMS[itemRef])
+                    : structuredClone(BASE_RESPITE_ITEMS[itemRef]);
+            }
         }
         if (name) {
             const fromName = await this._fromCompendiumByName(name);
             if (fromName) return fromName;
+            if (!isHomebrewProvisionOnly()) {
+                const lower = name.toLowerCase().trim();
+                const match = Object.values(BASE_RESPITE_ITEMS).find(
+                    entry => entry.name?.toLowerCase().trim() === lower
+                );
+                if (match) {
+                    return foundry?.utils?.deepClone
+                        ? foundry.utils.deepClone(match)
+                        : structuredClone(match);
+                }
+            }
         }
         return null;
     }
@@ -502,15 +528,52 @@ export class ItemOutcomeHandler {
     }
 
     /**
-     * Normalizes item data, using Workshop if available.
+     * Normalizes and coerces one item payload for the active game system.
+     * - On dnd5e (or unset systemId in unit tests): runs Quartermaster's
+     *   `WorkshopItemFactory.normalize` when active.
+     * - On foreign systems (PF2e, Daggerheart, OSE, etc.): remaps dnd5e item
+     *   types (`loot` -> `treasure`/`equipment`, `container` -> `backpack`,
+     *   `tool` -> `equipment`) and sanitizes `system` into a host-valid stub
+     *   without running dnd5e price/weight normalization.
+     *
+     * @param {Object} item
+     * @returns {Object}
+     */
+    static coerceItemForActiveSystem(item) {
+        if (!item) return item;
+        const clone = foundry?.utils?.deepClone
+            ? foundry.utils.deepClone(item)
+            : structuredClone(item);
+        const systemId = (typeof game !== "undefined" ? game?.system?.id : null) ?? "";
+        const isForeignSystem = Boolean(systemId && systemId !== "dnd5e");
+
+        if (!isForeignSystem) {
+            const workshop = typeof game !== "undefined" ? game?.modules?.get?.("ionrift-quartermaster") : null;
+            if (workshop?.active && workshop.api?.items?.normalize) {
+                return workshop.api.items.normalize(clone);
+            }
+            return clone;
+        }
+
+        // Preserve explicit PF2e mundane fletching ammo payloads (`type: "ammo"`)
+        if (systemId === "pf2e" && clone.type === "ammo") {
+            const qty = Number(clone.system?.quantity);
+            clone.system = {
+                description: { value: clone.system?.description?.value ?? "" },
+                quantity: Number.isFinite(qty) && qty > 0 ? qty : 1
+            };
+            return clone;
+        }
+
+        return coerceOverlayItemForSystem(clone, { systemId }) ?? clone;
+    }
+
+    /**
+     * Normalizes item data for the active system.
      * @param {Object[]} items
      * @returns {Object[]}
      */
     static _normalize(items) {
-        const workshop = game.modules?.get?.("ionrift-quartermaster");
-        if (workshop?.active && workshop.api?.items?.normalize) {
-            return items.map(i => workshop.api.items.normalize(i));
-        }
-        return items;
+        return (items ?? []).map(i => ItemOutcomeHandler.coerceItemForActiveSystem(i));
     }
 }

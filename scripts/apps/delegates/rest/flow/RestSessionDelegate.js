@@ -335,6 +335,7 @@ export class RestSessionDelegate {
         app._daysSinceLastRest = 1;
 
         app._magicScanResults = state.magicScanResults ?? null;
+        app._magicScanMeta = state.magicScanMeta ?? null;
         app._magicScanComplete = state.magicScanComplete ?? false;
 
         if (!app._grantLedger) app._grantLedger = new GrantLedger();
@@ -430,6 +431,7 @@ export class RestSessionDelegate {
             restLedger: app._restLedger?.serialize() ?? null,
             magicScanComplete: app._magicScanComplete ?? false,
             magicScanResults: app._magicScanResults ?? null,
+            magicScanMeta: app._magicScanMeta ?? null,
             tavernTotmOverride: !!app._tavernTotmOverride,
             campSceneId: getCampSceneId(),
             campSessionId: getCampSessionIdStored(),
