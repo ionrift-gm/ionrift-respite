@@ -78,7 +78,8 @@ export class RestDockContext {
         finishedActorIds = new Set(),
         characterState = new Map(),
         isGM = (typeof game !== "undefined" ? Boolean(game.user?.isGM) : false),
-        comfortFlashing = false
+        comfortFlashing = false,
+        comfortEnabled = true
     } = {}) {
         if (!party.length) return { selected: null, companions: [] };
 
@@ -86,10 +87,10 @@ export class RestDockContext {
             ? party.find(a => a.id === selectedId) ?? party[0]
             : party[0];
 
-        const selected = this.#buildSelected(selectedActor, personalScan, isGM, comfortFlashing);
+        const selected = this.#buildSelected(selectedActor, personalScan, isGM, comfortFlashing, comfortEnabled);
         const companions = party
             .filter(a => a && a.id !== selectedActor.id)
-            .map(a => this.#buildCompanion(a, selectedId, finishedActorIds, characterState, isGM));
+            .map(a => this.#buildCompanion(a, selectedId, finishedActorIds, characterState, isGM, comfortEnabled));
 
         return { selected, companions };
     }
@@ -111,8 +112,28 @@ export class RestDockContext {
         return had && prev !== next;
     }
 
-    static #buildSelected(actor, personalScan, isGM, comfortFlashing = false) {
+    static #buildSelected(actor, personalScan, isGM, comfortFlashing = false, comfortEnabled = true) {
         if (!actor) return null;
+
+        if (!comfortEnabled) {
+            const isSelfCard = !isGM && Boolean(actor.isOwner);
+            return {
+                id: actor.id,
+                name: actor.name,
+                img: actor.img || "icons/svg/mystery-man.svg",
+                kit: [],
+                hideComfortKit: true,
+                comfortTier: null,
+                comfortLabel: "",
+                comfortTooltip: "",
+                comfortFlashing: false,
+                recoveryBenefit: "",
+                recoveryBenefitText: "",
+                recoveryHazard: null,
+                recoveryTooltip: "",
+                isSelfCard
+            };
+        }
 
         const kit = KIT_ITEMS.map(item => {
             const present = Boolean(personalScan?.[`has${cap(item.key)}`]);
@@ -252,10 +273,11 @@ export class RestDockContext {
         };
     }
 
-    static #buildCompanion(actor, selectedId, finishedActorIds, characterState, isGM) {
+    static #buildCompanion(actor, selectedId, finishedActorIds, characterState, isGM, comfortEnabled = true) {
         const state = characterState?.get?.(actor.id) ?? {};
         const warnings = [];
-        if (state.hasExhaustionRisk) warnings.push(game.i18n.format("ionrift-respite.restDock.companion.exhaustionSave", { dc: state.exhaustionDC || 10 }));
+        const hasExhRisk = Boolean(comfortEnabled && state.hasExhaustionRisk);
+        if (hasExhRisk) warnings.push(game.i18n.format("ionrift-respite.restDock.companion.exhaustionSave", { dc: state.exhaustionDC || 10 }));
         if (state.hasStarvationRisk) warnings.push(game.i18n.localize("ionrift-respite.restDock.companion.starvationRisk"));
         if (state.hasDehydrationRisk) warnings.push(game.i18n.localize("ionrift-respite.restDock.companion.dehydrationRisk"));
         const tooltipLines = [actor.name];
@@ -267,7 +289,7 @@ export class RestDockContext {
             img: actor.img || "icons/svg/mystery-man.svg",
             isSelected: selectedId ? actor.id === selectedId : false,
             isReady: finishedActorIds?.has?.(actor.id) ?? false,
-            hasExhaustionRisk: Boolean(state.hasExhaustionRisk),
+            hasExhaustionRisk: hasExhRisk,
             exhaustionDC: state.exhaustionDC ?? null,
             hasStarvationRisk: Boolean(state.hasStarvationRisk),
             hasDehydrationRisk: Boolean(state.hasDehydrationRisk),

@@ -1,5 +1,5 @@
 {{!-- Normal rest Gather / Activities: night-cards + Ready + 268px fire rail. --}}
-<div class="rest-sustenance-with-fire">
+<div class="rest-sustenance-with-fire{{#if hideFireRail}} no-fire-rail{{/if}}">
     <div class="rest-sustenance-main">
         {{#if (eq selectedWorkflowStep "gather")}}
         {{#if gatherPanel}}
@@ -33,16 +33,52 @@
                 {{/each}}
             </div>
             <div class="rest-step-pacing">
+                {{#if @root.hideActivitiesStep}}
+                {{#if @root.showSustenanceStep}}
+                <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="sustenance">
+                    <span>{{localize "ionrift-respite.restChoiceWithFire.nextSustenance"}}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+                {{else if @root.characterPlanComplete}}
+                {{#if @root.characterReady}}
+                <button type="button" class="btn-step-ready rest-ready-btn is-ready" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i> <span>{{localize "ionrift-respite.restChoiceWithFire.readyEditChoices"}}</span>
+                </button>
+                {{else}}
+                <button type="button" class="btn-step-ready rest-ready-btn" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
+                    <i class="fas fa-check" aria-hidden="true"></i> <span>{{localize "ionrift-respite.restChoiceWithFire.readyForNight"}}</span>
+                </button>
+                {{/if}}
+                {{/if}}
+                {{else}}
                 <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="activities">
                     <span>{{localize "ionrift-respite.restChoiceWithFire.nextActivity"}}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
                 </button>
+                {{/if}}
             </div>
             {{else if gatherPanel.detail}}
             <p class="totm-detail-description">{{gatherPanel.detail}}</p>
             <div class="rest-step-pacing">
+                {{#if @root.hideActivitiesStep}}
+                {{#if @root.showSustenanceStep}}
+                <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="sustenance">
+                    <span>{{localize "ionrift-respite.restChoiceWithFire.nextSustenance"}}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+                {{else if @root.characterPlanComplete}}
+                {{#if @root.characterReady}}
+                <button type="button" class="btn-step-ready rest-ready-btn is-ready" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i> <span>{{localize "ionrift-respite.restChoiceWithFire.readyEditChoices"}}</span>
+                </button>
+                {{else}}
+                <button type="button" class="btn-step-ready rest-ready-btn" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
+                    <i class="fas fa-check" aria-hidden="true"></i> <span>{{localize "ionrift-respite.restChoiceWithFire.readyForNight"}}</span>
+                </button>
+                {{/if}}
+                {{/if}}
+                {{else}}
                 <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="activities">
                     <span>{{localize "ionrift-respite.restChoiceWithFire.nextActivity"}}</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
                 </button>
+                {{/if}}
             </div>
             {{else if gatherPanel.canRollCheck}}
             <div class="totm-detail-mechanics">
@@ -131,5 +167,7 @@
         {{/if}}
         {{/if}}
     </div>
+    {{#unless hideFireRail}}
     {{> restFireRail}}
+    {{/unless}}
 </div>

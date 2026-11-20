@@ -235,7 +235,11 @@ async _onSetupTerrainChanged(prevTerrain, nextTerrain) {
 _activityResolverOpts(overrides = {}) {
         const tavernRest = this._isTavernTerrain();
         const safeRestSpot = this._effectiveSafeRestSpot() || tavernRest;
-        const fireLevel = overrides.fireLevel ?? this._fireLevel ?? "unlit";
+        const hasMansionHearth = Boolean(
+            this._shelterOverrides?.magnificent_mansion
+            || (this._engine?.activeShelters ?? []).includes("magnificent_mansion")
+        );
+        const fireLevel = overrides.fireLevel ?? (hasMansionHearth ? "campfire" : (this._fireLevel ?? "unlit"));
         const isFireLit = overrides.isFireLit ?? !!(fireLevel && fireLevel !== "unlit");
         return {
             safeRestSpot,

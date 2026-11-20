@@ -11,6 +11,8 @@ import {
     emitPhaseChanged
 } from "../../../services/socket/SocketController.js";
 import { isComfortEnabled } from "../../../services/camp/gear/ComfortCalculator.js";
+import { areEncountersEnabled } from "../../../services/rest/flow/ActivityEligibility.js";
+import { isProfessionActivityEnabled } from "../../../services/travel/settings/TravelSettings.js";
 import { isCampfireMinigameEnabled, isSimpleStationsMode, requiresMapCampFire } from "../../../services/rest/flow/RestProfileSettings.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
@@ -443,24 +445,52 @@ export class CampCeremonyDelegate {
     
     }
 
-    _activityFireUiEnabled() {
+    _activeShelterIds() {
         const app = this._app;
+        const set = new Set(
+            Object.entries(app._shelterOverrides ?? {})
+                .filter(([, v]) => v)
+                .map(([id]) => id)
+        );
+        for (const id of (app._engine?.activeShelters ?? [])) {
+            if (id) set.add(id);
+        }
+        return [...set];
+    }
 
-        if (app._phase !== "activity") return false;
-        if (!isComfortEnabled()) return false;
+    isFireSubsystemRelevant() {
+        return isComfortEnabled()
+            || areEncountersEnabled()
+            || isProfessionActivityEnabled({ category: "profession" });
+    }
+
+    getFireBlockingShelterName() {
+        const activeIds = this._activeShelterIds();
+        if (activeIds.includes("tiny_hut")) return "Tiny Hut";
+        if (activeIds.includes("rope_trick")) return "Rope Trick";
+        return null;
+    }
+
+    _fireRailVisible() {
+        const app = this._app;
+        if (!["activity", "meal"].includes(app._phase)) return false;
+        if ((app._restVariant ?? "normal") === "gritty") return false;
+        if (!this.isFireSubsystemRelevant()) return false;
         let safeFromSetting = false;
         try {
             safeFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
         } catch { /* noop */ }
         const effectiveSafe = !!(app._engine?.safeRestSpot ?? app._restData?.safeRestSpot ?? safeFromSetting);
-        if (effectiveSafe || app._isTavernTerrain()) return false;
+        if (effectiveSafe || app._isTavernTerrain?.()) return false;
         const magicalShelters = ["tiny_hut", "rope_trick", "magnificent_mansion"];
-        const activeShelterIds = Object.entries(app._shelterOverrides ?? {})
-            .filter(([, v]) => v)
-            .map(([id]) => id);
-        if (activeShelterIds.some(id => magicalShelters.includes(id))) return false;
+        if (this._activeShelterIds().some(id => magicalShelters.includes(id))) return false;
         return true;
-    
+    }
+
+    _activityFireUiEnabled() {
+        const app = this._app;
+        if (app._phase !== "activity") return false;
+        return this._fireRailVisible();
     }
 
     _totmFireUiEnabled() {
@@ -517,11 +547,8 @@ export class CampCeremonyDelegate {
 
     /** Normal rest mounts the same fire into the fixed rail, not the old aside. */
     _shouldMountFireRailEmbed() {
-        const app = this._app;
-        if (!["activity", "meal"].includes(app._phase)) return false;
-        if ((app._restVariant ?? "normal") === "gritty") return false;
         if (!isCampfireMinigameEnabled()) return false;
-        return true;
+        return this._fireRailVisible();
     }
 
     _shouldShowTotmCampfirePanel() {

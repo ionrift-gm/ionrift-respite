@@ -597,7 +597,7 @@
     {{> restExamineWithFire}}
     {{else}}
     {{!-- Detail stays beside the fire rail so the window does not resize. --}}
-    <div class="rest-sustenance-with-fire">
+    <div class="rest-sustenance-with-fire{{#if hideFireRail}} no-fire-rail{{/if}}">
     <div class="rest-sustenance-main">
     <div class="totm-detail-view">
         <div class="totm-detail-header">
@@ -893,7 +893,9 @@
         {{/if}} {{!-- /isCrafting --}}
     </div>
     </div>
+    {{#unless hideFireRail}}
     {{> restFireRail}}
+    {{/unless}}
     </div>
     {{/if}}
     {{else if showMealContent}}

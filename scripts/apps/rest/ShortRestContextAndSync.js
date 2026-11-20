@@ -4,6 +4,7 @@ import { HitDiceService } from "../../services/rest/recovery/HitDiceService.js";
 import { SpellSlotRecovery } from "../../services/rest/recovery/SpellSlotRecovery.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 import { isWorkbenchIdentifyUiEnabled, matchesShelterSpell } from "../../data/RestConstants.js";
+import { areEncountersEnabled } from "../../services/rest/flow/ActivityEligibility.js";
 import {
     _showGmShortRestIndicator,
     _removeGmShortRestIndicator
@@ -440,6 +441,8 @@ export const ShortRestContextAndSyncMethods = {
                 isGM: this._isGM
             }),
             completionPhase,
+            encountersEnabled: areEncountersEnabled(),
+            hideEncounterDcStepper: !areEncountersEnabled(),
             patrolCheckEnabled: Boolean(this._patrolCheckEnabled),
             encounterDcStepper: {
                 dc: this._encounterDc ?? 6,

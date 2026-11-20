@@ -8,6 +8,7 @@ import { PROVISIONS_CUSTOM_PACK_ID } from "../../meal/provisions/ProvisionsCusto
 import { getRegisteredProvisionPackIds } from "../../travel/resolve/TravelProvisionIndex.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { findFletchAmmoStack } from "./FletchAmmoStack.js";
+import { isPf2eSystem } from "../../camp/gear/Pf2eComfortRules.js";
 
 const MODULE_PACK_ID = "ionrift-respite.respite-items";
 
@@ -185,12 +186,13 @@ export class ItemOutcomeHandler {
                     const ammoStack = itemEntry.ammoKind
                         ? findFletchAmmoStack(actor, itemEntry.ammoKind)
                         : null;
+                    const pf2eFletchNew = Boolean(itemEntry.ammoKind && !ammoStack && isPf2eSystem());
                     grants.push({
                         name: ammoStack?.name ?? resolved.name,
-                        type: ammoStack?.type ?? resolved.type,
+                        type: ammoStack?.type ?? (pf2eFletchNew ? "ammo" : resolved.type),
                         img: resolved.img,
                         quantity: itemEntry.quantity ?? 1,
-                        system: resolved.system ?? {},
+                        system: pf2eFletchNew ? {} : (resolved.system ?? {}),
                         flags: resolved.flags ?? {},
                         ...(ammoStack ? { stackOntoId: ammoStack.id } : {})
                     });

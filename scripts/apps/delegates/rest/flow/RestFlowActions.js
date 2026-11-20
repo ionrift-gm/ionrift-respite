@@ -239,19 +239,21 @@ export class RestFlowActions {
         app._engine._baseDC = terrainTable?.noEventThreshold ?? 15;
         app._engine.setup();
 
-        if (safeRestSpot) {
-            app._engine.comfort = "safe";
-            app._engine.shelterEncounterMod = 0;
-            app._engine._encounterBreakdown = {
-                shelter: 0,
-                weather: 0,
-                defenses: 0,
-                travelMishap: 0,
-                weatherName: weather
-            };
+        if (safeRestSpot || activeShelters.includes("magnificent_mansion")) {
+            if (safeRestSpot) {
+                app._engine.comfort = "safe";
+                app._engine.shelterEncounterMod = 0;
+                app._engine._encounterBreakdown = {
+                    shelter: 0,
+                    weather: 0,
+                    defenses: 0,
+                    travelMishap: 0,
+                    weatherName: weather
+                };
+                app._engine.gmEncounterAdj = 0;
+            }
             app._engine.fireRollModifier = 0;
             app._engine.fireLevel = "campfire";
-            app._engine.gmEncounterAdj = 0;
             app._fireLevel = "campfire";
         }
 

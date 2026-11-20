@@ -194,10 +194,20 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
 
     const icon = ACTIVITY_ICONS[activityId] ?? activity.icon ?? "fas fa-circle";
 
+    const pf2e = isPf2eSystem();
     const outcomeHints = [];
-    for (const tier of ["success", "exceptional", "failure"]) {
-        for (const eff of (activity.outcomes?.[tier]?.effects ?? [])) {
-            if (eff.description) outcomeHints.push({ text: eff.description, type: tier });
+    if (pf2e && activityId === "act_tend_wounds") {
+        outcomeHints.push({ text: "Ally recovers 2d8 HP now (4d8 on critical success) and clears Wounded", type: "success" });
+        outcomeHints.push({ text: "Ally gets +1 personal comfort", type: "success" });
+        outcomeHints.push({ text: "No immediate healing on a failed check", type: "failure" });
+    } else if (pf2e && activityId === "act_rest_fully") {
+        outcomeHints.push({ text: "Personal Comfort level +1", type: "success" });
+        outcomeHints.push({ text: "Doubles overnight HP recovery (or steps up from Hostile) and clears extra Drained", type: "success" });
+    } else {
+        for (const tier of ["success", "exceptional", "failure"]) {
+            for (const eff of (activity.outcomes?.[tier]?.effects ?? [])) {
+                if (eff.description) outcomeHints.push({ text: eff.description, type: tier });
+            }
         }
     }
     if (activityId === "act_fletch" && !outcomeHints.length) {
@@ -208,6 +218,13 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
             : game.i18n.localize("ionrift-respite.activityDetail.fletchReplenishes");
         outcomeHints.push({ text, type: "success" });
     }
+
+    const combatModifiers = (pf2e && activity.combatModifiers?.initiativeDisadvantage)
+        ? {
+            ...activity.combatModifiers,
+            description: "-2 circumstance penalty to Initiative if attacked"
+        }
+        : activity.combatModifiers;
 
     const checkLabel = buildCheckLabelForActivity(activity, actor, comfort, followUpValue);
 
@@ -246,7 +263,7 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
         followUpData,
         armorHint,
         armorWarning,
-        combatModifiers:  activity.combatModifiers,
+        combatModifiers,
         isCrafting:       !!activity.crafting?.enabled,
         characterId:      actor?.id ?? null
     };

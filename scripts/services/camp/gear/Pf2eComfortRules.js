@@ -68,6 +68,47 @@ export function getPf2eLevelBasedDC(level) {
 }
 
 /**
+ * Maps a D&D 5e activity skill check base DC onto PF2e's Level-Based DC table.
+ * 5e DC <= 10 maps to Easy (-2), 11..13 maps to Standard (+0), >= 14 maps to Hard (+2).
+ * Raw ability checks (e.g. Training) do not add proficiency/level and must not call this.
+ * @param {number} base5eDc
+ * @param {number} [level=1]
+ * @returns {number}
+ */
+export function resolvePf2eActivityDC(base5eDc, level = 1) {
+    const levelDc = getPf2eLevelBasedDC(Math.max(1, Number(level) || 1));
+    const raw = Number(base5eDc) || 12;
+    if (raw <= 10) return levelDc - 2;
+    if (raw <= 13) return levelDc;
+    return levelDc + 2;
+}
+
+/**
+ * Resolves PF2e-appropriate skill keys for an activity check.
+ * Fletch Arrows uses Crafting or Survival on PF2e instead of Sleight of Hand / Thievery.
+ * @param {string} activityId
+ * @param {{ skill?: string, altSkill?: string, skills?: string[] }|null} checkDef
+ * @returns {{ skill: string|undefined, altSkill: string|undefined, skills: string[] }}
+ */
+export function resolvePf2eActivitySkills(activityId, checkDef = null) {
+    if (activityId === "act_fletch" || activityId === "fletch") {
+        return {
+            skill: "crafting",
+            altSkill: "sur",
+            skills: ["crafting", "sur"]
+        };
+    }
+    const baseSkills = Array.isArray(checkDef?.skills) && checkDef.skills.length
+        ? checkDef.skills
+        : [checkDef?.skill, checkDef?.altSkill].filter(Boolean);
+    return {
+        skill: checkDef?.skill,
+        altSkill: checkDef?.altSkill,
+        skills: baseSkills
+    };
+}
+
+/**
  * Dawn Fortitude save DC for PF2e comfort tiers.
  * Rough uses Easy (-2); Hostile uses Standard (+0).
  * @param {string} tier

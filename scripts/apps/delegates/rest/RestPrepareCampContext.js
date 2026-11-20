@@ -371,8 +371,8 @@ export function buildCampStatusAndEncounterBar(app, encountersEnabled) {
                 const weatherKey = app._engine.weather ?? "clear";
                 const wx = WEATHER_TABLE[weatherKey] ?? WEATHER_TABLE.clear;
                 const weatherParts = [];
-                if (wx.comfortPenalty > 0) weatherParts.push(`Comfort -${wx.comfortPenalty} step`);
-                if (wx.encounterDC > 0) weatherParts.push(`Night check mod +${wx.encounterDC}`);
+                if (isComfortEnabled() && wx.comfortPenalty > 0) weatherParts.push(`Comfort -${wx.comfortPenalty} step`);
+                if (encountersEnabled && wx.encounterDC > 0) weatherParts.push(`Night check mod +${wx.encounterDC}`);
                 if (wx.tentCancels) weatherParts.push("Tent cancels");
                 else if (wx.tentReduces) weatherParts.push("Tent reduces by 1");
                 const SHELTER_TOOLTIPS = {

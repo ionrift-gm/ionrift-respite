@@ -973,14 +973,18 @@
     <div class="downtime-footer-bar rest-footer-unified">
         {{#if isGM}}
         {{#if isWilderness}}
+        {{#unless hideLogisticsButton}}
         <button type="button"
             class="btn-gm-logistics{{#if logisticsDrawerOpen}} active{{/if}}"
             data-action="toggleLogisticsDrawer"
             data-tooltip="{{#if logisticsDrawerOpen}}{{localize "ionrift-respite.downtimeLedger.closeCampLogistics"}}{{else}}{{{logisticsTooltip}}}{{/if}}">
             <i class="fas fa-sliders"></i> {{localize "ionrift-respite.downtimeLedger.logistics"}}
         </button>
+        {{/unless}}
 
+        {{#unless hideEncounterDcStepper}}
         {{> encounterDcStepper dc=dangerDC adjustAction="adjustDraftDC" tooltip=(localize "ionrift-respite.downtimeLedger.encounterDcTooltip")}}
+        {{/unless}}
         {{/if}}
 
         <span class="rest-footer-ready" data-tooltip="{{partyReadiness.unreadyTooltip}}">

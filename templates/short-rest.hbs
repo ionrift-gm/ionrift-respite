@@ -85,7 +85,9 @@
             </button>
             {{/unless}}
             {{#if isGM}}
+            {{#unless hideEncounterDcStepper}}
             {{> encounterDcStepper encounterDcStepper}}
+            {{/unless}}
             <div class="sr-footer-end">
             {{#if canCompleteShortRest}}
             <button type="button" class="btn-primary-green sr-complete-btn" data-action="completeShortRest">

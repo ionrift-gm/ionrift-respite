@@ -52,9 +52,31 @@ export class PF2eAdapter extends SystemAdapter {
         prf: "performance",
         per: "diplomacy",
         rel: "religion",
+        sle: "thievery",
         slt: "thievery",
         ste: "stealth",
         sur: "survival",
+        crafting: "crafting",
+    };
+
+    static SKILL_LABELS = {
+        acrobatics: "Acrobatics",
+        arcana: "Arcana",
+        athletics: "Athletics",
+        crafting: "Crafting",
+        deception: "Deception",
+        diplomacy: "Diplomacy",
+        intimidation: "Intimidation",
+        medicine: "Medicine",
+        nature: "Nature",
+        occultism: "Occultism",
+        performance: "Performance",
+        perception: "Perception",
+        religion: "Religion",
+        society: "Society",
+        stealth: "Stealth",
+        survival: "Survival",
+        thievery: "Thievery",
     };
 
     // DnD5e save keys ,  PF2e save keys
@@ -72,6 +94,11 @@ export class PF2eAdapter extends SystemAdapter {
 
     normalizeSkillKey(skillKey) {
         return PF2eAdapter.SKILL_KEY_MAP[skillKey] ?? skillKey;
+    }
+
+    getSkillLabel(skillKey) {
+        const key = this.normalizeSkillKey(skillKey);
+        return PF2eAdapter.SKILL_LABELS[key] ?? (key ? key.charAt(0).toUpperCase() + key.slice(1) : "");
     }
 
     getHP(actor) {

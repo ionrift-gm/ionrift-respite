@@ -1,6 +1,6 @@
 {{!-- Normal rest sustenance: pile/vessel, Ready, 268px fire rail.
      Mock: ionrift_debug/mockups/rest-dock-across.html --}}
-<div class="rest-sustenance-with-fire">
+<div class="rest-sustenance-with-fire{{#if hideFireRail}} no-fire-rail{{/if}}">
     <div class="rest-sustenance-main">
         {{#if mealCommit}}
         <div class="totm-detail-view rest-sustenance-panel sust-commit-card">
@@ -91,5 +91,7 @@
         </div>
         {{/if}}
     </div>
+    {{#unless hideFireRail}}
     {{> restFireRail}}
+    {{/unless}}
 </div>

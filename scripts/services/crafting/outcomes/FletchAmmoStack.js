@@ -38,6 +38,15 @@ function isMagicAmmo(item) {
     return /\+\d/.test(item.name ?? "");
 }
 
+export function isMundaneAmmoItem(item) {
+    if (!item || isMagicAmmo(item)) return false;
+    if (item.type === "ammo") return true;
+    if (item.type === "consumable") {
+        return item.system?.type?.value === "ammo" || item.system?.category === "ammo";
+    }
+    return false;
+}
+
 /**
  * Existing mundane ammo stack of the given kind, or null.
  * @param {Actor} actor
@@ -46,11 +55,7 @@ function isMagicAmmo(item) {
  */
 export function findFletchAmmoStack(actor, kind) {
     const resolvedKind = fletchAmmoKind(kind);
-    const ammo = (actor?.items ?? []).filter(item =>
-        item.type === "consumable"
-        && item.system?.type?.value === "ammo"
-        && !isMagicAmmo(item)
-    );
+    const ammo = (actor?.items ?? []).filter(item => isMundaneAmmoItem(item));
     const subtype = AMMO_SUBTYPES[resolvedKind];
     const idSet = IDENTIFIER_MAP[resolvedKind];
     return ammo.find(item => item.system?.type?.subtype === subtype)

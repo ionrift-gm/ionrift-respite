@@ -19,6 +19,7 @@
         <img class="rest-dock-portrait{{#if isSelfCard}} is-self{{/if}}{{#if @root.characterReady}} is-ready{{/if}}" src="{{img}}" alt="{{name}}">
         <div class="rest-dock-who">
             <div class="rest-dock-name">{{name}}</div>
+            {{#unless hideComfortKit}}
             <div class="rest-dock-kit">
                 {{#each kit}}
                 <span class="rest-dock-slot{{#if present}} on{{/if}}{{#if waived}} waived{{/if}}"
@@ -27,6 +28,7 @@
                 </span>
                 {{/each}}
             </div>
+            {{/unless}}
         </div>
         {{#if comfortTier}}
         <div class="rest-dock-outcome comfort-{{comfortTier}}">
@@ -110,6 +112,7 @@
                 {{/if}}
             </button>
             {{/if}}
+            {{#unless @root.hideActivitiesStep}}
             <button type="button"
                 class="rest-dock-seg{{#if (eq @root.selectedWorkflowStep 'activities')}} active{{/if}}{{#if (eq @root.workflowMark.activities 'complete')}} is-complete{{else if (eq @root.workflowMark.activities 'locked')}} is-locked{{else if (eq @root.workflowMark.activities 'draft')}} is-draft{{else if @root.workflowComplete.activities}} is-complete{{else}} is-draft{{/if}}"
                 data-action="switchWorkflow" data-step="activities" role="tab"
@@ -122,6 +125,7 @@
                 {{else}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
                 {{/if}}
             </button>
+            {{/unless}}
             {{#if @root.showSustenanceStep}}
             <button type="button"
                 class="rest-dock-seg{{#if (eq @root.selectedWorkflowStep 'sustenance')}} active{{/if}}{{#if (eq @root.workflowMark.sustenance 'complete')}} is-complete{{else if (eq @root.workflowMark.sustenance 'draft')}} is-draft{{else if @root.workflowComplete.sustenance}} is-complete{{else}} is-draft{{/if}}"
@@ -149,6 +153,7 @@
         {{!-- Hearth lives on the gritty dock. Normal rest uses the 268px fire rail. --}}
         {{#if @root.isGrittyLongRest}}
         {{#if @root.isWilderness}}
+        {{#unless @root.hideLogisticsFirewood}}
         <div class="rest-dock-hearth" data-tooltip="{{{@root.fuelStockTooltip}}}">
             <span class="rest-dock-fuel {{#unless @root.hasEnoughFuel}}is-short{{/unless}}">
                 <strong>{{@root.fuelStockTotal}}</strong> {{localize "ionrift-respite.restDock.fuel"}}
@@ -163,6 +168,7 @@
                 {{/each}}
             </select>
         </div>
+        {{/unless}}
         {{/if}}
         {{else}}
         <div class="rest-dock-ready-zone">

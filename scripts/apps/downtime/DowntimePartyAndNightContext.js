@@ -1,11 +1,13 @@
 import { MODULE_ID } from "../../data/moduleId.js";
-import { fireEncounterDcNudge } from "../delegates/camp/CampLogisticsDelegate.js";
+import { CampLogisticsDelegate, fireEncounterDcNudge } from "../delegates/camp/CampLogisticsDelegate.js";
 import { ImageResolver } from "../../utils/ImageResolver.js";
 import { RestPresentationHelper } from "../../utils/RestPresentationHelper.js";
 import { RestDockContext } from "../../utils/RestDockContext.js";
 import { combineNightDc } from "../../services/rest/gritty/EncounterDraftService.js";
 import { holdsForSendoff } from "../../services/rest/gritty/SendoffBuffBeat.js";
 import { CampGearScanner } from "../../services/camp/gear/CampGearScanner.js";
+import { isComfortEnabled } from "../../services/camp/gear/ComfortCalculator.js";
+import { areEncountersEnabled } from "../../services/rest/flow/ActivityEligibility.js";
 import { bulletTip } from "./DowntimeSustenanceBuilder.js";
 
 export function buildDowntimePartyAndNightContext(app, {
@@ -690,6 +692,7 @@ export function buildDowntimePartyAndNightContext(app, {
                 selectedId: app._selectedCharacterId,
                 personalScan: characters.find(c => c.id === app._selectedCharacterId) ?? null,
                 comfortFlashing: personalComfortFlashing,
+                comfortEnabled: isComfortEnabled() && haven === "wilderness",
                 finishedActorIds: new Set(characters.filter(c => c.isReady).map(c => c.id)),
                 characterState: new Map(characters.map(c => [c.id, {
                     hasStarvationRisk: c.hasStarvationRisk,
@@ -703,11 +706,19 @@ export function buildDowntimePartyAndNightContext(app, {
             ...(() => {
                 let trackFood = true;
                 try { trackFood = !!game.settings.get(MODULE_ID, "trackFood"); } catch { /* ignore */ }
+                const logisticsFlags = CampLogisticsDelegate.computeVisibilityFlags({ trackFood });
+                if (logisticsFlags.hideLogisticsButton && app._campLogistics._drawerOpen) {
+                    app._campLogistics._drawerOpen = false;
+                }
                 const showSustenanceStep = (haven === "wilderness") && trackFood;
                 const selectedWorkflowStep = (app._selectedWorkflowStep === "sustenance" && !showSustenanceStep)
                     ? "activities"
                     : app._selectedWorkflowStep;
                 return {
+                    ...logisticsFlags,
+                    logisticsDrawerOpen: app._campLogistics._drawerOpen,
+                    encountersEnabled: areEncountersEnabled(),
+                    hideEncounterDcStepper: !areEncountersEnabled(),
                     selectedWorkflowStep,
                     showGatherStep: haven === "wilderness",
                     showSustenanceStep

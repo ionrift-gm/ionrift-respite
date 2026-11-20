@@ -1,4 +1,4 @@
-{{!-- Workflow Stepper (Shared Partial): 1 Gather -> 2 Activities -> 3 Sustenance + Optional Examine --}}
+{{!-- Workflow Stepper (Shared Partial): 1 Gather, 2 Activities, 3 Sustenance + Optional Examine --}}
 <nav class="workflow-stepper" role="navigation" aria-label="{{localize "ionrift-respite.workflowStepper.workflowStepsAriaLabel"}}">
     <div class="workflow-steps-group">
         {{#if showGatherStep}}
@@ -8,19 +8,23 @@
             <i class="fas fa-seedling"></i>
             <span class="step-label">{{localize "ionrift-respite.workflowStepper.gather"}}</span>
         </button>
+        {{#unless hideActivitiesStep}}
         <span class="step-connector">-</span>
+        {{/unless}}
         {{/if}}
+        {{#unless hideActivitiesStep}}
         <button type="button" class="workflow-step-btn {{#if (eq selectedWorkflowStep 'activities')}}active{{/if}}"
                 data-action="switchWorkflow" data-step="activities">
             <span class="step-number">{{#if showGatherStep}}2{{else}}1{{/if}}</span>
             <i class="fas fa-hammer"></i>
             <span class="step-label">{{localize "ionrift-respite.workflowStepper.activities"}}</span>
         </button>
+        {{/unless}}
         {{#if showSustenanceStep}}
-        <span class="step-connector">-</span>
+        {{#if hideActivitiesStep}}{{#if showGatherStep}}<span class="step-connector">-</span>{{/if}}{{else}}<span class="step-connector">-</span>{{/if}}
         <button type="button" class="workflow-step-btn {{#if (eq selectedWorkflowStep 'sustenance')}}active{{/if}}"
                 data-action="switchWorkflow" data-step="sustenance">
-            <span class="step-number">{{#if showGatherStep}}3{{else}}2{{/if}}</span>
+            <span class="step-number">{{#if hideActivitiesStep}}{{#if showGatherStep}}2{{else}}1{{/if}}{{else}}{{#if showGatherStep}}3{{else}}2{{/if}}{{/if}}</span>
             <i class="fas fa-utensils"></i>
             <span class="step-label">{{localize "ionrift-respite.workflowStepper.sustenance"}}</span>
         </button>

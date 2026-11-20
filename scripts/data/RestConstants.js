@@ -1,7 +1,7 @@
 import { isGearDeployed } from "../services/camp/props/CompoundCampPlacer.js";
 import { getRespiteFlag, getItemIdentifier, getDocSourceId, isBedrollItem } from "../services/camp/gear/CampGearScanner.js";
 import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod, COMFORT_RANK, RANK_TO_KEY } from "../services/camp/gear/ComfortCalculator.js";
-import { isPf2eSystem } from "../services/camp/gear/Pf2eComfortRules.js";
+import { isPf2eSystem, resolvePf2eActivityDC, resolvePf2eActivitySkills } from "../services/camp/gear/Pf2eComfortRules.js";
 import { isSimpleStationsMode } from "../services/rest/flow/RestProfileSettings.js";
 import { isFletchingEnabled } from "../services/crafting/settings/FletchingSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/crafting/settings/TrainingSettings.js";
@@ -94,7 +94,7 @@ export const ACTIVITY_CARD_HINTS = {
     act_brew: "A trail drink",
     act_identify: "Examine an item",
     act_attune: "Bond with a magic item",
-    act_other: "Your own evening",
+    act_other: "Roleplay or skip duty",
     act_forage: "Plants, herbs, and kindling",
     act_hunt: "Fresh meat and provisions"
 };
@@ -138,7 +138,7 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             const injured = partyState.injuredMembers.filter(m => m.id !== actor.id);
             const hasKit = actor.items?.some(i =>
                 isHealersKitItem(i)
-                && ((i.system?.uses?.value ?? i.system?.quantity ?? 0) > 0)
+                && ((i.system?.uses?.value ?? i.system?.quantity ?? 1) > 0)
             );
             const hasFeat = actor.items?.some(i => isHealerFeatItem(i));
             const gearNote = hasFeat && hasKit ? " + Healer"
@@ -234,7 +234,10 @@ export function getActivityAdvisory(activityId, actor, partyState) {
         case "act_pray": {
             if (!isPrayMeditateEnabled())
                 return { text: "Pray is off", urgent: false, nonViable: true };
-            const prof = actor.system?.attributes?.prof ?? 2;
+            const adapter = game.ionrift?.respite?.adapter;
+            const prof = adapter
+                ? adapter.getProficiencyBonus(actor)
+                : (actor.system?.attributes?.prof ?? 2);
             return { text: `+${prof} temp HP`, urgent: false };
         }
         case "act_fletch": {
@@ -248,7 +251,10 @@ export function getActivityAdvisory(activityId, actor, partyState) {
         case "act_train": {
             if (!isTrainingEnabled())
                 return { text: "Training is off", urgent: false, nonViable: true };
-            const level = actor.system?.details?.level ?? 1;
+            const adapter = game.ionrift?.respite?.adapter;
+            const level = adapter
+                ? adapter.getLevel(actor)
+                : (actor.system?.details?.level?.value ?? actor.system?.details?.level ?? 1);
             if (level > 5)
                 return { text: "No effect above level 5", urgent: false, nonViable: true };
             const xpValues = getTrainingXpValues();
@@ -334,7 +340,9 @@ function _ammoStock(actor) {
     let found = false;
     for (const item of actor.items ?? []) {
         const fletchKind = (getRespiteFlag(item, "fletchKind") ?? getRespiteFlag(item, "ammoKind") ?? "").toLowerCase();
-        if (!fletchKind && (item.type !== "consumable" || item.system?.type?.value !== "ammo")) continue;
+        const isSystemAmmo = item.type === "ammo"
+            || (item.type === "consumable" && (item.system?.type?.value === "ammo" || item.system?.category === "ammo"));
+        if (!fletchKind && !isSystemAmmo) continue;
         const subtype = (item.system?.type?.subtype ?? "").toLowerCase();
         const ident = getItemIdentifier(item);
         const name = item.name ?? "";
@@ -456,12 +464,12 @@ export function getStationsForTerrain(terrainTag, safeRestSpot = false, options 
         let label = station.terrainLabel?.[terrainTag] ?? station.label;
         let activities = [...(station.activities ?? [])];
         let tagline = station.tagline;
-        if (isTavern && station.id === "bedroll") {
+        if ((isTavern || safeRestSpot) && station.id === "bedroll") {
             activities = activities.filter(id => id !== "act_rest_fully");
         }
         if (safeRestSpot && station.id === "weapon_rack") {
             label = "Supply Table";
-            tagline = "Fletch, other";
+            tagline = "Fletch, free time";
             activities = ["act_fletch", "act_other"];
         }
         const extra = station.id === "bedroll" ? orphanedActivities : [];
@@ -569,13 +577,13 @@ export function isHealersKitItem(item) {
     if (!item) return false;
     const role = getRespiteFlag(item, "campGearRole");
     const ref = getRespiteFlag(item, "itemRef");
-    if (role === "healers-kit" || ref === "healers-kit" || ref === "healer-kit") return true;
+    if (role === "healers-kit" || ref === "healers-kit" || ref === "healer-kit" || ref === "healers-toolkit" || ref === "healers-tools") return true;
     const id = getItemIdentifier(item);
-    if (id === "healers-kit" || id === "healer-kit") return true;
+    if (id === "healers-kit" || id === "healer-kit" || id === "healers-toolkit" || id === "healer-s-toolkit" || id === "healers-tools" || id === "healer-s-tools") return true;
     const src = getDocSourceId(item);
-    if (src && /(?:^|[.\/])healers?-?kit$/i.test(src)) return true;
+    if (src && /(?:^|[.\/])healers?(?:-s)?-?(?:kit|toolkit|tools)$/i.test(src)) return true;
     const n = (item.name ?? "").toLowerCase();
-    return n.includes("healer") && n.includes("kit");
+    return n.includes("healer") && (n.includes("kit") || n.includes("tool"));
 }
 
 /**
@@ -799,17 +807,28 @@ export function buildCheckLabelForActivity(activity, actor, comfort = "sheltered
     }
 
     const rcAdapter = game.ionrift?.respite?.adapter;
+    const pf2e = isPf2eSystem(rcAdapter);
+    if (pf2e && activity.check.skill && !activity.check.dynamicDc) {
+        const actorLevel = actor
+            ? (rcAdapter?.getLevel ? rcAdapter.getLevel(actor) : (actor.system?.details?.level?.value ?? actor.system?.details?.level ?? 1))
+            : 1;
+        baseDc = resolvePf2eActivityDC(baseDc, actorLevel);
+    }
+
     let checkKind = "";
     if (activity.check.skill) {
-        let chosenSkill = activity.check.skill;
-        if (activity.check.altSkill && actor) {
-            const primary = rcAdapter ? rcAdapter.getSkillTotal(actor, rcAdapter.normalizeSkillKey(activity.check.skill)) : (actor.system?.skills?.[activity.check.skill]?.total ?? 0);
-            const alt = rcAdapter ? rcAdapter.getSkillTotal(actor, rcAdapter.normalizeSkillKey(activity.check.altSkill)) : (actor.system?.skills?.[activity.check.altSkill]?.total ?? 0);
-            if (alt > primary) chosenSkill = activity.check.altSkill;
+        const pf2eSkills = pf2e
+            ? resolvePf2eActivitySkills(activity.id, activity.check)
+            : { skill: activity.check.skill, altSkill: activity.check.altSkill };
+        let chosenSkill = pf2eSkills.skill ?? activity.check.skill;
+        if (pf2eSkills.altSkill && actor) {
+            const primary = rcAdapter ? rcAdapter.getSkillTotal(actor, rcAdapter.normalizeSkillKey(chosenSkill)) : (actor.system?.skills?.[chosenSkill]?.total ?? 0);
+            const alt = rcAdapter ? rcAdapter.getSkillTotal(actor, rcAdapter.normalizeSkillKey(pf2eSkills.altSkill)) : (actor.system?.skills?.[pf2eSkills.altSkill]?.total ?? 0);
+            if (alt > primary) chosenSkill = pf2eSkills.altSkill;
         }
-        const skillCfg = CONFIG.DND5E?.skills?.[chosenSkill];
+        const skillCfg = !pf2e ? CONFIG.DND5E?.skills?.[chosenSkill] : null;
         const localized = skillCfg?.label ? (game.i18n?.localize ? game.i18n.localize(skillCfg.label) : skillCfg.label) : null;
-        checkKind = localized || (rcAdapter?.getSkillLabel ? rcAdapter.getSkillLabel(chosenSkill) : null) || (chosenSkill.charAt(0).toUpperCase() + chosenSkill.slice(1));
+        checkKind = localized || (rcAdapter?.getSkillLabel ? rcAdapter.getSkillLabel(chosenSkill) : null) || SKILL_NAMES[chosenSkill] || (chosenSkill.charAt(0).toUpperCase() + chosenSkill.slice(1));
     } else if (activity.check.ability) {
         let abilityKey = activity.check.ability;
         if (abilityKey === "best" && actor) {

@@ -1,5 +1,12 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { CampGearScanner } from "../../../services/camp/gear/CampGearScanner.js";
+import { isComfortEnabled } from "../../../services/camp/gear/ComfortCalculator.js";
+import { areEncountersEnabled } from "../../../services/rest/flow/ActivityEligibility.js";
+import {
+    isForagingEnabled,
+    isHuntingEnabled,
+    isProfessionActivityEnabled
+} from "../../../services/travel/settings/TravelSettings.js";
 import { ItemOutcomeHandler } from "../../../services/crafting/outcomes/ItemOutcomeHandler.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { Logger } from "../../../utils/Logger.js";
@@ -48,8 +55,42 @@ export class CampLogisticsDelegate {
 
     /* ── Context injection ── */
 
+    static computeVisibilityFlags({ trackFood = null } = {}) {
+        let foodOn = trackFood;
+        if (foodOn === null || foodOn === undefined) {
+            try {
+                const raw = game.settings.get(MODULE_ID, "trackFood");
+                foodOn = raw === undefined || raw === null ? true : Boolean(raw);
+            } catch {
+                foodOn = true;
+            }
+        }
+        const showForage = isForagingEnabled();
+        const showHunt = isHuntingEnabled();
+        const showFood = Boolean(foodOn);
+        const showGear = isComfortEnabled();
+        const showFirewood = showGear || areEncountersEnabled() || isProfessionActivityEnabled({ category: "profession" });
+        const hasAnyLogistics = showForage || showHunt || showFood || showFirewood || showGear;
+        return {
+            hideLogisticsForage: !showForage,
+            hideLogisticsHunt: !showHunt,
+            hideLogisticsFood: !showFood,
+            hideLogisticsFirewood: !showFirewood,
+            hideLogisticsGear: !showGear,
+            hideLogisticsButton: !hasAnyLogistics
+        };
+    }
+
     /** Merge logistics context properties into the template data object. */
     mergeContext(ctx) {
+        const flags = CampLogisticsDelegate.computeVisibilityFlags({ trackFood: ctx.trackFood });
+        if (flags.hideLogisticsButton && this._drawerOpen) {
+            this._drawerOpen = false;
+        }
+        Object.assign(ctx, flags);
+        ctx.showStandaloneLogistics = Boolean(
+            ctx.isGM && !ctx.safeRestSpot && !ctx.isTavernSetup && !ctx.encounterBar && !flags.hideLogisticsButton
+        );
         ctx.logisticsDrawerOpen = this._drawerOpen;
         ctx.forageDC = this._forageDC;
         ctx.huntDC = this._huntDC;

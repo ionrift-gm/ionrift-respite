@@ -1,5 +1,5 @@
 {{!-- Normal rest Examine: the usual workbench (Identify, Focus, Taste) + Ready + fire rail. --}}
-<div class="rest-sustenance-with-fire">
+<div class="rest-sustenance-with-fire{{#if hideFireRail}} no-fire-rail{{/if}}">
     <div class="rest-sustenance-main">
         <div class="sust-section-label">{{localize "ionrift-respite.restExamineWithFire.label"}}</div>
         {{#if workbenchIdentifyUiEnabled}}
@@ -13,5 +13,7 @@
         </div>
         {{/if}}
     </div>
+    {{#unless hideFireRail}}
     {{> restFireRail}}
+    {{/unless}}
 </div>

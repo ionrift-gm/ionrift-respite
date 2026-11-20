@@ -6,6 +6,7 @@
         {{#if encounterBar}}
             {{#if encounterBar.isGM}}
             {{#unless safeRestSpot}}
+            {{#unless hideLogisticsButton}}
             <button type="button"
                     class="btn-gm-logistics {{#if logisticsDrawerOpen}}active{{/if}}"
                     data-action="toggleLogisticsDrawer"
@@ -13,6 +14,7 @@
                 <i class="fas fa-sliders" aria-hidden="true"></i>
                 <span>{{localize "ionrift-respite.restFooter.logistics"}}</span>
             </button>
+            {{/unless}}
             {{/unless}}
             {{#if showFireRail}}
             {{> encounterDcStepper dc=encounterBar.effectiveDC adjustAction="adjustEncounterDc" tooltip="Encounter DC. Rolls below this threshold trigger a night event."}}
@@ -43,12 +45,29 @@
             </span>
             {{/if}}
             {{/if}}
+        {{else if showStandaloneLogistics}}
+            <button type="button"
+                    class="btn-gm-logistics {{#if logisticsDrawerOpen}}active{{/if}}"
+                    data-action="toggleLogisticsDrawer"
+                    data-tooltip="{{#if logisticsDrawerOpen}}{{localize "ionrift-respite.restFooter.logisticsCloseTooltip"}}{{else}}{{localize "ionrift-respite.restFooter.logisticsOpenTooltip"}}{{/if}}">
+                <i class="fas fa-sliders" aria-hidden="true"></i>
+                <span>{{localize "ionrift-respite.restFooter.logistics"}}</span>
+            </button>
         {{else if safeRestSpot}}
             <span class="encounter-bar-label-wrap">
                 <span class="encounter-bar-label safe-spot-label" data-tooltip="{{localize "ionrift-respite.restFooter.safeRestSpotTooltip"}}">
                     <i class="fas fa-shield-halved" aria-hidden="true"></i> {{localize "ionrift-respite.restFooter.sanctuary"}}
                 </span>
             </span>
+        {{/if}}
+        {{#if isGM}}
+        {{#if fireBlockedShelterName}}
+            <span class="encounter-bar-label-wrap">
+                <span class="encounter-bar-label fire-blocked-label" data-tooltip="{{localize "ionrift-respite.restFooter.fireBlockedTooltip"}}">
+                    <i class="fas fa-ban" aria-hidden="true"></i> {{localize "ionrift-respite.restFooter.fireBlockedLabel" shelter=fireBlockedShelterName}}
+                </span>
+            </span>
+        {{/if}}
         {{/if}}
     </div>
 

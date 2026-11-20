@@ -1,6 +1,12 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { getComfortDcMod } from "../../camp/gear/ComfortCalculator.js";
 import {
+    isPf2eSystem,
+    resolvePf2eActivityDC,
+    resolvePf2eActivitySkills,
+    evaluatePf2eSaveDegree
+} from "../../camp/gear/Pf2eComfortRules.js";
+import {
     getFletchingYieldFormula
 } from "../../crafting/settings/FletchingSettings.js";
 import { fletchAmmoKind } from "../../crafting/outcomes/FletchAmmoStack.js";
@@ -84,11 +90,20 @@ export class ActivityResolver {
         if (!activity?.check || (activity.check.rolls ?? 1) > 1) return null;
 
         const safeRestSpot = !!options.safeRestSpot;
-        const baseDc = activity.check.dc ?? 12;
+        const rollAdapter = game.ionrift?.respite?.adapter;
+        const pf2e = isPf2eSystem(rollAdapter);
+        const isAbility = Boolean(activity.check.ability);
+
+        let baseDc = activity.check.dc ?? 12;
+        if (pf2e && !isAbility && !activity.check.dynamicDc) {
+            const actorLevel = rollAdapter?.getLevel
+                ? rollAdapter.getLevel(actor)
+                : (actor?.system?.details?.level?.value ?? actor?.system?.details?.level ?? 1);
+            baseDc = resolvePf2eActivityDC(baseDc, actorLevel);
+        }
         const comfortForDc = safeRestSpot ? "safe" : comfort;
         const adjustedDc = baseDc + getComfortDcMod(comfortForDc);
 
-        const rollAdapter = game.ionrift?.respite?.adapter;
         const getAbilityMod = (abilityKey) => rollAdapter
             ? rollAdapter.getAbilityMod(actor, abilityKey)
             : (actor.system?.abilities?.[abilityKey]?.mod ?? 0);
@@ -109,10 +124,13 @@ export class ActivityResolver {
             return !!actor.system?.skills?.[skillKey];
         };
 
-        let chosenKey = activity.check.skill;
+        const pf2eSkillSpec = pf2e && !isAbility
+            ? resolvePf2eActivitySkills(activityId, activity.check)
+            : null;
+        let chosenKey = pf2eSkillSpec?.skill ?? activity.check.skill;
+        const altSkillKey = pf2eSkillSpec ? pf2eSkillSpec.altSkill : activity.check.altSkill;
         let modifier;
         let rollLabel;
-        const isAbility = Boolean(activity.check.ability);
 
         if (isAbility) {
             let abilityKey = activity.check.ability;
@@ -147,17 +165,19 @@ export class ActivityResolver {
                     }
                     if (bestKey) chosenKey = bestKey;
                 }
-            } else if (activity.check.altSkill) {
-                const primary = getSkillTotal(activity.check.skill);
-                const alt = getSkillTotal(activity.check.altSkill);
-                if (alt > primary) chosenKey = activity.check.altSkill;
+            } else if (altSkillKey) {
+                const primary = getSkillTotal(chosenKey);
+                const alt = getSkillTotal(altSkillKey);
+                if (alt > primary) chosenKey = altSkillKey;
             }
             modifier = getSkillTotal(chosenKey);
-            rollLabel = chosenKey.toUpperCase();
+            rollLabel = (pf2e && rollAdapter?.getSkillLabel)
+                ? rollAdapter.getSkillLabel(chosenKey)
+                : chosenKey.toUpperCase();
         }
 
         let rollAdvantage = false;
-        if (activity.check.advantageIf?.length) {
+        if (!pf2e && activity.check.advantageIf?.length) {
             for (const cond of activity.check.advantageIf) {
                 if (cond === "healer_kit") {
                     const kit = actor.items?.find(i => isHealersKitItem(i));
@@ -285,14 +305,29 @@ export class ActivityResolver {
             : (rollAdvantage ? ` (${game.i18n.localize("ionrift-respite.activityResolver.advantage")})` : "");
 
         // Determine outcome tier
+        const pf2e = isPf2eSystem();
         let resultTier;
-        if (activity.outcomes.exceptional && total >= activity.outcomes.exceptional.threshold) {
+        if (pf2e) {
+            const d20Value = Number.isFinite(options.d20Value)
+                ? options.d20Value
+                : (roll?.dice?.[0]?.total ?? null);
+            const degree = evaluatePf2eSaveDegree(d20Value, total, adjustedDc);
+            if (degree === "critSuccess" && (activity.outcomes.exceptional || activityId === "act_tend_wounds")) {
+                resultTier = "exceptional";
+            } else if (degree === "critSuccess" || degree === "success") {
+                resultTier = "success";
+            } else {
+                resultTier = "failure";
+            }
+        } else if (activity.outcomes.exceptional && total >= activity.outcomes.exceptional.threshold) {
             resultTier = "exceptional";
         } else if (total >= adjustedDc) {
             resultTier = "success";
         } else {
             resultTier = "failure";
+        }
 
+        if (resultTier === "failure") {
             // Hostile comfort: failure triggers complication (not in safe rest spot)
             if (!safeRestSpot && (comfort === "hostile" || comfort === "rough")) {
                 const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
@@ -422,24 +457,70 @@ export class ActivityResolver {
         if (!safeRestSpot && activityId === "act_tend_wounds" && options.followUpValue) {
             const target = game.actors.get(options.followUpValue);
             if (target) {
-                const hp = target.system?.attributes?.hp;
+                const healAdapter = game.ionrift?.respite?.adapter;
+                const hp = healAdapter ? healAdapter.getHP(target) : (target.system?.attributes?.hp ?? {});
                 const maxHp = hp?.max ?? 0;
                 const currentHp = hp?.value ?? 0;
-                const missing = maxHp - currentHp;
+                const missing = Math.max(0, maxHp - currentHp);
 
-                // Detect Healer's Kit and Healer feat on the tender
-                const healerKit = actor.items?.find(i =>
-                    i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit")
-                );
+                // Detect Healer's Kit / Healer's Toolkit and Healer feat on the tender
+                const healerKit = actor.items?.find(i => isHealersKitItem(i));
                 const kitCharges = healerKit
-                    ? (healerKit.system?.uses?.value ?? healerKit.system?.quantity ?? 0)
+                    ? (healerKit.system?.uses?.value ?? healerKit.system?.quantity ?? (pf2e ? 1 : 0))
                     : 0;
                 const hasKit = !!healerKit && kitCharges > 0;
-                const hasHealerFeat = actor.items?.some(i =>
+                const hasHealerFeat = !pf2e && actor.items?.some(i =>
                     i.type === "feat" && i.name?.toLowerCase() === "healer"
                 );
 
-                if (missing > 0) {
+                if (pf2e) {
+                    const woundedBefore = healAdapter?.getConditionValue
+                        ? healAdapter.getConditionValue(target, "wounded")
+                        : 0;
+                    if ((resultTier === "success" || resultTier === "exceptional") && (missing > 0 || woundedBefore > 0)) {
+                        let healed = 0;
+                        let healLabel = "0";
+                        let healRoll = null;
+                        const chatParts = [];
+                        if (missing > 0) {
+                            const formula = resultTier === "exceptional" ? "4d8" : "2d8";
+                            healRoll = await new Roll(formula).evaluate();
+                            healed = Math.min(Math.max(healRoll.total, 1), missing);
+                            healLabel = `${formula} = ${healRoll.total}`;
+                        }
+                        if (woundedBefore > 0 && healAdapter?._setValuedCondition) {
+                            await healAdapter._setValuedCondition(target, "wounded", 0, 4);
+                            chatParts.push("Wounded cleared");
+                        }
+                        const chatWhisper = game.users.filter(u => u.isGM || target.testUserPermission(u, "OWNER")).map(u => u.id);
+                        if (healRoll) {
+                            await postRollAndSettle(healRoll, {
+                                speaker: ChatMessage.getSpeaker({ actor }),
+                                flavor: game.i18n.format("ionrift-respite.activityResolver.tendsFlavor", { actor: actor.name, target: target.name }),
+                                whisper: chatWhisper
+                            });
+                        }
+                        if (healed > 0) {
+                            if (healAdapter) {
+                                await healAdapter.applyHPRestore(target, healed);
+                            } else {
+                                await target.update({ "system.attributes.hp.value": currentHp + healed });
+                            }
+                        }
+                        const suffix = chatParts.length ? ` (${chatParts.join(", ")})` : "";
+                        await ChatMessage.create({
+                            speaker: ChatMessage.getSpeaker({ actor }),
+                            content: game.i18n.format("ionrift-respite.activityResolver.tendsContent", {
+                                actor: actor.name,
+                                target: target.name,
+                                healed,
+                                healLabel,
+                                suffix
+                            }),
+                            whisper: chatWhisper
+                        });
+                    }
+                } else if (missing > 0) {
                     let healed = 0;
                     let healLabel = "";
                     let healRoll = null;
@@ -448,14 +529,16 @@ export class ActivityResolver {
                     if (resultTier === "success" || resultTier === "exceptional") {
                         if (hasHealerFeat && hasKit) {
                             // Healer feat formula: 1d6 + 4 + target's total HD
-                            const targetLevel = target.system?.details?.level ?? target.system?.attributes?.hd?.max ?? 1;
+                            const targetLevel = healAdapter
+                                ? healAdapter.getLevel(target)
+                                : (target.system?.details?.level?.value ?? target.system?.details?.level ?? target.system?.attributes?.hd?.max ?? 1);
                             healRoll = await new Roll(`1d6 + 4 + ${targetLevel}`).evaluate();
                             healed = Math.min(Math.max(healRoll.total, 1), missing);
                             healLabel = `1d6+4+${targetLevel} = ${healRoll.total}`;
                             chatParts.push(game.i18n.localize("ionrift-respite.activityResolver.healerFeat"));
                         } else {
                             // Standard: target's largest HD + target's CON mod
-                            const classes = target.items.filter(i => i.type === "class");
+                            const classes = (target.items ?? []).filter(i => i.type === "class");
                             const bestClass = classes.sort((a, b) => {
                                 const aSize = parseInt((b.system?.hd?.denomination ?? b.system?.hitDice ?? "d8").replace("d", "")) || 8;
                                 const bSize = parseInt((a.system?.hd?.denomination ?? a.system?.hitDice ?? "d8").replace("d", "")) || 8;
@@ -491,9 +574,9 @@ export class ActivityResolver {
 
                     // Spend one kit charge on any outcome (success or failure)
                     if (hasKit && healerKit) {
-                        if (healerKit.system?.uses?.value !== null) {
+                        if (healerKit.system?.uses?.value != null) {
                             await healerKit.update({ "system.uses.value": Math.max(0, kitCharges - 1) });
-                        } else if (healerKit.system?.quantity !== null) {
+                        } else if (healerKit.system?.quantity != null) {
                             const newQty = Math.max(0, (healerKit.system.quantity ?? 1) - 1);
                             if (newQty <= 0) await healerKit.delete();
                             else await healerKit.update({ "system.quantity": newQty });
@@ -510,7 +593,6 @@ export class ActivityResolver {
                                 whisper: chatWhisper
                             });
                         }
-                        const healAdapter = game.ionrift?.respite?.adapter;
                         if (healAdapter) {
                             await healAdapter.applyHPRestore(target, healed);
                         } else {
@@ -607,12 +689,31 @@ export class ActivityResolver {
             });
         }
 
+        let resolvedEffects = outcome.effects ?? [];
+        if (activityId === "act_pray" && (resultTier === "success" || resultTier === "exceptional")) {
+            const prayAdapter = game.ionrift?.respite?.adapter;
+            const prof = prayAdapter
+                ? prayAdapter.getProficiencyBonus(actor)
+                : (actor.system?.attributes?.prof ?? 2);
+            if (prayAdapter?.applyTempHP) {
+                await prayAdapter.applyTempHP(actor, prof);
+            } else if (typeof actor.update === "function") {
+                const currentTemp = Number(actor.system?.attributes?.hp?.temp ?? 0) || 0;
+                if (prof > currentTemp) {
+                    await actor.update({ "system.attributes.hp.temp": prof });
+                }
+            }
+            resolvedEffects = resolvedEffects.map(eff =>
+                eff?.type === "temp_hp" ? { ...eff, value: prof, amount: prof } : eff
+            );
+        }
+
         return {
             source: "activity",
             activityId,
             result: resultTier,
             items,
-            effects: outcome.effects ?? [],
+            effects: resolvedEffects,
             narrative,
             xpReduction
         };

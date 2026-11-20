@@ -5337,6 +5337,17 @@
     min-height: 280px;
 }
 
+.rest-sustenance-with-fire.no-fire-rail,
+.rest-sustenance-with-fire:not(:has(> .rest-fire-rail)) {
+    grid-template-columns: 1fr;
+}
+
+.respite-unified-footer .fire-blocked-label {
+    color: rgba(245, 198, 132, 0.88);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+}
+
 .ionrift-respite-app:not(.downtime-ledger-window) .totm-activity-layout > .totm-activity-main:has(.rest-sustenance-with-fire) {
     display: flex;
     flex-direction: column;

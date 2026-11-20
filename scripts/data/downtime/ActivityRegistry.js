@@ -133,6 +133,7 @@ export const DOWNTIME_ACTIVITIES = Object.freeze([
     {
         id: "tales",
         catalogId: "act_tell_tales",
+        disabled: true,
         label: "Tell Tales",
         icon: "fas fa-theater-masks",
         skill: "prf",
@@ -159,13 +160,13 @@ export const DOWNTIME_ACTIVITIES = Object.freeze([
     {
         id: "other",
         catalogId: "act_other",
-        label: "Other",
+        label: "Free Time",
         icon: "fas fa-comments",
         skill: null,
         maxDays: 7,
         haven: "both",
         stationId: "bedroll",
-        hint: "Your own time"
+        hint: "Roleplay or skip duty"
     },
 
     // ─── Workbench ────────────────────────────────────────────────────────

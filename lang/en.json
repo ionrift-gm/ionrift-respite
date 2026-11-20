@@ -2282,6 +2282,8 @@
     "ionrift-respite.restFooter.completeLongRest": "Complete Long Rest",
     "ionrift-respite.restFooter.consumeDay": "Consume Day {day}",
     "ionrift-respite.restFooter.encounterThresholdTooltip": "Base threshold: {terrain} ({dc}). Roll a d20; meet or beat the final DC for a quiet night. Shelter, fire, and defenses shift this number.",
+    "ionrift-respite.restFooter.fireBlockedLabel": "No Fire ({shelter})",
+    "ionrift-respite.restFooter.fireBlockedTooltip": "Sealed shelter blocks campfires, cooking, and brewing.",
     "ionrift-respite.restFooter.increaseDc": "Increase DC",
     "ionrift-respite.restFooter.logistics": "Logistics",
     "ionrift-respite.restFooter.logisticsCloseTooltip": "Close camp logistics",

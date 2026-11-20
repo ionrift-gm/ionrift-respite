@@ -235,6 +235,7 @@ export const SKILL_DISPLAY_NAMES = {
     get slt() { return game.i18n.localize("ionrift-respite.skills.slt"); },
     get ste() { return game.i18n.localize("ionrift-respite.skills.ste"); },
     get sur() { return game.i18n.localize("ionrift-respite.skills.sur"); },
+    get crafting() { return "Crafting"; },
     // Ability abbreviations
     get str() { return game.i18n.localize("ionrift-respite.skills.str"); },
     get dex() { return game.i18n.localize("ionrift-respite.skills.dex"); },

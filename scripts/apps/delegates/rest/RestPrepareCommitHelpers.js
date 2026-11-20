@@ -58,7 +58,7 @@ export function buildGatherPanel(app, workflowStep) {
  * @param {Array<{tiles?: Array<{id: string, hint?: string}>}>} totmStationCards
  * @returns {{kicker: string, title: string, detail: string}|null}
  */
-export function buildActivityCommit(app, totmStationCards) {
+export function buildActivityCommit(app, totmStationCards, { hideActivitiesStep = false } = {}) {
     const cid = app._selectedCharacterId;
     if (!cid) return null;
     if (!activityOfferingsClosed(app, cid)) return null;
@@ -81,7 +81,11 @@ export function buildActivityCommit(app, totmStationCards) {
             }
         }
     }
-    const cannotChange = !!(early || craft || app.hasCompletedCrafting?.(cid));
+    const nonFreeTileExists = (totmStationCards ?? []).some(station =>
+        (station.tiles ?? []).some(t => t.id && t.id !== "act_other")
+    );
+    const soleFreeTime = actId === "act_other" && (hideActivitiesStep || !nonFreeTileExists);
+    const cannotChange = !!(early || craft || app.hasCompletedCrafting?.(cid) || soleFreeTime);
     return { kicker: "ACTIVITIES", title: act?.name ?? actId, detail, icon: act?.icon ?? "fas fa-moon", cannotChange };
 }
 
@@ -89,17 +93,22 @@ export function buildActivityCommit(app, totmStationCards) {
  * True while the open card is showing Next.
  * A party that is already fully ready is released in canGmProceedFromActivity.
  */
-export function phaseProceedHeld(app, workflowStep, detailPanel, mealOpen, identifyOpen, stationCards) {
+export function phaseProceedHeld(
+    app, workflowStep, detailPanel, mealOpen, identifyOpen, stationCards,
+    { hideActivitiesStep = false, showSustenanceStep = true } = {}
+) {
     if (app._phase !== "activity") return false;
     if (detailPanel || mealOpen || identifyOpen) return false;
     const gatherPanel = buildGatherPanel(app, workflowStep);
     if (workflowStep === "gather" && gatherPanel) {
         if (gatherPanel.canConfirmSkip) return false;
+        if (hideActivitiesStep && !showSustenanceStep) return false;
         if (gatherPanel.finds?.length) return true;
         if (gatherPanel.detail) return true;
         return false;
     }
-    return workflowStep !== "gather" && !!buildActivityCommit(app, stationCards);
+    if (!showSustenanceStep) return false;
+    return workflowStep !== "gather" && !!buildActivityCommit(app, stationCards, { hideActivitiesStep });
 }
 
 /**

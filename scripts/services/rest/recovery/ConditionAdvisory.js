@@ -447,7 +447,7 @@ export class ConditionAdvisory {
 
     static _formatConditionLabel(effect) {
         if (effect.type === "temp_hp") {
-            const formula = effect.formula ?? effect.amount ?? "?";
+            const formula = effect.formula ?? effect.amount ?? effect.value ?? "?";
             return game.i18n.format("ionrift-respite.conditionAdvisory.tempHp", { formula });
         }
 

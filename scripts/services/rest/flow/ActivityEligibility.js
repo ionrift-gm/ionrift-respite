@@ -10,11 +10,12 @@ import {
 } from "../../travel/settings/TravelSettings.js";
 import { hasChefFeat } from "../../meal/buffs/ChefFeat.js";
 
-/** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
+/** Activities hidden when the GM marks a safe rest spot (no encounter risk; full safe recovery is automatic). */
 export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
     "act_keep_watch",
     "act_defenses",
-    "act_tend_wounds"
+    "act_tend_wounds",
+    "act_rest_fully"
 ]);
 
 /** Extra exclusions for tavern terrain (full recovery is automatic; no profession crafting or wilderness gathering). */
@@ -98,6 +99,13 @@ export class ActivityEligibility {
         if (!activity || activity.disabled) return true;
 
         const id = activity.catalogId || activity.id;
+
+        // System-level incompatible activities (e.g. Copy Spell / Attune on PF2e, Daggerheart, OSE)
+        const sysAdapter = game.ionrift?.respite?.adapter;
+        if (sysAdapter?.filterActivities) {
+            const probe = { ...activity, id };
+            if (sysAdapter.filterActivities([probe]).length === 0) return true;
+        }
 
         // Context / rest exclusions (safe rest spot, tavern)
         if (isActivityExcludedForRestOptions({ ...activity, id }, options)) return true;

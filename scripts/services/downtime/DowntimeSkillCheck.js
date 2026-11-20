@@ -1,7 +1,12 @@
 import { ActivityRegistry } from "../../data/downtime/ActivityRegistry.js";
 import { presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 import { ItemOutcomeHandler } from "../crafting/outcomes/ItemOutcomeHandler.js";
-import { findFletchAmmoStack, fletchAmmoSubtype } from "../crafting/outcomes/FletchAmmoStack.js";
+import { findFletchAmmoStack, fletchAmmoSubtype, isMundaneAmmoItem } from "../crafting/outcomes/FletchAmmoStack.js";
+import {
+    isPf2eSystem,
+    resolvePf2eActivityDC,
+    resolvePf2eActivitySkills
+} from "../camp/gear/Pf2eComfortRules.js";
 import {
     applyFletchingYieldFloor,
     getFletchingTier,
@@ -36,13 +41,13 @@ export function pickFletchKind(actor) {
     let arrows = 0;
     let bolts = 0;
     for (const item of actor?.items ?? []) {
-        if (item?.type !== "consumable") continue;
-        if (item.system?.type?.value !== "ammo") continue;
+        if (!isMundaneAmmoItem(item)) continue;
         const name = String(item.name ?? "");
         const subtype = item.system?.type?.subtype;
+        const slug = String(item.system?.slug ?? item.system?.identifier ?? "").toLowerCase();
         const qty = Number(item.system?.quantity ?? 0);
-        if (subtype === "crossbowBolt" || (!subtype && /bolt/i.test(name))) bolts += qty;
-        else if (subtype === "arrow" || (!subtype && /arrow/i.test(name))) arrows += qty;
+        if (subtype === "crossbowBolt" || slug.includes("bolt") || (!subtype && /bolt/i.test(name))) bolts += qty;
+        else if (subtype === "arrow" || slug.includes("arrow") || (!subtype && /arrow/i.test(name))) arrows += qty;
     }
     if (bolts > 0 && arrows === 0) return "bolts";
     return "arrows";
@@ -60,7 +65,8 @@ export function buildSkillCheckSummary({
     successCount,
     labels,
     actDef,
-    fletchYield = 0
+    fletchYield = 0,
+    actor = null
 }) {
     const days = Number(dayCount) || 0;
     if (days <= 0) return null;
@@ -72,9 +78,19 @@ export function buildSkillCheckSummary({
     const success = Number(successCount) || 0;
     let tooltip = game.i18n.localize("ionrift-respite.downtimeSkillCheck.tooltipDefault");
     if (names.length === 1 && actDef?.check) {
-        const skillNames = (actDef.check.skills ?? [])
-            .map(key => SKILL_DISPLAY_NAMES[key] ?? key);
-        const dc = actDef.check.dc ?? 12;
+        const adapter = game.ionrift?.respite?.adapter;
+        const pf2e = isPf2eSystem(adapter);
+        const rawSkills = pf2e
+            ? resolvePf2eActivitySkills(actDef.id, actDef.check).skills
+            : (actDef.check.skills ?? []);
+        const skillNames = rawSkills
+            .map(key => (pf2e && adapter?.getSkillLabel ? adapter.getSkillLabel(key) : null) ?? SKILL_DISPLAY_NAMES[key] ?? key);
+        const actorLevel = actor
+            ? (adapter?.getLevel ? adapter.getLevel(actor) : (actor.system?.details?.level?.value ?? actor.system?.details?.level ?? 1))
+            : 1;
+        const dc = pf2e
+            ? resolvePf2eActivityDC(actDef.check.dc ?? 12, actorLevel)
+            : (actDef.check.dc ?? 12);
         const orWord = game.i18n.localize("ionrift-respite.downtimeSkillCheck.or");
         tooltip = skillNames.length ? game.i18n.format("ionrift-respite.downtimeSkillCheck.tooltipWithSkills", { skills: skillNames.join(` ${orWord} `), dc }) : game.i18n.format("ionrift-respite.downtimeSkillCheck.tooltipDcOnly", { dc });
         if (actDef.id === "fletch") {
@@ -121,7 +137,8 @@ async function rollFletchQuantity(actor) {
     if (!isFletchingEnabled()) return 0;
     const formula = getFletchingYieldFormula();
     if (!formula) return 0;
-    const prof = Number(actor?.system?.attributes?.prof ?? 2);
+    const adapter = game.ionrift?.respite?.adapter;
+    const prof = Number(adapter ? adapter.getProficiencyBonus(actor) : (actor?.system?.attributes?.prof ?? 2));
     const expr = formula.replace(/prof/gi, String(prof));
     let total = prof;
     try {
@@ -140,12 +157,13 @@ async function grantFletchDay(actor, dayRoll, kind) {
     if (qty <= 0) return null;
     const spec = FLETCH_KINDS[kind] ?? FLETCH_KINDS.arrows;
     const stack = findFletchAmmoStack(actor, spec.kind);
+    const pf2e = isPf2eSystem();
     await ItemOutcomeHandler.grantItemsToActor(actor, [{
         name: stack?.name ?? spec.name,
-        type: "consumable",
+        type: stack?.type ?? (pf2e ? "ammo" : "consumable"),
         img: spec.img,
         quantity: qty,
-        system: { type: { value: "ammo", subtype: fletchAmmoSubtype(spec.kind) } },
+        system: pf2e ? {} : { type: { value: "ammo", subtype: fletchAmmoSubtype(spec.kind) } },
         ...(stack ? { stackOntoId: stack.id } : {})
     }]);
     dayRoll.yieldGranted = true;
@@ -165,12 +183,21 @@ export async function rollDowntimeSkillDay(actor, dayRoll, options = {}) {
     const checkDef = actDef?.check;
     if (!actor || !checkDef) return { granted: null };
 
-    const skills = checkDef.skills?.length
-        ? checkDef.skills
-        : [actDef.skill].filter(Boolean);
+    const adapter = game.ionrift?.respite?.adapter;
+    const pf2e = isPf2eSystem(adapter);
+    const skills = pf2e
+        ? resolvePf2eActivitySkills(actDef.id, checkDef).skills
+        : (checkDef.skills?.length ? checkDef.skills : [actDef.skill].filter(Boolean));
     const skill = pickBestSkill(actor, skills);
-    const dc = checkDef.dc ?? 12;
-    const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill;
+    const actorLevel = adapter?.getLevel
+        ? adapter.getLevel(actor)
+        : (actor.system?.details?.level?.value ?? actor.system?.details?.level ?? 1);
+    const dc = pf2e
+        ? resolvePf2eActivityDC(checkDef.dc ?? 12, actorLevel)
+        : (checkDef.dc ?? 12);
+    const skillName = (pf2e && adapter?.getSkillLabel ? adapter.getSkillLabel(skill) : null)
+        ?? SKILL_DISPLAY_NAMES[skill]
+        ?? skill;
     const flavor = game.i18n.format("ionrift-respite.downtimeSkillCheck.rollFlavor", { name: actor.name, activity: actDef.label, skill: skillName, dc });
     const { total, passed } = await executePlayerRoll(actor, skill, dc, flavor);
 
