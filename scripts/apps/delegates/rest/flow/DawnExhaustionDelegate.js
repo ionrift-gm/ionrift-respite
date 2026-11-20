@@ -10,6 +10,7 @@ import {
     evaluatePf2eSaveDegree,
     isPf2eSystem
 } from "../../../../services/camp/gear/Pf2eComfortRules.js";
+import { buildSystemRollFormula } from "../../../../services/events/resolve/Pf2eEventRules.js";
 
 /**
  * Normal-rest close. After the night event, the party rolls Constitution
@@ -215,8 +216,7 @@ export class DawnExhaustionDelegate {
         const pf2e = isPf2eSystem(adapter);
         const saveBonus = entry.saveBonus ?? 0;
         const conMod = conSaveBonus(actor) + saveBonus;
-        const formula = entry.advMode === "adv" ? "2d20kh" : (entry.advMode === "dis" ? "2d20kl" : "1d20");
-        const rollString = conMod >= 0 ? `${formula} + ${conMod}` : `${formula} - ${Math.abs(conMod)}`;
+        const { formula: rollString, circumstanceMod } = buildSystemRollFormula(conMod, entry.advMode, adapter);
         const roll = await new Roll(rollString).evaluate();
 
         const d20Value = roll.dice?.[0]?.total ?? roll.terms?.[0]?.results?.[0]?.result ?? null;
@@ -230,8 +230,10 @@ export class DawnExhaustionDelegate {
         entry.saveDegree = saveDegree;
         entry.passed = passed;
 
-        const advText = entry.advMode === "adv" ? " (advantage)" : (entry.advMode === "dis" ? " (disadvantage)" : "");
-        const bonusText = saveBonus > 0 ? ` (+${saveBonus} circumstance)` : "";
+        const advText = pf2e
+            ? (circumstanceMod > 0 ? ` (+${circumstanceMod} circumstance)` : (circumstanceMod < 0 ? ` (${circumstanceMod} circumstance)` : ""))
+            : (entry.advMode === "adv" ? " (advantage)" : (entry.advMode === "dis" ? " (disadvantage)" : ""));
+        const bonusText = saveBonus > 0 ? ` (+${saveBonus} mess kit)` : "";
         let flavor;
         if (pf2e) {
             const pf2eResultText = passed

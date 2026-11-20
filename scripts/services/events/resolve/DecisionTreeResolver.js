@@ -15,6 +15,29 @@
 
 import { pickBestSkill, getSkillMod } from "../../ui/rollRequest/RollRequestManager.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { isPf2eSystem, evaluatePf2eSaveDegree } from "../../camp/gear/Pf2eComfortRules.js";
+import {
+    resolvePf2eEventDC,
+    evaluatePf2eGroupOutcome,
+    resolveSkillDisplayName,
+    getNatD20FromRoll
+} from "./Pf2eEventRules.js";
+import { getPartyActors } from "../../party/partyActors.js";
+
+function cloneAndScaleTreeOptions(options, pf2e, levelSources, adapter) {
+    if (!Array.isArray(options)) return [];
+    return options.map(opt => {
+        const cloned = structuredClone(opt);
+        if (pf2e && cloned.check && cloned.check.dc != null && cloned.check.authoredDc == null) {
+            cloned.check.authoredDc = cloned.check.dc;
+            cloned.check.dc = resolvePf2eEventDC(cloned.check.dc, levelSources, adapter);
+        }
+        if (cloned.onFailure?.options) {
+            cloned.onFailure.options = cloneAndScaleTreeOptions(cloned.onFailure.options, pf2e, levelSources, adapter);
+        }
+        return cloned;
+    });
+}
 
 export class DecisionTreeResolver {
 
@@ -61,6 +84,18 @@ export class DecisionTreeResolver {
      */
     static createTreeState(event, targetIds) {
         const tree = event.mechanical;
+        const adapter = globalThis.game?.ionrift?.respite?.adapter ?? null;
+        const pf2e = isPf2eSystem(adapter);
+        let levelSources = [];
+        if (pf2e) {
+            const targetActors = (targetIds ?? [])
+                .map(id => globalThis.game?.actors?.get?.(id))
+                .filter(Boolean);
+            levelSources = targetActors.length > 0
+                ? targetActors
+                : (typeof globalThis.game?.actors?.filter === "function" ? getPartyActors() : []);
+        }
+        const scaledOptions = cloneAndScaleTreeOptions(tree.options, pf2e, levelSources, adapter);
         const narration = DecisionTreeResolver.computeNarrationFields(event, tree, 0);
         return {
             eventId: event.id,
@@ -71,8 +106,8 @@ export class DecisionTreeResolver {
             prompt: tree.prompt,
             readAloud: narration.readAloud,
             showDecisionPrompt: narration.showDecisionPrompt,
-            options: tree.options,
-            stallPenalty: tree.stallPenalty ?? null,
+            options: scaledOptions,
+            stallPenalty: tree.stallPenalty ? structuredClone(tree.stallPenalty) : null,
             hasStallPenalty: !!tree.stallPenalty,
             stalled: false,
             gmGuidance: event.gmGuidance ?? "",
@@ -125,8 +160,9 @@ export class DecisionTreeResolver {
                 else if (t === "damage" || t === "apply_injury") derived.add("Injury");
                 else if (t === "condition" || t === "apply_condition") {
                     const cond = (eff.condition ?? "").toLowerCase();
-                    if (cond === "exhaustion") derived.add("Exhaustion");
-                    else if (cond === "poisoned") derived.add("Poisoned");
+                    const pf2e = isPf2eSystem();
+                    if (cond === "exhaustion") derived.add(pf2e ? "Fatigued" : "Exhaustion");
+                    else if (cond === "poisoned") derived.add(pf2e ? "Sickened" : "Poisoned");
                     else derived.add("Condition");
                 } else if (t === "reduce_recovery" || t === "prevent_long_rest") {
                     derived.add("Rest Disrupted");
@@ -303,6 +339,18 @@ export class DecisionTreeResolver {
      * @returns {{ success: boolean, rolls: Object[], passCount: number, failCount: number, groupAverage: number }}
      */
     static computeGroupResult(rolls, dc) {
+        if (isPf2eSystem()) {
+            const pf2eOutcome = evaluatePf2eGroupOutcome(rolls, dc);
+            return {
+                success: pf2eOutcome.success,
+                rolls,
+                passCount: pf2eOutcome.passCount,
+                failCount: pf2eOutcome.failCount,
+                groupAverage: pf2eOutcome.groupAverage,
+                points: pf2eOutcome.points,
+                threshold: pf2eOutcome.threshold
+            };
+        }
         let passCount = 0;
         let failCount = 0;
         for (const r of rolls) {
@@ -326,7 +374,14 @@ export class DecisionTreeResolver {
             return { success: true, rolls: [], passCount: 0, failCount: 0 };
         }
 
-        const dc = check.dc ?? 12;
+        const adapter = globalThis.game?.ionrift?.respite?.adapter ?? null;
+        const pf2e = isPf2eSystem(adapter);
+        const targetActors = targetIds
+            .map(id => globalThis.game?.actors?.get?.(id))
+            .filter(Boolean);
+        const dc = (pf2e && check.authoredDc == null)
+            ? resolvePf2eEventDC(check.dc ?? 12, targetActors, adapter)
+            : (check.dc ?? 12);
         const skills = check.skills ?? [];
         const rolls = [];
         let passCount = 0;
@@ -338,34 +393,37 @@ export class DecisionTreeResolver {
 
             const skill = pickBestSkill(actor, skills);
             const mod = getSkillMod(actor, skill);
-            const roll = await new Roll(`1d20 + ${mod}`).evaluate();
-            const passed = roll.total >= dc;
+            const rollExpr = mod >= 0 ? `1d20 + ${mod}` : `1d20 - ${Math.abs(mod)}`;
+            const roll = await new Roll(rollExpr).evaluate();
+            const natD20 = getNatD20FromRoll(roll);
+            const passed = pf2e
+                ? ["success", "critSuccess"].includes(evaluatePf2eSaveDegree(natD20, roll.total, dc))
+                : (roll.total >= dc);
 
             if (passed) passCount++;
             else failCount++;
 
             rolls.push({
                 actorId, actorName: actor.name, skill, mod,
-                total: roll.total, dc, passed
+                total: roll.total, natD20, dc, passed
             });
 
             const outcome = passed
                 ? game.i18n.localize("ionrift-respite.decisionTree.outcomeSuccess")
                 : game.i18n.localize("ionrift-respite.decisionTree.outcomeFailure");
+            const skillLabel = pf2e
+                ? resolveSkillDisplayName(skill, null, adapter)
+                : skill.toUpperCase();
             await roll.toMessage({
                 speaker: ChatMessage.getSpeaker({ actor }),
                 flavor: game.i18n.format("ionrift-respite.decisionTree.checkFlavor", {
-                    skill: skill.toUpperCase(),
+                    skill: skillLabel,
                     dc,
                     outcome
                 })
             });
         }
 
-        const avg = rolls.length > 0
-            ? rolls.reduce((sum, r) => sum + r.total, 0) / rolls.length
-            : 0;
-        const success = Math.round(avg) >= dc;
-        return { success, rolls, passCount, failCount, groupAverage: Math.round(avg) };
+        return this.computeGroupResult(rolls, dc);
     }
 }

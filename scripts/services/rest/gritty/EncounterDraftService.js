@@ -2,6 +2,8 @@
  * Service for single-check Bivouac overnight danger checks and 7-day Downtime batch encounter drafts.
  */
 import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+import { isPf2eSystem } from "../../camp/gear/Pf2eComfortRules.js";
+import { resolvePf2eEventDC } from "../../events/resolve/Pf2eEventRules.js";
 
 /**
  * One night's check for the week ledger.
@@ -53,15 +55,23 @@ export class EncounterDraftService {
         const dcMod = campStanceManager?.encounterDcModifier ?? 0;
         const effectiveDC = Math.max(5, baseDC + dcMod);
 
+        const adapter = globalThis.game?.ionrift?.respite?.adapter ?? null;
+        const passivePerceptionFor = (actor) => {
+            if (!actor) return 10;
+            if (adapter?.getSkillTotal) {
+                const explicitPassive = actor.system?.skills?.prc?.passive ?? actor.system?.attributes?.passive?.perception;
+                if (typeof explicitPassive === "number" && !isPf2eSystem(adapter)) return explicitPassive;
+                return 10 + adapter.getSkillTotal(actor, "prc");
+            }
+            return actor.system?.skills?.prc?.passive ?? actor.system?.attributes?.passive?.perception ?? 10;
+        };
+
         const sentryName = sentryActor?.name ?? null;
         let pp = 10;
         if (sentryActor) {
-            pp = sentryActor.system?.skills?.prc?.passive ?? sentryActor.system?.attributes?.passive?.perception ?? 10;
+            pp = passivePerceptionFor(sentryActor);
         } else if (Array.isArray(partyActors) && partyActors.length) {
-            pp = partyActors.reduce((max, a) => {
-                const p = a?.system?.skills?.prc?.passive ?? a?.system?.attributes?.passive?.perception ?? 10;
-                return Math.max(max, p);
-            }, 10);
+            pp = partyActors.reduce((max, a) => Math.max(max, passivePerceptionFor(a)), 10);
         }
 
         if (safePassage) {
@@ -117,7 +127,12 @@ export class EncounterDraftService {
             state = "red";
             category = "combat";
             isDisaster = isNat1;
-            const stealthDC = 12;
+            const levelSources = Array.isArray(partyActors) && partyActors.length
+                ? partyActors
+                : (sentryActor ? [sentryActor] : []);
+            const stealthDC = isPf2eSystem(adapter)
+                ? resolvePf2eEventDC(12, levelSources, adapter)
+                : 12;
             sentrySurprised = hasActiveGuard ? false : pp < stealthDC;
             flavor += `<span style="color:#ef4444;"><i class="fas fa-skull-crossbones"></i> ${game.i18n.format("ionrift-respite.encounterDraft.ambushFlavor", { roll: rollTotal, dc: effectiveDC })}</span>`;
             event = {

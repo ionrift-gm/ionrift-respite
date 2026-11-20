@@ -26,6 +26,13 @@ import { loadInstalledEventsInto } from "../../services/events/catalog/Installed
 import { WEATHER_TABLE, isWorkbenchIdentifyUiEnabled } from "../../data/RestConstants.js";
 import { CampGearScanner } from "../../services/camp/gear/CampGearScanner.js";
 import { isComfortEnabled, boostComfort } from "../../services/camp/gear/ComfortCalculator.js";
+import {
+    isPf2eSystem,
+    getPf2eFortitudeSaveDC,
+    evaluatePf2eSaveDegree
+} from "../../services/camp/gear/Pf2eComfortRules.js";
+import { buildSystemRollFormula, resolvePf2eEventDC } from "../../services/events/resolve/Pf2eEventRules.js";
+import { conSaveBonus } from "../../services/rest/recovery/ExhaustionStage.js";
 import { buildCampConditionsBar } from "../../services/camp/gear/CampConditionsBarBuilder.js";
 import { bindSustenanceMeters } from "../delegates/meal/SustenanceMeterBinding.js";
 import { GATHERING_DAYS, normalizeGatheringSchedule } from "./DowntimeSustenanceBuilder.js";
@@ -196,9 +203,18 @@ class DowntimeSyncAndRenderMixin {
             const haven = this._budgetDelegate?.haven ?? "wilderness";
             const isSafeHaven = haven === "civilized";
             const comfort = personalCard?.personalComfort ?? "rough";
-            const exhaustionDC = isSafeHaven ? null : (personalCard?.recovery?.exhaustionDC ?? (comfort === "rough" ? 10 : (comfort === "hostile" ? 15 : null)));
-            const starvationDC = hasStarvationRisk ? 15 : null;
-            const targetDC = Math.max(exhaustionDC ?? 10, starvationDC ?? 10);
+            const adapter = game.ionrift?.respite?.adapter ?? null;
+            const pf2e = isPf2eSystem(adapter);
+            const actorLevel = adapter?.getLevel ? adapter.getLevel(actor) : (actor.system?.details?.level?.value ?? actor.system?.details?.level ?? 1);
+            const fallbackComfortDc = pf2e
+                ? getPf2eFortitudeSaveDC(comfort, actorLevel)
+                : (comfort === "rough" ? 10 : (comfort === "hostile" ? 15 : null));
+            const exhaustionDC = isSafeHaven ? null : (personalCard?.recovery?.exhaustionDC ?? fallbackComfortDc);
+            const starvationDC = hasStarvationRisk
+                ? (pf2e ? resolvePf2eEventDC(15, actorLevel, adapter) : 15)
+                : null;
+            const defaultBaseDc = pf2e ? resolvePf2eEventDC(10, actorLevel, adapter) : 10;
+            const targetDC = Math.max(exhaustionDC ?? defaultBaseDc, starvationDC ?? defaultBaseDc);
             const hasHazard = !isSafeHaven && (Boolean(exhaustionDC) || hasStarvationRisk || comfort === "rough" || comfort === "hostile");
 
             const reasons = [];
@@ -245,39 +261,38 @@ class DowntimeSyncAndRenderMixin {
         const entry = this._getOrCreateExhaustionEntry(actor);
         if (!entry) return null;
 
-        let conMod = 0;
-        try {
-            const rollData = actor.getRollData?.() ?? {};
-            const fromRollData = rollData?.abilities?.con?.save;
-            if (typeof fromRollData === "number") {
-                conMod = fromRollData;
-            } else {
-                const mod = actor.system?.abilities?.con?.mod ?? 0;
-                const prof = actor.system?.attributes?.prof ?? 0;
-                const proficient = actor.system?.abilities?.con?.proficient ?? 0;
-                conMod = mod + (proficient > 0 ? prof : 0);
-            }
-        } catch {
-            conMod = actor.system?.abilities?.con?.mod ?? 0;
-        }
-
-        const formula = entry.advMode === "adv" ? "2d20kh" : (entry.advMode === "dis" ? "2d20kl" : "1d20");
-        const rollString = conMod >= 0 ? `${formula} + ${conMod}` : `${formula} - ${Math.abs(conMod)}`;
+        const adapter = game.ionrift?.respite?.adapter ?? null;
+        const pf2e = isPf2eSystem(adapter);
+        const conMod = conSaveBonus(actor);
+        const { formula: rollString, circumstanceMod } = buildSystemRollFormula(conMod, entry.advMode, adapter);
         const roll = await new Roll(rollString).evaluate();
 
-        const passed = roll.total >= entry.dc;
+        const d20Value = roll.dice?.[0]?.total ?? roll.terms?.[0]?.results?.[0]?.result ?? null;
+        const saveDegree = pf2e ? evaluatePf2eSaveDegree(d20Value, roll.total, entry.dc) : null;
+        const passed = pf2e
+            ? (saveDegree === "success" || saveDegree === "critSuccess")
+            : (roll.total >= entry.dc);
         entry.rolled = true;
         entry.rollTotal = roll.total;
+        entry.d20Value = d20Value;
+        entry.saveDegree = saveDegree;
         entry.passed = passed;
 
-        const advText = entry.advMode === "adv" ? ` (${game.i18n.localize("ionrift-respite.rollRequest.advantage")})` : (entry.advMode === "dis" ? ` (${game.i18n.localize("ionrift-respite.rollRequest.disadvantage")})` : "");
-        const resultText = passed
-            ? game.i18n.localize("ionrift-respite.downtimeLedger.conSavePassedHtml")
-            : game.i18n.localize("ionrift-respite.downtimeLedger.conSaveFailedHtml");
+        const advText = pf2e
+            ? (circumstanceMod > 0 ? ` (+${circumstanceMod} circumstance)` : (circumstanceMod < 0 ? ` (${circumstanceMod} circumstance)` : ""))
+            : (entry.advMode === "adv" ? ` (${game.i18n.localize("ionrift-respite.rollRequest.advantage")})` : (entry.advMode === "dis" ? ` (${game.i18n.localize("ionrift-respite.rollRequest.disadvantage")})` : ""));
+        const resultText = pf2e
+            ? (passed ? "Passed. No Fatigue gained." : (saveDegree === "critFailure" ? "Critical failure. Fatigued and +1 Drained." : "Failed. Fatigued."))
+            : (passed
+                ? game.i18n.localize("ionrift-respite.downtimeLedger.conSavePassedHtml")
+                : game.i18n.localize("ionrift-respite.downtimeLedger.conSaveFailedHtml"));
+        const flavor = pf2e
+            ? `<strong>${actor.name}</strong>: Fortitude save vs Fatigue DC ${entry.dc}${advText}<br>${resultText}`
+            : game.i18n.format("ionrift-respite.downtimeLedger.conSaveFlavor", { name: actor.name, dc: entry.dc, adv: advText, result: resultText });
 
         await postRollAndSettle(roll, {
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: game.i18n.format("ionrift-respite.downtimeLedger.conSaveFlavor", { name: actor.name, dc: entry.dc, adv: advText, result: resultText }),
+            flavor,
             whisper: game.users.filter(u => u.isGM).map(u => u.id)
         });
 

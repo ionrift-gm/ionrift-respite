@@ -15,6 +15,8 @@ import { stampDeprivationExhaustionFloor } from "../../../services/meal/phase/Me
 import { isTrailerFilmingMode as _isTrailerFilmingMode } from "../rest/layout/RestWindowLayout.js";
 import { emitSocketMessage } from "../../../services/socket/SocketController.js";
 import { presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+import { isPf2eSystem, evaluatePf2eSaveDegree } from "../../../services/camp/gear/Pf2eComfortRules.js";
+import { getNatD20FromRoll } from "../../../services/events/resolve/Pf2eEventRules.js";
 
 export class MealDelegate {
 
@@ -653,9 +655,12 @@ export class MealDelegate {
                             const profBonus = actor.system?.abilities?.con?.save ? (actor.system?.attributes?.prof ?? 0) : 0;
                             return conMod + profBonus;
                         })();
-                        const roll = await new Roll(`1d20 + ${conSave}`).evaluate();
+                        const rollExpr = conSave >= 0 ? `1d20 + ${conSave}` : `1d20 - ${Math.abs(conSave)}`;
+                        const roll = await new Roll(rollExpr).evaluate();
                         const total = roll.total;
-                        const passed = total >= r.dehydrationSaveDC;
+                        const passed = isPf2eSystem(saveAdapter)
+                            ? ["success", "critSuccess"].includes(evaluatePf2eSaveDegree(getNatD20FromRoll(roll), total, r.dehydrationSaveDC))
+                            : (total >= r.dehydrationSaveDC);
 
                         await presentRoll(roll);
                         if (!passed) {

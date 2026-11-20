@@ -8,6 +8,12 @@ import {
     SKILL_DISPLAY_NAMES,
     waitForDiceSoNice
 } from "../../../services/ui/rollRequest/RollRequestManager.js";
+import { isPf2eSystem, evaluatePf2eSaveDegree } from "../../../services/camp/gear/Pf2eComfortRules.js";
+import {
+    evaluatePf2eGroupOutcome,
+    resolvePf2eEventDC,
+    resolveSkillDisplayName
+} from "../../../services/events/resolve/Pf2eEventRules.js";
 import { GrantLedger } from "../../../services/crafting/outcomes/GrantLedger.js";
 import { _refreshGmRestIndicator } from "../../../module.js";
 
@@ -48,16 +54,27 @@ export class EventsPhaseDelegate {
 
     async receiveRollResult(data) {
         if (!game.user.isGM) return;
-        const { eventIndex, characterId, characterName, total } = data;
+        const { eventIndex, characterId, characterName, total, natD20 = null } = data;
         const triggeredEvent = this.triggeredEvents?.[eventIndex];
         if (!triggeredEvent || !triggeredEvent.awaitingRolls) return;
 
-        const dc = triggeredEvent.mechanical?.dc ?? 10;
-        const passed = total >= dc;
+        const adapter = globalThis.game?.ionrift?.respite?.adapter ?? null;
+        const pf2e = isPf2eSystem(adapter);
+        const dc = (pf2e && triggeredEvent.mechanical?.authoredDc == null)
+            ? resolvePf2eEventDC(
+                triggeredEvent.mechanical?.dc ?? 10,
+                (triggeredEvent.targets ?? []).map(id => game.actors.get(id)).filter(Boolean),
+                adapter
+            )
+            : (triggeredEvent.mechanical?.dc ?? 10);
+        const degree = pf2e ? evaluatePf2eSaveDegree(natD20, total, dc) : null;
+        const passed = pf2e
+            ? (degree === "success" || degree === "critSuccess")
+            : (total >= dc);
 
         if (!triggeredEvent.resolvedRolls) triggeredEvent.resolvedRolls = [];
         if (triggeredEvent.resolvedRolls.some(r => r.characterId === characterId)) return;
-        triggeredEvent.resolvedRolls.push({ characterId, name: characterName, total, passed });
+        triggeredEvent.resolvedRolls.push({ characterId, name: characterName, total, natD20, passed });
 
         if (triggeredEvent.pendingRolls) {
             triggeredEvent.pendingRolls = triggeredEvent.pendingRolls.filter(id => id !== characterId);
@@ -80,12 +97,26 @@ export class EventsPhaseDelegate {
 
         _computeEventOutcome(triggeredEvent, rolls, dc) {
         const checkPolicy = triggeredEvent.mechanical.checkPolicy ?? "group";
+        const pf2e = isPf2eSystem();
         const result = {};
 
         if (checkPolicy === "individual") {
-            const passCount = rolls.filter(r => r.passed).length;
+            const passCount = rolls.filter(r => {
+                if (pf2e) {
+                    const deg = evaluatePf2eSaveDegree(r.natD20 ?? null, r.total, dc);
+                    return deg === "success" || deg === "critSuccess";
+                }
+                return r.passed;
+            }).length;
             result.resolvedOutcome = passCount > rolls.length / 2 ? "success" : "failure";
             result.checkPolicy = "individual";
+        } else if (pf2e) {
+            const hasTriumph = !!triggeredEvent.mechanical?.onTriumph;
+            const hasMixed = !!triggeredEvent.mechanical?.onMixed;
+            const pf2eOutcome = evaluatePf2eGroupOutcome(rolls, dc, { hasTriumph, hasMixed });
+            result.groupAverage = pf2eOutcome.groupAverage;
+            result.resolvedOutcome = pf2eOutcome.resolvedOutcome;
+            result.checkPolicy = "group";
         } else {
             const avg = rolls.reduce((sum, r) => sum + r.total, 0) / rolls.length;
             const roundedAvg = Math.round(avg);
@@ -115,17 +146,20 @@ export class EventsPhaseDelegate {
 
     async receiveTreeRollResult(data) {
         if (!game.user.isGM) return;
-        const { characterId, characterName, total } = data;
+        const { characterId, characterName, total, natD20 = null } = data;
 
         if (!this.activeTreeState?.awaitingRolls) return;
 
         const dc = this.activeTreeState.pendingDC ?? 12;
-        const passed = total >= dc;
+        const pf2e = isPf2eSystem();
+        const passed = pf2e
+            ? ["success", "critSuccess"].includes(evaluatePf2eSaveDegree(natD20, total, dc))
+            : (total >= dc);
 
         if (!this.activeTreeState.resolvedRolls) this.activeTreeState.resolvedRolls = [];
         if (this.activeTreeState.resolvedRolls.some(r => r.characterId === characterId)) return;
         this.activeTreeState.resolvedRolls.push({
-            characterId, name: characterName, total, passed,
+            characterId, name: characterName, total, natD20, passed,
             actorName: characterName, actorId: characterId, dc
         });
 
@@ -242,7 +276,7 @@ export class EventsPhaseDelegate {
             game.actors.get(prepared.targetIds[0]),
             prepared.skills
         );
-        const skillName = SKILL_DISPLAY_NAMES[skillKey] ?? skillKey;
+        const skillName = resolveSkillDisplayName(skillKey, SKILL_DISPLAY_NAMES);
         this.activeTreeState.pendingSkillName = skillName;
         this.activeTreeState.pendingSkillKey = skillKey;
         this.activeTreeState.pendingDC = prepared.dc;

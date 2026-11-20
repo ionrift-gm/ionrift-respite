@@ -13,6 +13,7 @@ import {
     SKILL_DISPLAY_NAMES,
     disableRollButton
 } from "../../../services/ui/rollRequest/RollRequestManager.js";
+import { resolveSkillDisplayName } from "../../../services/events/resolve/Pf2eEventRules.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { _refreshGmRestIndicator } from "../../../module.js";
@@ -64,15 +65,11 @@ export const eventsTreeAndPoolActions = {
                 if (encounterEntry) {
                     const ev = app._eventResolver.events.get(encounterEntry.eventId);
                     const targets = getPartyActors().map(a => a.id);
-                    app._triggeredEvents = [{
-                        id: ev.id, name: ev.name, category: ev.category,
-                        description: ev.description, mechanical: ev.mechanical,
-                        isDecisionTree: ev.mechanical?.type === "decision_tree",
-                        targets, rollTotal: 1, result: "triggered",
-                        narrative: ev.description,
-                        items: ev.mechanical?.onSuccess?.items ?? [],
-                        effects: ev.mechanical?.onFailure?.effects ?? []
-                    }];
+                    const built = app._eventResolver.buildManualResult(ev, app._engine?.watchRoster ?? [], {
+                        rollTotal: 1,
+                        result: "triggered"
+                    });
+                    app._triggeredEvents = [{ ...built, targets }];
                     ui.notifications.info(game.i18n.format("ionrift-respite.eventsPhase.infoForcedEncounter", { name: ev.name }));
                 } else {
                     app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._earlyResults);
@@ -457,7 +454,7 @@ export const eventsTreeAndPoolActions = {
             game.actors.get(prepared.targetIds[0]),
             prepared.skills
         );
-        const skillName = SKILL_DISPLAY_NAMES[skillKey] ?? skillKey;
+        const skillName = resolveSkillDisplayName(skillKey, SKILL_DISPLAY_NAMES);
         app._activeTreeState.pendingSkillName = skillName;
         app._activeTreeState.pendingSkillKey = skillKey;
         app._activeTreeState.pendingDC = prepared.dc;
@@ -541,7 +538,7 @@ export const eventsTreeAndPoolActions = {
         }
 
         const skills = app._activeTreeState.pendingCheck?.skills ?? [];
-        const context = `${app._activeTreeState.eventName} - Decision`;
+        const context = `${app._activeTreeState.eventName}: Decision`;
 
         const result = await rollForPlayer(actor, skills, dc, context, rollMode);
 
@@ -549,7 +546,8 @@ export const eventsTreeAndPoolActions = {
         await app.receiveTreeRollResult({
             characterId,
             characterName: actor.name,
-            total: result.total
+            total: result.total,
+            natD20: result.natD20 ?? null
         });
     
     },
@@ -650,7 +648,7 @@ export const eventsTreeAndPoolActions = {
         try {
             const skill = triggeredEvent.mechanical?.skill ?? "sur";
             const dc = triggeredEvent.mechanical?.dc ?? 10;
-            const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill;
+            const skillName = resolveSkillDisplayName(skill, SKILL_DISPLAY_NAMES);
             const context = `${triggeredEvent.name ?? "Event"} (${skillName})`;
             const rollMode = triggeredEvent.rollModes?.[characterId] ?? "normal";
 
@@ -660,7 +658,8 @@ export const eventsTreeAndPoolActions = {
                 eventIndex,
                 characterId,
                 characterName: actor.name,
-                total: result.total
+                total: result.total,
+                natD20: result.natD20 ?? null
             });
         } catch (err) {
 

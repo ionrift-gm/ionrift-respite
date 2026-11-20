@@ -16,6 +16,12 @@
  * @returns {string} Best skill abbreviation.
  */
 import { armDiceSoNiceSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+import { isPf2eSystem } from "../../camp/gear/Pf2eComfortRules.js";
+import {
+    buildSystemRollFormula,
+    getPf2eActorCheckMod,
+    resolveSkillDisplayName
+} from "../../events/resolve/Pf2eEventRules.js";
 
 export {
     armDiceSoNiceSettle,
@@ -47,7 +53,14 @@ export function pickBestSkill(actor, skills) {
 export function getSkillMod(actor, key) {
     const adapter = game.ionrift?.respite?.adapter;
     if (adapter) {
+        if (isPf2eSystem(adapter)) {
+            return getPf2eActorCheckMod(actor, key, adapter);
+        }
         const normalizedKey = adapter.normalizeSkillKey(key);
+        const skillKeys = adapter.getSkillKeys ? adapter.getSkillKeys(actor) : [];
+        if (skillKeys.includes(normalizedKey)) {
+            return adapter.getSkillTotal(actor, normalizedKey);
+        }
         const skillTotal = adapter.getSkillTotal(actor, normalizedKey);
         if (skillTotal !== 0) return skillTotal;
         return adapter.getAbilityMod(actor, key);
@@ -65,15 +78,13 @@ export function getSkillMod(actor, key) {
  * @param {Actor} actor
  * @param {string} skillKey - Skill abbreviation.
  * @param {'normal'|'advantage'|'disadvantage'} [rollMode='normal']
- * @returns {{ roll: Roll, modifier: number, skillKey: string }}
+ * @returns {{ roll: Roll, modifier: number, skillKey: string, circumstanceMod: number }}
  */
 export function buildSkillRoll(actor, skillKey, rollMode = "normal") {
     const modifier = getSkillMod(actor, skillKey);
-    const formula = rollMode === "advantage"    ? `2d20kh1 + ${modifier}`
-                  : rollMode === "disadvantage" ? `2d20kl1 + ${modifier}`
-                  : `1d20 + ${modifier}`;
+    const { formula, circumstanceMod } = buildSystemRollFormula(modifier, rollMode);
     const roll = new Roll(formula);
-    return { roll, modifier, skillKey };
+    return { roll, modifier, skillKey, circumstanceMod };
 }
 
 /**
@@ -127,9 +138,13 @@ export async function rollForPlayer(actor, skills, dc, context = null, rollMode 
     await roll.evaluate();
 
     const ctx = context ?? game.i18n.localize("ionrift-respite.rollRequest.skillCheck");
-    const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill.toUpperCase();
+    const adapter = game.ionrift?.respite?.adapter ?? null;
+    const pf2e = isPf2eSystem(adapter);
+    const skillName = resolveSkillDisplayName(skill, SKILL_DISPLAY_NAMES, adapter) || skill.toUpperCase();
     const passed = roll.total >= dc;
-    const modeLabel = rollMode === "advantage" ? ` [${game.i18n.localize("ionrift-respite.rollRequest.advantage")}]` : (rollMode === "disadvantage" ? ` [${game.i18n.localize("ionrift-respite.rollRequest.disadvantage")}]` : "");
+    const modeLabel = pf2e
+        ? (rollMode === "advantage" ? " [+2 circumstance]" : (rollMode === "disadvantage" ? " [-2 circumstance]" : ""))
+        : (rollMode === "advantage" ? ` [${game.i18n.localize("ionrift-respite.rollRequest.advantage")}]` : (rollMode === "disadvantage" ? ` [${game.i18n.localize("ionrift-respite.rollRequest.disadvantage")}]` : ""));
     const gmRollTag = ` [${game.i18n.localize("ionrift-respite.rollRequest.gmRoll")}]`;
     const flavor = game.i18n.format("ionrift-respite.rollRequest.gmRollFlavor", { name: actor.name, context: ctx, skill: skillName, dc, gmRoll: gmRollTag, mode: modeLabel });
 
@@ -174,7 +189,7 @@ export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonT
     }
     await gate.wait();
 
-    return { total: roll.total, passed: roll.total >= dc, roll };
+    return { total: roll.total, passed: roll.total >= dc, roll, natD20: getNatD20FromRoll(roll) };
 }
 
 /**
@@ -188,12 +203,10 @@ export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonT
  * @param {string} flavorText
  * @param {HTMLElement} [buttonTarget]
  * @param {'normal'|'advantage'|'disadvantage'} [rollMode='normal']
- * @returns {Promise<{ total: number, passed: boolean, roll: Roll }>}
+ * @returns {Promise<{ total: number, passed: boolean, roll: Roll, natD20: number|null }>}
  */
 export async function executeAbilityRoll(actor, abilityKey, modifier, dc, flavorText, buttonTarget, rollMode = "normal") {
-    const formula = rollMode === "advantage"    ? `2d20kh1 + ${modifier}`
-                  : rollMode === "disadvantage" ? `2d20kl1 + ${modifier}`
-                  : `1d20 + ${modifier}`;
+    const { formula } = buildSystemRollFormula(modifier, rollMode);
     const roll = new Roll(formula);
     await roll.evaluate();
 
@@ -208,7 +221,7 @@ export async function executeAbilityRoll(actor, abilityKey, modifier, dc, flavor
     }
     await gate.wait();
 
-    return { total: roll.total, passed: roll.total >= dc, roll };
+    return { total: roll.total, passed: roll.total >= dc, roll, natD20: getNatD20FromRoll(roll) };
 }
 
 /**

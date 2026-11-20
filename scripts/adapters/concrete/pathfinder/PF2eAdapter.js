@@ -125,7 +125,7 @@ export class PF2eAdapter extends SystemAdapter {
     getSaveBonus(actor, saveKey) {
         const pf2eKey = PF2eAdapter.SAVE_KEY_MAP[saveKey] ?? saveKey;
         try {
-            const stat = actor.saves?.[pf2eKey];
+            const stat = actor.saves?.[pf2eKey] ?? actor.system?.saves?.[pf2eKey];
             if (stat) return stat.totalModifier ?? stat.mod ?? 0;
         } catch { /* fall through */ }
         // Fallback: ability mod only
@@ -135,12 +135,22 @@ export class PF2eAdapter extends SystemAdapter {
 
     getSkillTotal(actor, skillKey) {
         const key = this.normalizeSkillKey(skillKey);
-        return actor.system?.skills?.[key]?.totalModifier ?? 0;
+        if (key === "perception") {
+            const perc = actor.perception ?? actor.system?.perception ?? actor.system?.attributes?.perception ?? actor.system?.skills?.perception;
+            if (perc) return perc.totalModifier ?? perc.mod ?? perc.value ?? 0;
+        }
+        const skill = actor.skills?.[key] ?? actor.system?.skills?.[key];
+        return skill?.totalModifier ?? skill?.mod ?? 0;
     }
 
     isSkillProficient(actor, skillKey) {
         const key = this.normalizeSkillKey(skillKey);
-        return (actor.system?.skills?.[key]?.rank ?? 0) >= 1;
+        if (key === "perception") {
+            const perc = actor.perception ?? actor.system?.perception ?? actor.system?.attributes?.perception ?? actor.system?.skills?.perception;
+            return (perc?.rank ?? 1) >= 1;
+        }
+        const skill = actor.skills?.[key] ?? actor.system?.skills?.[key];
+        return (skill?.rank ?? 0) >= 1;
     }
 
     getSkillKeys(actor) {
@@ -378,6 +388,31 @@ export class PF2eAdapter extends SystemAdapter {
         await this._setValuedCondition(actor, "drained", targetValue, 4);
     }
 
+    async applyConditionSlug(actor, slug, value = null) {
+        if (!actor || !slug) return false;
+        if (slug === "fatigued") {
+            await this.setFatigued(actor, true);
+            return true;
+        }
+        if (value != null && Number(value) > 0) {
+            const current = this.getConditionValue(actor, slug);
+            const next = Math.max(current, Math.floor(Number(value) || 1));
+            await this._setValuedCondition(actor, slug, next, 4);
+            return true;
+        }
+        if (typeof actor.toggleCondition === "function") {
+            if (!this.getConditionValue(actor, slug)) {
+                await actor.toggleCondition(slug);
+            }
+            return true;
+        }
+        if (typeof actor.toggleStatusEffect === "function") {
+            await actor.toggleStatusEffect(slug, { active: true });
+            return true;
+        }
+        return false;
+    }
+
     async clearWellRestedEffects(actor) {
         const ids = (actor?.items ?? [])
             .filter(i => i.flags?.[MODULE_ID]?.wellRested === true && i.id)
@@ -553,7 +588,7 @@ export class PF2eAdapter extends SystemAdapter {
         return [];
     }
 
-    static INCOMPATIBLE = ["act_attune", "act_scribe"];
+    static INCOMPATIBLE = ["act_attune", "attune", "act_scribe", "scribe"];
 
     filterActivities(activities) {
         return activities.filter(a => !PF2eAdapter.INCOMPATIBLE.includes(a.id));

@@ -4,6 +4,8 @@ import { countPoolEventsForTerrain } from "../../../services/events/catalog/Even
 import { resolveNightWatchMode } from "../events/nightWatchMode.js";
 import { CampfireTokenLinker } from "../../../services/camp/fire/CampfireTokenLinker.js";
 import { SKILL_NAMES } from "../../../data/RestConstants.js";
+import { isPf2eSystem } from "../../../services/camp/gear/Pf2eComfortRules.js";
+import { resolvePf2eEventDC, resolveSkillDisplayName } from "../../../services/events/resolve/Pf2eEventRules.js";
 import {
     buildEventPlayerRollContext, buildEventGmRollContext,
     buildTreePlayerRollContext, buildCampActivityRollContext
@@ -20,9 +22,18 @@ export function buildEventsPhaseContext(app, encountersEnabled) {
             triggeredEvents: (app._triggeredEvents ?? []).map((e, eventIndex) => {
                 // Resolve target IDs to actor names for the template
                 const eventRollModes = e.rollModes ?? {};
-                const targetActors = (e.targets ?? [])
+                const rawTargetActors = (e.targets ?? [])
                     .map(id => game.actors.get(id))
-                    .filter(Boolean)
+                    .filter(Boolean);
+                if (isPf2eSystem() && e.mechanical?.type === "skill_check" && e.mechanical.dc != null && e.mechanical.authoredDc == null) {
+                    const levelSources = rawTargetActors.length > 0 ? rawTargetActors : getPartyActors();
+                    e.mechanical = {
+                        ...e.mechanical,
+                        authoredDc: e.mechanical.dc,
+                        dc: resolvePf2eEventDC(e.mechanical.dc, levelSources)
+                    };
+                }
+                const targetActors = rawTargetActors
                     .map(a => {
                         const rollMode = eventRollModes[a.id] ?? "normal";
                         return {
@@ -36,7 +47,7 @@ export function buildEventsPhaseContext(app, encountersEnabled) {
                     });
                 const targetNames = targetActors.map(a => a.name);
                 const skillName = e.mechanical?.skill
-                    ? (SKILL_NAMES[e.mechanical.skill] ?? e.mechanical.skill)
+                    ? resolveSkillDisplayName(e.mechanical.skill, SKILL_NAMES)
                     : null;
                 // Backfill GM narration from the live catalog by id. Events persisted
                 // before these fields existed (or built by inline paths) carry only an

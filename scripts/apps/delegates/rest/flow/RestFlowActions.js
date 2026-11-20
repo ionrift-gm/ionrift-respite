@@ -15,7 +15,8 @@ import { closeOpenStationDialog } from "../../../camp/StationActivityDialog.js";
 import { DowntimeLedgerApp } from "../../../downtime/DowntimeLedgerApp.js";
 import { CampGearScanner } from "../../../../services/camp/gear/CampGearScanner.js";
 import { getEquippedRestArmor } from "../../../../services/camp/gear/RestArmorHelper.js";
-import { isPf2eSystem } from "../../../../services/camp/gear/Pf2eComfortRules.js";
+import { isPf2eSystem, evaluatePf2eSaveDegree } from "../../../../services/camp/gear/Pf2eComfortRules.js";
+import { resolvePf2eEventDC, resolveSkillDisplayName } from "../../../../services/events/resolve/Pf2eEventRules.js";
 import { emitRestSessionStarted } from "../../../../services/rest/session/RestSessionSync.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY } from "../../../../data/RestConstants.js";
 import {
@@ -774,6 +775,15 @@ export class RestFlowActions {
             return;
         }
 
+        const watchIds = triggeredEvent.targets ?? [];
+        const targetActors = watchIds.length > 0
+            ? watchIds.map(id => game.actors.get(id)).filter(Boolean)
+            : getPartyActors();
+        const pf2e = isPf2eSystem();
+        if (pf2e && triggeredEvent.mechanical.dc != null && triggeredEvent.mechanical.authoredDc == null) {
+            triggeredEvent.mechanical.authoredDc = triggeredEvent.mechanical.dc;
+            triggeredEvent.mechanical.dc = resolvePf2eEventDC(triggeredEvent.mechanical.dc, targetActors);
+        }
         const dc = triggeredEvent.mechanical.dc ?? 10;
         const skill = triggeredEvent.mechanical.skill ?? "sur";
 
@@ -783,17 +793,14 @@ export class RestFlowActions {
 
         if (outcomeMode === "auto") {
             // Instead of rolling here, broadcast a roll request to players
-            const watchIds = triggeredEvent.targets ?? [];
-            const actors = watchIds.length > 0
-                ? watchIds.map(id => game.actors.get(id)).filter(Boolean)
-                : getPartyActors();
+            const actors = targetActors;
 
             const pendingRolls = actors.map(a => a.id);
             triggeredEvent.awaitingRolls = true;
             triggeredEvent.pendingRolls = [...pendingRolls];
             triggeredEvent.resolvedRolls = [];
 
-            const skillName = SKILL_NAMES[skill] ?? skill;
+            const skillName = resolveSkillDisplayName(skill, SKILL_NAMES);
 
             emitEventRollRequest({
                     eventIndex,
@@ -883,20 +890,27 @@ export class RestFlowActions {
         }
 
         const skill = pickBestSkill(actor, pending.skills);
-        const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
-        const flavor = `<strong>${actor.name}</strong> - ${pending.eventName} (${pending.skillName}) DC ${dc}${modeLabel}`;
-        const { total } = await executePlayerRoll(actor, skill, dc, flavor, target, rollMode);
+        const pf2e = isPf2eSystem();
+        const modeLabel = pf2e
+            ? (rollMode === "advantage" ? " [+2 circumstance]" : rollMode === "disadvantage" ? " [-2 circumstance]" : "")
+            : (rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "");
+        const flavor = `<strong>${actor.name}</strong>: ${pending.eventName} (${pending.skillName}) DC ${dc}${modeLabel}`;
+        const { total, natD20 } = await executePlayerRoll(actor, skill, dc, flavor, target, rollMode);
+        const passed = pf2e
+            ? ["success", "critSuccess"].includes(evaluatePf2eSaveDegree(natD20, total, dc))
+            : (total >= dc);
 
         if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
         pending.rolledCharacters.add(characterId);
         if (!pending.rolledResults) pending.rolledResults = new Map();
-        pending.rolledResults.set(characterId, { total, passed: total >= dc });
+        pending.rolledResults.set(characterId, { total, passed });
 
         // Send result to GM
         emitTreeRollResult({
                     characterId,
                     characterName: actor.name,
-                    total
+                    total,
+                    natD20
                 });
 
         ui.notifications.info(game.i18n.format("ionrift-respite.restFlow.rolledForSkillInfo", {

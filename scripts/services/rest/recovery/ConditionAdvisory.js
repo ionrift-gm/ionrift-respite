@@ -1,5 +1,7 @@
 import { Logger } from "../../../utils/Logger.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { isPf2eSystem } from "../../camp/gear/Pf2eComfortRules.js";
+import { mapPf2eConditionEffect } from "../../events/resolve/Pf2eEventRules.js";
 
 /**
  * ConditionAdvisory
@@ -156,10 +158,10 @@ export class ConditionAdvisory {
      * then post a GM advisory for anything left to manage by hand.
      *
      * Application order per condition (see CONDITION_AUTHORING.md):
-     *   A. Registry entry with its own changes  -> custom Active Effect.
-     *   B. Standard 5e condition                -> native system status.
-     *   C. Standard 5e condition, CE installed  -> Convenient Effects (last resort).
-     *   else                                    -> listed in advisory for manual handling.
+     *   A. Registry entry with its own changes: custom Active Effect.
+     *   B. Standard 5e condition: native system status.
+     *   C. Standard 5e condition, CE installed: Convenient Effects (last resort).
+     *   else: listed in advisory for manual handling.
      *
      * @param {Object[]} outcomes - Full outcomes array from the rest flow.
      * @param {Object} [options]
@@ -180,6 +182,8 @@ export class ConditionAdvisory {
         // Shared effect-automation detection (DAE / Midi-QoL / CE). Falls back
         // gracefully when the library kernel predates the helper.
         const fx = game.ionrift?.library?.effects ?? null;
+        const sysAdapter = game.ionrift?.respite?.adapter ?? null;
+        const pf2e = isPf2eSystem(sysAdapter);
 
         const applied = new Set();
         const aeApplied = new Set();
@@ -199,6 +203,17 @@ export class ConditionAdvisory {
                 // as a done deal and skip re-application to avoid stacking.
                 if (preApplied.has(adapterKey)) {
                     applied.add(key);
+                    continue;
+                }
+
+                // PF2e path: route through PF2e native conditions (Sickened, Enfeebled,
+                // Clumsy, Stupefied, Fatigued, Drained) instead of dnd5e/Midi-QoL AEs.
+                if (pf2e) {
+                    const pf2eApplied = await this._applyPf2eCondition(actor, effect, sysAdapter);
+                    if (pf2eApplied) {
+                        applied.add(key);
+                        Logger.log(`PF2e condition applied for "${effect.condition}" to ${actor.name}`);
+                    }
                     continue;
                 }
 
@@ -445,10 +460,44 @@ export class ConditionAdvisory {
         return icons[effect.condition] ?? "fas fa-exclamation-circle";
     }
 
+    static async _applyPf2eCondition(actor, effect, adapter) {
+        if (!actor || !adapter) return false;
+        const mapped = mapPf2eConditionEffect(effect);
+        if (!mapped) return false;
+
+        try {
+            if (mapped.type === "pf2e_fatigue_drain") {
+                if (typeof adapter.setFatigued === "function") {
+                    await adapter.setFatigued(actor, true);
+                } else if (typeof adapter.applyExhaustionDelta === "function") {
+                    await adapter.applyExhaustionDelta(actor, mapped.steps ?? 1);
+                    return true;
+                }
+                const extraDrain = Math.max(0, (mapped.steps ?? 1) - 1);
+                if (extraDrain > 0 && typeof adapter.setDrained === "function") {
+                    const cur = typeof adapter.getDrained === "function" ? adapter.getDrained(actor) : 0;
+                    await adapter.setDrained(actor, Math.min(4, cur + extraDrain));
+                }
+                return true;
+            }
+            if (mapped.type === "pf2e_condition" && typeof adapter.applyConditionSlug === "function") {
+                return await adapter.applyConditionSlug(actor, mapped.slug, mapped.value);
+            }
+        } catch (err) {
+            console.warn(`${MODULE_ID} | PF2e condition apply failed for ${effect.condition}:`, err);
+        }
+        return false;
+    }
+
     static _formatConditionLabel(effect) {
         if (effect.type === "temp_hp") {
             const formula = effect.formula ?? effect.amount ?? effect.value ?? "?";
             return game.i18n.format("ionrift-respite.conditionAdvisory.tempHp", { formula });
+        }
+
+        if (isPf2eSystem()) {
+            const mapped = mapPf2eConditionEffect(effect);
+            if (mapped?.label) return mapped.label;
         }
 
         let label = (effect.condition ?? "unknown").charAt(0).toUpperCase()

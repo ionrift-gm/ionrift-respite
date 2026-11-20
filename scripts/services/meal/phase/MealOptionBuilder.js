@@ -7,6 +7,8 @@ import { ItemClassifier } from "../../party/ItemClassifier.js";
 import { SpoilageClock } from "../spoilage/SpoilageClock.js";
 import { MODULE_ID } from "../inventory/MealConstants.js";
 import { dehydrationOutcome } from "./DehydrationCheck.js";
+import { isPf2eSystem } from "../../camp/gear/Pf2eComfortRules.js";
+import { resolvePf2eEventDC } from "../../events/resolve/Pf2eEventRules.js";
 import { describeItemMealBuff } from "../buffs/MealBuffPresets.js";
 import {
     iterInventoryItems,
@@ -135,7 +137,7 @@ export function buildWaterOptions(actor, _rules) {
 /**
  * Build advisory messages about current hunger/thirst status.
  */
-export function buildAdvisories(restsSinceFood, restsSinceWater, foodGrace, rules, terrainTag, foodSufficient = false, foodFilledCount = 0, waterSufficient = false, waterFilledCount = 0, partialSustenance = true) {
+export function buildAdvisories(restsSinceFood, restsSinceWater, foodGrace, rules, terrainTag, foodSufficient = false, foodFilledCount = 0, waterSufficient = false, waterFilledCount = 0, partialSustenance = true, actor = null) {
     const advisories = [];
     const isPartialFood = !foodSufficient && foodFilledCount > 0 && rules.foodPerDay > 1;
 
@@ -173,17 +175,25 @@ export function buildAdvisories(restsSinceFood, restsSinceWater, foodGrace, rule
 
     // Water advisories. The band is this rest's pints, not a running day count.
     if (restsSinceWater > 0) {
-        const saveDC = rules.dehydrationDC ?? 15;
+        const sysAdapter = globalThis.game?.ionrift?.respite?.adapter ?? null;
+        const pf2e = isPf2eSystem(sysAdapter);
+        const rawSaveDC = rules.dehydrationDC ?? 15;
+        const saveDC = pf2e && actor
+            ? resolvePf2eEventDC(rawSaveDC, [actor], sysAdapter)
+            : rawSaveDC;
+        const saveLabel = pf2e ? "Fortitude save" : "CON save";
         const band = dehydrationOutcome(waterFilledCount, rules.waterPerDay ?? 0, saveDC);
         let bandNote = "";
         if (!waterSufficient && (rules.waterPerDay ?? 0) > 0) {
             if (band.dehydrationAutoFail) {
-                bandNote = ` ${waterFilledCount} of ${rules.waterPerDay} pints. Less than half the day's water. Exhaustion, no save.`;
+                bandNote = pf2e
+                    ? ` ${waterFilledCount} of ${rules.waterPerDay} pints. Less than half the day's water. Fatigued, no save.`
+                    : ` ${waterFilledCount} of ${rules.waterPerDay} pints. Less than half the day's water. Exhaustion, no save.`;
             } else if (band.dehydrationSaveDC > 0) {
                 const shownDC = partialSustenance ? band.dehydrationSaveDC - 2 : band.dehydrationSaveDC;
                 bandNote = partialSustenance
-                    ? ` ${waterFilledCount} of ${rules.waterPerDay} pints. Half the day's water. CON save at DC ${shownDC} (+2 from partial hydration).`
-                    : ` ${waterFilledCount} of ${rules.waterPerDay} pints. Half the day's water. CON save DC ${band.dehydrationSaveDC}.`;
+                    ? ` ${waterFilledCount} of ${rules.waterPerDay} pints. Half the day's water. ${saveLabel} at DC ${shownDC} (+2 from partial hydration).`
+                    : ` ${waterFilledCount} of ${rules.waterPerDay} pints. Half the day's water. ${saveLabel} DC ${band.dehydrationSaveDC}.`;
             }
         }
         advisories.push({

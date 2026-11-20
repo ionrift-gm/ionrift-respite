@@ -4,6 +4,8 @@
  */
 
 import { restoreHitDice, rollBuffFormula, rollForChat } from "./MealBuffResolveHelpers.js";
+import { isPf2eSystem, evaluatePf2eSaveDegree } from "../../camp/gear/Pf2eComfortRules.js";
+import { resolvePf2eEventDC, getNatD20FromRoll } from "../../events/resolve/Pf2eEventRules.js";
 
 /**
  * @param {Actor} actor
@@ -45,8 +47,10 @@ export async function resolveStubMealBuff(actor, buff, { chatDetail = false } = 
             return { summary, roll: rollForChat(roll) };
         }
         case "exhaustion_save": {
-            const dc = Number(buff.save?.dc ?? buff.formula ?? 15);
+            const rawDc = Number(buff.save?.dc ?? buff.formula ?? 15);
             const exAdapter = game.ionrift?.respite?.adapter;
+            const pf2e = isPf2eSystem(exAdapter);
+            const dc = pf2e ? resolvePf2eEventDC(rawDc, [actor], exAdapter) : rawDc;
             const conSaveBonus = exAdapter?.getSaveBonus
                 ? exAdapter.getSaveBonus(actor, "con")
                 : (() => {
@@ -58,9 +62,12 @@ export async function resolveStubMealBuff(actor, buff, { chatDetail = false } = 
                     const proficient = actor.system?.abilities?.con?.proficient ?? 0;
                     return conMod + (proficient > 0 ? Math.floor(profBonus * proficient) : 0);
                 })();
-            const roll = await new Roll(`1d20 + ${conSaveBonus}`).evaluate();
+            const rollExpr = conSaveBonus >= 0 ? `1d20 + ${conSaveBonus}` : `1d20 - ${Math.abs(conSaveBonus)}`;
+            const roll = await new Roll(rollExpr).evaluate();
             const total = roll.total;
-            const pass = total >= dc;
+            const pass = pf2e
+                ? ["success", "critSuccess"].includes(evaluatePf2eSaveDegree(getNatD20FromRoll(roll), total, dc))
+                : (total >= dc);
             if (pass) {
                 if (exAdapter?.applyExhaustionDelta) {
                     await exAdapter.applyExhaustionDelta(actor, -1);

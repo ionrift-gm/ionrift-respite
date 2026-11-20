@@ -777,8 +777,11 @@ export class DowntimeBatchEngine {
                 actorUpdates["system.attributes.hp.value"] = targetHp;
 
                 // 4. Exhaustion Processing (Adjudicated Saves & Natural Recovery)
+                const adapter = game.ionrift?.respite?.adapter ?? null;
                 const exhaustionEntry = exhaustionResults?.find(e => e.actorId === actor.id);
-                const currentExhaustion = actor.system?.attributes?.exhaustion ?? 0;
+                const currentExhaustion = adapter?.getExhaustion
+                    ? adapter.getExhaustion(actor)
+                    : (actor.system?.attributes?.exhaustion ?? 0);
                 let newExhaustion = currentExhaustion;
 
                 if (exhaustionEntry?.gainLevel > 0) {
@@ -801,7 +804,11 @@ export class DowntimeBatchEngine {
                     }
                 }
                 if (newExhaustion !== currentExhaustion) {
-                    actorUpdates["system.attributes.exhaustion"] = newExhaustion;
+                    if (adapter?.applyExhaustionDelta) {
+                        await adapter.applyExhaustionDelta(actor, newExhaustion - currentExhaustion);
+                    } else {
+                        actorUpdates["system.attributes.exhaustion"] = newExhaustion;
+                    }
                 }
 
                 // Apply combined actor updates

@@ -13,6 +13,8 @@ import { isTrailerFilmingMode as _isTrailerFilmingMode } from "../rest/layout/Re
 import { emitPhaseChanged, emitSocketMessage } from "../../../services/socket/SocketController.js";
 import { RestSetupApp } from "../../rest/RestSetupApp.js";
 import { presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+import { isPf2eSystem, evaluatePf2eSaveDegree } from "../../../services/camp/gear/Pf2eComfortRules.js";
+import { getNatD20FromRoll } from "../../../services/events/resolve/Pf2eEventRules.js";
 
 export const MealDragAndAutoMethods = {
     async receiveMealDayConsumed(userId, clientChoices) {
@@ -61,9 +63,12 @@ export const MealDragAndAutoMethods = {
                     const profBonus = actor.system?.abilities?.con?.save ? (actor.system?.attributes?.prof ?? 0) : 0;
                     return conMod + profBonus;
                 })();
-                const roll = await new Roll(`1d20 + ${playerConSave}`).evaluate();
+                const rollExpr = playerConSave >= 0 ? `1d20 + ${playerConSave}` : `1d20 - ${Math.abs(playerConSave)}`;
+                const roll = await new Roll(rollExpr).evaluate();
                 total = roll.total;
-                passed = total >= dc;
+                passed = isPf2eSystem(playerSaveAdapter)
+                    ? ["success", "critSuccess"].includes(evaluatePf2eSaveDegree(getNatD20FromRoll(roll), total, dc))
+                    : (total >= dc);
 
                 await presentRoll(roll);
             } catch (e) {

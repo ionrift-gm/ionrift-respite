@@ -11,6 +11,8 @@ import { servingsFromSnapshots } from "../buffs/MealBuffBeat.js";
 import { MODULE_ID, MEAL_DEFAULTS } from "../inventory/MealConstants.js";
 import { getActorMealNeeds } from "./MealContextBuilder.js";
 import { dehydrationOutcome } from "./DehydrationCheck.js";
+import { isPf2eSystem } from "../../camp/gear/Pf2eComfortRules.js";
+import { resolvePf2eEventDC } from "../../events/resolve/Pf2eEventRules.js";
 
 /**
  * Wet meals and party meals credit water (and party meals credit food for allies
@@ -214,7 +216,11 @@ export async function applyMealChoices(mealChoices, daysSinceLastRest = 1, terra
 
         // Grace period: 3 + CON mod days without food before consequences
         // Each day past grace = 1 level of exhaustion (auto-applied)
-        const conMod = actor.system?.abilities?.con?.mod ?? 0;
+        const mealAdapter = globalThis.game?.ionrift?.respite?.adapter ?? null;
+        const pf2eMeal = isPf2eSystem(mealAdapter);
+        const conMod = mealAdapter?.getAbilityMod
+            ? mealAdapter.getAbilityMod(actor, "con")
+            : (actor.system?.abilities?.con?.mod ?? 0);
         const foodGrace = rules.foodGraceDays ?? (3 + Math.max(0, conMod));
         const restsSinceFood = actor.getFlag(MODULE_ID, "restsSinceFood") ?? 0;
         if (restsSinceFood > foodGrace) {
@@ -222,11 +228,15 @@ export async function applyMealChoices(mealChoices, daysSinceLastRest = 1, terra
         }
 
         // Same rest, not a running day count. Full water is no check.
-        // At least half is a Constitution save. Less than half is exhaustion.
+        // At least half is a Constitution/Fortitude save. Less than half is exhaustion/fatigue.
+        const rawDehydrationDc = rules.dehydrationDC ?? MEAL_DEFAULTS.dehydrationDC;
+        const effectiveDehydrationDc = pf2eMeal
+            ? resolvePf2eEventDC(rawDehydrationDc, [actor], mealAdapter)
+            : rawDehydrationDc;
         const band = dehydrationOutcome(
             effectiveWater,
             waterNeeded,
-            rules.dehydrationDC ?? MEAL_DEFAULTS.dehydrationDC
+            effectiveDehydrationDc
         );
         result.dehydrationSaveDC = band.dehydrationSaveDC;
         result.dehydrationAutoFail = band.dehydrationAutoFail;

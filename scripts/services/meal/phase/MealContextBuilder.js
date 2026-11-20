@@ -233,7 +233,7 @@ export function buildMealContext(characterIds, terrainTag, terrainMealRules = {}
 
         // Build advisories (reactive to current selections)
         const partialSustenance = game.settings.get(MODULE_ID, "partialSustenance") ?? true;
-        const advisories = buildAdvisories(restsSinceFood, restsSinceWater, foodGrace, rules, terrainTag, foodSufficient, foodFilledCount, waterSufficient, effectiveWaterFilled, partialSustenance);
+        const advisories = buildAdvisories(restsSinceFood, restsSinceWater, foodGrace, rules, terrainTag, foodSufficient, foodFilledCount, waterSufficient, effectiveWaterFilled, partialSustenance, actor);
 
         // Build day segments for progress bar
         const daySegments = [];

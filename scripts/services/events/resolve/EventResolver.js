@@ -2,6 +2,8 @@ import { MODULE_ID } from "../../../data/moduleId.js";
 import { Logger } from "../../../utils/Logger.js";
 import { getPartyActors } from "../../party/partyActors.js";
 import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+import { isPf2eSystem } from "../../camp/gear/Pf2eComfortRules.js";
+import { resolvePf2eEventDC } from "./Pf2eEventRules.js";
 
 /**
  * EventResolver
@@ -295,6 +297,16 @@ export class EventResolver {
      */
     _buildResult(event, watchRoster, options = {}) {
         const targets = this._resolveTargets(event, watchRoster);
+        const adapter = globalThis.game?.ionrift?.respite?.adapter ?? null;
+        let mechanical = event.mechanical ? structuredClone(event.mechanical) : event.mechanical;
+        if (isPf2eSystem(adapter) && mechanical?.type === "skill_check" && mechanical.dc != null && mechanical.authoredDc == null) {
+            const targetActors = targets
+                .map(id => globalThis.game?.actors?.get?.(id))
+                .filter(Boolean);
+            const levelSources = targetActors.length > 0 ? targetActors : getPartyActors();
+            mechanical.authoredDc = mechanical.dc;
+            mechanical.dc = resolvePf2eEventDC(mechanical.dc, levelSources, adapter);
+        }
         return {
             id: event.id,
             name: event.name,
@@ -303,14 +315,14 @@ export class EventResolver {
             gmPrompt: event.gmPrompt ?? null,
             checkContext: event.checkContext ?? null,
             gmGuidance: event.gmGuidance ?? null,
-            mechanical: event.mechanical,
-            isDecisionTree: event.mechanical?.type === "decision_tree",
+            mechanical,
+            isDecisionTree: mechanical?.type === "decision_tree",
             targets,
             rollTotal: options.rollTotal ?? null,
             result: options.result ?? "triggered",
             narrative: (options.narrativePrefix ?? "") + event.description,
-            items: event.mechanical?.onSuccess?.items ?? [],
-            effects: event.mechanical?.onFailure?.effects ?? []
+            items: mechanical?.onSuccess?.items ?? [],
+            effects: mechanical?.onFailure?.effects ?? []
         };
     }
 

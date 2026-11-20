@@ -6,6 +6,7 @@ import {
     resolvePf2eActivitySkills,
     evaluatePf2eSaveDegree
 } from "../../camp/gear/Pf2eComfortRules.js";
+import { buildSystemRollFormula } from "../../events/resolve/Pf2eEventRules.js";
 import {
     getFletchingYieldFormula
 } from "../../crafting/settings/FletchingSettings.js";
@@ -281,16 +282,10 @@ export class ActivityResolver {
         if (preEvaluated) {
             total = options.rollTotal;
         } else {
-            let rollFormula;
-            if (rollAdvantage && hadTravelDis) {
-                rollFormula = `1d20 + ${details.modifier}`;
-            } else if (hadTravelDis) {
-                rollFormula = `2d20kl + ${details.modifier}`;
-            } else if (rollAdvantage) {
-                rollFormula = `2d20kh + ${details.modifier}`;
-            } else {
-                rollFormula = `1d20 + ${details.modifier}`;
-            }
+            const effectiveMode = (rollAdvantage && hadTravelDis)
+                ? "normal"
+                : (hadTravelDis ? "disadvantage" : (rollAdvantage ? "advantage" : "normal"));
+            const { formula: rollFormula } = buildSystemRollFormula(details.modifier, effectiveMode);
 
             roll = await new Roll(rollFormula).evaluate();
             total = roll.total;
@@ -300,12 +295,14 @@ export class ActivityResolver {
             await actor.unsetFlag(MODULE_ID, "travelMishapPenalty");
         }
 
-        const rollModNote = hadTravelDis
-            ? ` (${game.i18n.localize("ionrift-respite.activityResolver.disadvantage")})`
-            : (rollAdvantage ? ` (${game.i18n.localize("ionrift-respite.activityResolver.advantage")})` : "");
+        const pf2e = isPf2eSystem();
+        const rollModNote = pf2e
+            ? (hadTravelDis && !rollAdvantage ? " (-2 circumstance)" : (rollAdvantage && !hadTravelDis ? " (+2 circumstance)" : ""))
+            : (hadTravelDis
+                ? ` (${game.i18n.localize("ionrift-respite.activityResolver.disadvantage")})`
+                : (rollAdvantage ? ` (${game.i18n.localize("ionrift-respite.activityResolver.advantage")})` : ""));
 
         // Determine outcome tier
-        const pf2e = isPf2eSystem();
         let resultTier;
         if (pf2e) {
             const d20Value = Number.isFinite(options.d20Value)

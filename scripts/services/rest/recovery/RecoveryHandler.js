@@ -7,6 +7,7 @@ import {
     evaluatePf2eSaveDegree,
     resolvePf2eRestConditions
 } from "../../camp/gear/Pf2eComfortRules.js";
+import { buildSystemRollFormula } from "../../events/resolve/Pf2eEventRules.js";
 /**
  * RecoveryHandler
  * Applies comfort-modified HP, Hit Dice, and exhaustion recovery to actors.
@@ -141,10 +142,10 @@ export class RecoveryHandler {
         const initialDrained = adapter?.getDrained ? adapter.getDrained(actor) : 0;
 
         if (!recovery.exhaustionAdjudicated && recovery.exhaustionDC) {
-            const saveBonus = recovery.exhaustionSaveBonus ?? 0;
+            const extraCircumstance = (!recovery.exhaustionSaveBonus && recovery.exhaustionAdvantage) ? 2 : 0;
+            const saveBonus = (recovery.exhaustionSaveBonus ?? 0) + extraCircumstance;
             const fortMod = (adapter ? adapter.getSaveBonus(actor, "con") : (actor.system?.abilities?.con?.mod ?? 0)) + saveBonus;
-            const formula = recovery.exhaustionAdvantage ? "2d20kh" : "1d20";
-            const rollExpr = fortMod >= 0 ? `${formula} + ${fortMod}` : `${formula} - ${Math.abs(fortMod)}`;
+            const rollExpr = fortMod >= 0 ? `1d20 + ${fortMod}` : `1d20 - ${Math.abs(fortMod)}`;
             const roll = await new Roll(rollExpr).evaluate();
             const d20Value = roll.dice?.[0]?.total ?? roll.terms?.[0]?.results?.[0]?.result ?? null;
             const saveDegree = evaluatePf2eSaveDegree(d20Value, roll.total, recovery.exhaustionDC);
@@ -704,9 +705,13 @@ export class RecoveryHandler {
                 : (actor.system?.abilities?.con?.mod ?? 0);
             const advantage = !!recovery.exhaustionAdvantage;
 
-            // Roll the save (2d20kh for advantage, 1d20 otherwise)
-            const formula = advantage ? "2d20kh" : "1d20";
-            const roll = await new Roll(`${formula} + ${conMod}`).evaluate();
+            // Roll the save via system roll builder
+            const { formula: rollExpr } = buildSystemRollFormula(
+                conMod,
+                advantage ? "advantage" : "normal",
+                adapter
+            );
+            const roll = await new Roll(rollExpr).evaluate();
             const passed = roll.total >= recovery.exhaustionDC;
 
             // Post the save roll to chat (GM-whispered)

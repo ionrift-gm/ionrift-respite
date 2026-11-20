@@ -82,11 +82,14 @@ export function exhaustionSummary(entries = []) {
 }
 
 export function conSaveBonus(actor) {
+    const adapter = globalThis.game?.ionrift?.respite?.adapter;
+    if (isPf2eSystem(adapter) && adapter?.getSaveBonus) {
+        return adapter.getSaveBonus(actor, "con");
+    }
     try {
         const fromRollData = actor.getRollData?.()?.abilities?.con?.save;
         if (typeof fromRollData === "number") return fromRollData;
     } catch { /* roll data unavailable */ }
-    const adapter = globalThis.game?.ionrift?.respite?.adapter;
     if (adapter?.getSaveBonus) return adapter.getSaveBonus(actor, "con");
     const mod = actor.system?.abilities?.con?.mod ?? 0;
     const prof = actor.system?.attributes?.prof ?? 0;

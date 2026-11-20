@@ -10,6 +10,7 @@ import {
     executePlayerRoll,
     rollForPlayer
 } from "../../../services/ui/rollRequest/RollRequestManager.js";
+import { isPf2eSystem, evaluatePf2eSaveDegree } from "../../../services/camp/gear/Pf2eComfortRules.js";
 import { GrantLedger } from "../../../services/crafting/outcomes/GrantLedger.js";
 import { ItemOutcomeHandler } from "../../../services/crafting/outcomes/ItemOutcomeHandler.js";
 import {
@@ -197,7 +198,10 @@ export const eventsRollAndChoiceActions = {
         if (pending.rolledCharacters?.has(characterId)) return;
 
         const rollMode = pending.rollModes?.[characterId] ?? "normal";
-        const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
+        const pf2e = isPf2eSystem();
+        const modeLabel = pf2e
+            ? (rollMode === "advantage" ? " [+2 circumstance]" : rollMode === "disadvantage" ? " [-2 circumstance]" : "")
+            : (rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "");
         const flavor = game.i18n.format("ionrift-respite.eventsPhase.rollFlavorAttempt", {
             actor: actor.name,
             skill: pending.skillName,
@@ -205,7 +209,7 @@ export const eventsRollAndChoiceActions = {
             mode: modeLabel
         });
 
-        const { total } = await executePlayerRoll(
+        const { total, natD20 } = await executePlayerRoll(
             actor,
             pending.skill,
             pending.dc,
@@ -216,17 +220,21 @@ export const eventsRollAndChoiceActions = {
 
         // Mark as rolled locally and store the result so the player's own DC badge can
         // acknowledge pass/fail immediately, before the GM's resolved snapshot syncs back.
+        const passed = pf2e
+            ? ["success", "critSuccess"].includes(evaluatePf2eSaveDegree(natD20, total, pending.dc))
+            : (total >= pending.dc);
         if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
         pending.rolledCharacters.add(characterId);
         if (!pending.rolledResults) pending.rolledResults = new Map();
-        pending.rolledResults.set(characterId, { total, passed: total >= pending.dc });
+        pending.rolledResults.set(characterId, { total, passed });
 
         // Send result to GM
         emitEventRollResult({
                     eventIndex: pending.eventIndex,
                     characterId,
                     characterName: actor.name,
-                    total
+                    total,
+                    natD20
                 });
 
         ui.notifications.info(game.i18n.format("ionrift-respite.eventsPhase.infoRolledForSkill", {
@@ -261,11 +269,14 @@ export const eventsRollAndChoiceActions = {
         button.classList.toggle("adv", next === "advantage");
         button.classList.toggle("dis", next === "disadvantage");
         const name = button.getAttribute("data-tooltip")?.split(" \u00b7 ")[0] ?? "";
-        const modeLabel = next === "advantage"
-            ? game.i18n.localize("ionrift-respite.eventsPhase.modeAdvantage")
-            : next === "disadvantage"
-                ? game.i18n.localize("ionrift-respite.eventsPhase.modeDisadvantage")
-                : game.i18n.localize("ionrift-respite.eventsPhase.modeNormal");
+        const pf2e = isPf2eSystem();
+        const modeLabel = pf2e
+            ? (next === "advantage" ? "+2 Circumstance" : next === "disadvantage" ? "-2 Circumstance" : game.i18n.localize("ionrift-respite.eventsPhase.modeNormal"))
+            : (next === "advantage"
+                ? game.i18n.localize("ionrift-respite.eventsPhase.modeAdvantage")
+                : next === "disadvantage"
+                    ? game.i18n.localize("ionrift-respite.eventsPhase.modeDisadvantage")
+                    : game.i18n.localize("ionrift-respite.eventsPhase.modeNormal"));
         button.setAttribute("data-tooltip", game.i18n.format("ionrift-respite.eventsPhase.avatarModeTooltip", { name, mode: modeLabel }));
         button.querySelector(".check-avatar-mode")?.remove();
         if (next !== "normal") {
