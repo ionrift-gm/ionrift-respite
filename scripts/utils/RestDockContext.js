@@ -20,6 +20,12 @@
      *   - `comfortFlashing`: true when this actor's personal comfort just changed.
      */
 
+import {
+    isPf2eSystem,
+    getPf2eFortitudeSaveDC,
+    formatPf2eBenefitSummary
+} from "../services/camp/gear/Pf2eComfortRules.js";
+
 const KIT_ITEMS = [
     {
         key: "bedroll",
@@ -131,49 +137,78 @@ export class RestDockContext {
             ?? "";
         const recoveryTooltip = personalScan?.recoveryTooltip ?? "";
 
+        const pf2e = isPf2eSystem();
+
         // Decouple positive recovery perks from the exhaustion hazard
-        const hpFraction = personalScan?.recovery?.hpFraction ?? 1.0;
-        const hpText = hpFraction < 1.0 ? `${Math.round(hpFraction * 100)}% HP` : "Full HP";
-        const isAlreadyFull = personalScan?.recovery?.isAlreadyFull ?? false;
-        const hdRecovered = personalScan?.recovery?.hdRecovered;
-        let hdText = "Max HD";
-        if (!isAlreadyFull) {
-            if (comfortTier === "rough") hdText = "−1 HD Pen";
-            else if (comfortTier === "hostile" || comfortTier === "exposed") hdText = "−2 HD Pen";
-            else if (hdRecovered !== undefined) hdText = `+${hdRecovered} HD`;
-            else hdText = "Normal HD";
+        let recoveryBenefitText;
+        if (pf2e) {
+            const pf2eTier = comfortTier === "exposed" ? "hostile" : (comfortTier ?? "sheltered");
+            recoveryBenefitText = formatPf2eBenefitSummary({
+                personalComfort: pf2eTier,
+                multiplier: personalScan?.recovery?.pf2eHpMultiplier ?? null,
+                includeSave: false
+            });
+        } else {
+            const hpFraction = personalScan?.recovery?.hpFraction ?? 1.0;
+            const hpText = hpFraction < 1.0 ? `${Math.round(hpFraction * 100)}% HP` : "Full HP";
+            const isAlreadyFull = personalScan?.recovery?.isAlreadyFull ?? false;
+            const hdRecovered = personalScan?.recovery?.hdRecovered;
+            let hdText = "Max HD";
+            if (!isAlreadyFull) {
+                if (comfortTier === "rough") hdText = "−1 HD Pen";
+                else if (comfortTier === "hostile" || comfortTier === "exposed") hdText = "−2 HD Pen";
+                else if (hdRecovered !== undefined) hdText = `+${hdRecovered} HD`;
+                else hdText = "Normal HD";
+            }
+            recoveryBenefitText = `${hpText} · ${hdText}`;
         }
-        const recoveryBenefitText = `${hpText} · ${hdText}`;
 
         // Explicit mechanical hazard if exhaustion save is required
+        const actorLevel = Math.max(1, Number(actor?.system?.details?.level?.value ?? actor?.system?.details?.level) || 1);
         const exhaustionDC = personalScan?.recovery?.exhaustionDC ?? (
-            comfortTier === "rough" ? 10 : (comfortTier === "hostile" || comfortTier === "exposed" ? 15 : null)
+            pf2e
+                ? getPf2eFortitudeSaveDC(comfortTier === "exposed" ? "hostile" : comfortTier, actorLevel)
+                : (comfortTier === "rough" ? 10 : (comfortTier === "hostile" || comfortTier === "exposed" ? 15 : null))
         );
 
         let recoveryHazard = null;
         if (exhaustionDC) {
+            const saveBonus = personalScan?.recovery?.exhaustionSaveBonus ?? 0;
             const hasAdvantage = Boolean(
                 personalScan?.recovery?.exhaustionAdvantage
-                ?? personalScan?.hasMessKit
+                ?? (!pf2e && personalScan?.hasMessKit)
             );
-            const severity = (comfortTier === "hostile" || comfortTier === "exposed" || exhaustionDC >= 15) ? "danger" : "warning";
+            const severity = (comfortTier === "hostile" || comfortTier === "exposed" || (!pf2e && exhaustionDC >= 15)) ? "danger" : "warning";
             const icon = severity === "danger" ? "fa-skull" : "fa-dice-d20";
-            const label = game.i18n.format("ionrift-respite.restDock.hazard.label", { dc: exhaustionDC });
+            const label = game.i18n.format(pf2e
+                ? "ionrift-respite.restDock.hazard.labelPf2e"
+                : "ionrift-respite.restDock.hazard.label", { dc: exhaustionDC });
 
-            const tipLines = [
-                game.i18n.format("ionrift-respite.restDock.hazard.tipSave", { dc: exhaustionDC }),
-                game.i18n.localize("ionrift-respite.restDock.hazard.tipFailure"),
-                hasAdvantage ? game.i18n.localize("ionrift-respite.restDock.hazard.tipAdvantage") : game.i18n.localize("ionrift-respite.restDock.hazard.tipStraight"),
-                game.i18n.localize("ionrift-respite.restDock.hazard.tipClick")
-            ];
-            const hazardTooltip = `<strong>${game.i18n.format("ionrift-respite.restDock.hazard.title", { dc: exhaustionDC })}</strong><ul style='margin:4px 0 0 16px;padding:0;'>${tipLines.map(l => `<li>${l}</li>`).join("")}</ul>`;
+            const tipLines = pf2e
+                ? [
+                    game.i18n.format("ionrift-respite.restDock.hazard.tipSavePf2e", { dc: exhaustionDC }),
+                    game.i18n.localize(comfortTier === "hostile" || comfortTier === "exposed"
+                        ? "ionrift-respite.restDock.hazard.tipFailureHostilePf2e"
+                        : "ionrift-respite.restDock.hazard.tipFailurePf2e"),
+                    (saveBonus > 0 || personalScan?.hasMessKit)
+                        ? game.i18n.format("ionrift-respite.restDock.hazard.tipMessKitBonusPf2e", { bonus: saveBonus || 2 })
+                        : game.i18n.localize("ionrift-respite.restDock.hazard.tipStraight"),
+                    game.i18n.localize("ionrift-respite.restDock.hazard.tipClick")
+                ]
+                : [
+                    game.i18n.format("ionrift-respite.restDock.hazard.tipSave", { dc: exhaustionDC }),
+                    game.i18n.localize("ionrift-respite.restDock.hazard.tipFailure"),
+                    hasAdvantage ? game.i18n.localize("ionrift-respite.restDock.hazard.tipAdvantage") : game.i18n.localize("ionrift-respite.restDock.hazard.tipStraight"),
+                    game.i18n.localize("ionrift-respite.restDock.hazard.tipClick")
+                ];
+            const hazardTooltip = `<strong>${game.i18n.format(pf2e ? "ionrift-respite.restDock.hazard.titlePf2e" : "ionrift-respite.restDock.hazard.title", { dc: exhaustionDC })}</strong><ul style='margin:4px 0 0 16px;padding:0;'>${tipLines.map(l => `<li>${l}</li>`).join("")}</ul>`;
 
             recoveryHazard = {
                 dc: exhaustionDC,
                 label,
                 severity,
                 icon,
-                hasAdvantage,
+                hasAdvantage: hasAdvantage || saveBonus > 0,
                 tooltip: hazardTooltip
             };
         }

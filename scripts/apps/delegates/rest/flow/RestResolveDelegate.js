@@ -6,6 +6,7 @@ import { stampExhaustionRecovery } from "../../../../services/rest/recovery/Exha
 import { ConditionAdvisory } from "../../../../services/rest/recovery/ConditionAdvisory.js";
 import { CalendarHandler } from "../../../../services/rest/session/CalendarHandler.js";
 import { MealPhaseHandler } from "../../../../services/meal/phase/MealPhaseHandler.js";
+import { setRestArmorEquipped } from "../../../../services/camp/gear/RestArmorHelper.js";
 import {
     mergeMealExhaustionFloors,
     mealExhaustionFloorFor
@@ -357,7 +358,7 @@ export class RestResolveDelegate {
                         const actor = game.actors.get(actorId);
                         const item = actor?.items.get(itemId);
                         if (item) {
-                            await item.update({ "system.equipped": true });
+                            await setRestArmorEquipped(actor, item, true);
                             reequippedArmor.set(actorId, item.name);
         Logger.log(`${MODULE_ID} | Auto re-equipped ${item.name} on ${actor.name}`);
 
@@ -495,7 +496,7 @@ export class RestResolveDelegate {
                 if (!actor) continue;
                 try {
                     if (nativeAdapter) {
-                        await nativeAdapter.triggerNativeRest(actor, restType);
+                        await nativeAdapter.triggerNativeRest(actor, restType, outcome.recovery);
                     } else if (game.system.id === "dnd5e") {
                         if (restType === "long") {
                             await actor.longRest({ dialog: false, chat: false, advanceTime: false });
@@ -520,9 +521,16 @@ export class RestResolveDelegate {
         {
             const exhAdapter = game.ionrift?.respite?.adapter;
             for (const [charId, expected] of expectedExhaustion) {
+                const outcome = app._outcomes?.find(o => o.characterId === charId);
                 const actor = game.actors.get(charId);
                 if (!actor) continue;
                 const floor = mealExhaustionFloors.get(charId) ?? 0;
+                if (outcome?.recovery?.pf2eHandled) {
+                    if (floor > 0 && exhAdapter && exhAdapter.getExhaustion(actor) === 0) {
+                        await exhAdapter.setFatigued?.(actor, true);
+                    }
+                    continue;
+                }
                 const target = Math.max(expected, floor);
                 const actual = exhAdapter ? exhAdapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
                 if (actual < target) {
@@ -532,7 +540,7 @@ export class RestResolveDelegate {
                     } else {
                         await actor.update({ "system.attributes.exhaustion": target });
                     }
-                    Logger.log(`[Respite:Recovery] Re-asserted exhaustion for ${actor.name}: ${actual} -> ${target} (native rest reduced by ${deficit})`);
+                    Logger.log(`[Respite:Recovery] Re-asserted exhaustion for ${actor.name}: ${actual} to ${target} (native rest reduced by ${deficit})`);
                 }
             }
         }

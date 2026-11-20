@@ -4,6 +4,7 @@ import {
     buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther
 } from "../../../data/RestConstants.js";
 import { isBedrollItem, isTentItem, isMessKitItem } from "../../../services/camp/gear/CampGearScanner.js";
+import { isPf2eSystem } from "../../../services/camp/gear/Pf2eComfortRules.js";
 import { isSimpleStationsMode } from "../../../services/rest/flow/RestProfileSettings.js";
 import { isForagingEnabled, isHuntingEnabled } from "../../../services/travel/settings/TravelSettings.js";
 import { buildActivityListItem } from "../../crafting/ActivityDetailBuilder.js";
@@ -659,9 +660,14 @@ export function buildResolvePhaseSummaries(app) {
 
             const hpRestored = recovery.hpRestored ?? 0;
             const hdRestored = recovery.hdRestored ?? 0;
+            const pf2e = isPf2eSystem();
             const hpLabel = hpAtMax ? game.i18n.localize("ionrift-respite.restPrepare.recovery.maxHp") : (hpRestored > 0 ? `+${hpRestored} HP` : "0 HP");
-            const hdLabel = hdAtMax ? game.i18n.localize("ionrift-respite.restPrepare.recovery.maxHd") : (hdRestored > 0 ? `+${hdRestored} HD` : "0 HD");
-            const hasBedroll = !!recovery.gearBonuses?.hd;
+            const hdLabel = pf2e
+                ? (recovery.wellRestedGranted
+                    ? "+1 Initiative"
+                    : (recovery.drainedDelta < 0 ? `${recovery.drainedDelta} Drained` : "Rested"))
+                : (hdAtMax ? game.i18n.localize("ionrift-respite.restPrepare.recovery.maxHd") : (hdRestored > 0 ? `+${hdRestored} HD` : "0 HD"));
+            const hasBedroll = !pf2e && !!recovery.gearBonuses?.hd;
 
             // Activity
             const actSub = (o.outcomes ?? []).find(s => s.source === "activity");

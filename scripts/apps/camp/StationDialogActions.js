@@ -18,6 +18,8 @@ import {
 import { cardHintTakenBy } from "../../data/activityCardHint.js";
 import { openActorSpellbook } from "../../services/ui/sheet/SpellbookShortcut.js";
 import { buildActivityListItem, buildActivityDetailContext, promptArmorSleepIfNeeded } from "../crafting/ActivityDetailBuilder.js";
+import { getEquippedRestArmor } from "../../services/camp/gear/RestArmorHelper.js";
+import { isPf2eSystem } from "../../services/camp/gear/Pf2eComfortRules.js";
 import {
     computeCanShowDetectMagicScanButton,
     computeCanTriggerDetectMagicScan,
@@ -130,16 +132,15 @@ export const StationDialogActionMethods = {
             try {
                 const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
                 if (armorRuleEnabled) {
-                    const equippedArmor = this._actor?.items?.find(i =>
-                        i.type === "equipment"
-                        && i.system?.equipped
-                        && ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type)
-                    );
+                    const equippedArmor = getEquippedRestArmor(this._actor);
                     if (equippedArmor) {
+                        const pf2e = isPf2eSystem();
                         const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
                         const proceed = await confirmFn({
                             title: game.i18n.localize("ionrift-respite.stationActivity.sleepingInArmorTitle"),
-                            content: game.i18n.format("ionrift-respite.stationActivity.sleepingInArmorContent", { name: equippedArmor.name }),
+                            content: game.i18n.format(pf2e
+                                ? "ionrift-respite.stationActivity.sleepingInArmorContentPf2e"
+                                : "ionrift-respite.stationActivity.sleepingInArmorContent", { name: equippedArmor.name }),
                             yesLabel: game.i18n.localize("ionrift-respite.stationActivity.confirmAnyway"),
                             noLabel: game.i18n.localize("ionrift-respite.stationActivity.cancel"),
                             yesIcon: "fas fa-check",

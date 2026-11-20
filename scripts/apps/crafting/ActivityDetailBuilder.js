@@ -20,6 +20,8 @@ import {
 import { CARD_FADED_HINTS, clipToCardHint } from "../../data/activityCardHint.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 import { getFletchingTier, getFletchingTierLabel } from "../../services/crafting/settings/FletchingSettings.js";
+import { getEquippedRestArmor } from "../../services/camp/gear/RestArmorHelper.js";
+import { isPf2eSystem } from "../../services/camp/gear/Pf2eComfortRules.js";
 
 /**
  * Resolve the armour sleep hint for an actor doing a given activity.
@@ -33,24 +35,27 @@ import { getFletchingTier, getFletchingTierLabel } from "../../services/crafting
  */
 function _resolveArmorHint(actor, activity, armorRuleEnabled) {
     if (!armorRuleEnabled) return null;
-    const equippedArmor = (actor?.items ?? []).find(i => {
-        if (i.type !== "equipment" || !i.system?.equipped) return false;
-        const t = i.system?.type?.value ?? i.system?.armor?.type ?? "";
-        return t === "medium" || t === "heavy";
-    });
+    const equippedArmor = getEquippedRestArmor(actor);
     if (!equippedArmor) return null;
+    const pf2e = isPf2eSystem();
     if (activity.armorSleepWaiver) {
-        return { text: game.i18n.localize("ionrift-respite.activityStations.armorSleepWaiverHint"), type: "positive" };
+        return {
+            text: game.i18n.localize(pf2e
+                ? "ionrift-respite.activityStations.armorSleepWaiverHintPf2e"
+                : "ionrift-respite.activityStations.armorSleepWaiverHint"),
+            type: "positive"
+        };
     }
-    return { text: game.i18n.localize("ionrift-respite.activityStations.armorSleepPenaltyHint"), type: "warning" };
+    return {
+        text: game.i18n.localize(pf2e
+            ? "ionrift-respite.activityStations.armorSleepPenaltyHintPf2e"
+            : "ionrift-respite.activityStations.armorSleepPenaltyHint"),
+        type: "warning"
+    };
 }
 
 function equippedRestArmor(actor) {
-    return (actor?.items ?? []).find(item => {
-        if (item.type !== "equipment" || !item.system?.equipped) return false;
-        const armorType = item.system?.type?.value ?? item.system?.armor?.type ?? "";
-        return armorType === "medium" || armorType === "heavy";
-    }) ?? null;
+    return getEquippedRestArmor(actor);
 }
 
 /**
@@ -71,10 +76,13 @@ export async function promptArmorSleepIfNeeded(actor, activity) {
     if (!armorRuleEnabled) return true;
     const equippedArmor = equippedRestArmor(actor);
     if (!equippedArmor) return true;
+    const pf2e = isPf2eSystem();
     const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
     const proceed = await confirmFn({
         title: game.i18n.localize("ionrift-respite.activityDetail.sleepingInArmorTitle"),
-        content: game.i18n.format("ionrift-respite.activityDetail.sleepingInArmorContent", { name: equippedArmor.name }),
+        content: game.i18n.format(pf2e
+            ? "ionrift-respite.activityDetail.sleepingInArmorContentPf2e"
+            : "ionrift-respite.activityDetail.sleepingInArmorContent", { name: equippedArmor.name }),
         yesLabel: game.i18n.localize("ionrift-respite.activityDetail.confirmAnyway"),
         noLabel: game.i18n.localize("ionrift-respite.activityDetail.cancel"),
         yesIcon: "fas fa-check",

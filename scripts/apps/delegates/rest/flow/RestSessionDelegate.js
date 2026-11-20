@@ -11,6 +11,7 @@ import { GatherYieldService } from "../../../../services/rest/forage/GatherYield
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
 import { countInstalledEventsForTerrain, loadInstalledEventsInto } from "../../../../services/events/catalog/InstalledEventSource.js";
 import { isComfortEnabled } from "../../../../services/camp/gear/ComfortCalculator.js";
+import { setRestArmorEquipped } from "../../../../services/camp/gear/RestArmorHelper.js";
 import { notifyDetectMagicScanApplied } from "../../../../services/crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
 import { isSimpleStationsMode } from "../../../../services/rest/flow/RestProfileSettings.js";
 import {
@@ -612,10 +613,10 @@ export class RestSessionDelegate {
                 if (!app._doffedArmor) app._doffedArmor = new Map();
 
                 if (isDoffed) {
-                    await item.update({ "system.equipped": true });
+                    await setRestArmorEquipped(actor, item, true);
                     app._doffedArmor.delete(actorId);
                 } else {
-                    await item.update({ "system.equipped": false });
+                    await setRestArmorEquipped(actor, item, false);
                     app._doffedArmor.set(actorId, itemId);
                 }
 

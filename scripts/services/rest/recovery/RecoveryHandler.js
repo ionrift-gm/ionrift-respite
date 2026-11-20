@@ -2,6 +2,11 @@ import { Logger } from "../../../utils/Logger.js";
 import { mealExhaustionFloorFor } from "../../meal/phase/MealExhaustionGuard.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+import {
+    isPf2eSystem,
+    evaluatePf2eSaveDegree,
+    resolvePf2eRestConditions
+} from "../../camp/gear/Pf2eComfortRules.js";
 /**
  * RecoveryHandler
  * Applies comfort-modified HP, Hit Dice, and exhaustion recovery to actors.
@@ -47,6 +52,9 @@ export class RecoveryHandler {
         });
 
         const adapter = game.ionrift?.respite?.adapter;
+        if (isPf2eSystem(adapter)) {
+            return await this._applyPf2e(actor, recovery, adapter);
+        }
         const hpData = adapter ? adapter.getHP(actor) : { value: actor.system?.attributes?.hp?.value ?? 0, max: actor.system?.attributes?.hp?.max ?? 0 };
         if (!hpData.max) {
             console.warn(`[Respite:Recovery] ${actor.name}: no HP data, skipping`);
@@ -106,6 +114,183 @@ export class RecoveryHandler {
         });
 
         return { hp: hpToRestore, hd: hdRecovered, exhaustion: exhaustionDelta };
+    }
+
+    /**
+     * PF2e comfort recovery: overnight HP multiplier/addend, level-scaled
+     * Fortitude save with degree of success, Fatigued + Drained progression,
+     * and Well-Rested Initiative effect from Rest Fully.
+     */
+    static async _applyPf2e(actor, recovery, adapter) {
+        const hpData = adapter
+            ? adapter.getHP(actor)
+            : { value: actor.system?.attributes?.hp?.value ?? 0, max: actor.system?.attributes?.hp?.max ?? 0 };
+        if (!hpData.max) {
+            console.warn(`[Respite:Recovery] ${actor.name}: no HP data, skipping`);
+            return { hp: 0, hd: 0, exhaustion: 0, drainedDelta: 0, fatiguedDelta: 0 };
+        }
+
+        await adapter?.clearWellRestedEffects?.(actor);
+
+        const deprivationFloor = mealExhaustionFloorFor(actor);
+        if (deprivationFloor > 0) {
+            recovery.noFoodOrWater = true;
+        }
+
+        const wasFatigued = (adapter ? adapter.getExhaustion(actor) : 0) > 0;
+        const initialDrained = adapter?.getDrained ? adapter.getDrained(actor) : 0;
+
+        if (!recovery.exhaustionAdjudicated && recovery.exhaustionDC) {
+            const saveBonus = recovery.exhaustionSaveBonus ?? 0;
+            const fortMod = (adapter ? adapter.getSaveBonus(actor, "con") : (actor.system?.abilities?.con?.mod ?? 0)) + saveBonus;
+            const formula = recovery.exhaustionAdvantage ? "2d20kh" : "1d20";
+            const rollExpr = fortMod >= 0 ? `${formula} + ${fortMod}` : `${formula} - ${Math.abs(fortMod)}`;
+            const roll = await new Roll(rollExpr).evaluate();
+            const d20Value = roll.dice?.[0]?.total ?? roll.terms?.[0]?.results?.[0]?.result ?? null;
+            const saveDegree = evaluatePf2eSaveDegree(d20Value, roll.total, recovery.exhaustionDC);
+            const passed = saveDegree === "success" || saveDegree === "critSuccess";
+            recovery.exhaustionSaveResult = passed ? "passed" : "failed";
+            recovery.exhaustionSaveDegree = saveDegree;
+            recovery.exhaustionSaveTotal = roll.total;
+
+            const bonusLabel = saveBonus > 0 ? ` (+${saveBonus} circumstance from mess kit)` : "";
+            await postRollAndSettle(roll, {
+                speaker: ChatMessage.getSpeaker({ actor }),
+                flavor: `<strong>${actor.name}</strong>: Fortitude save vs Fatigue DC ${recovery.exhaustionDC}${bonusLabel}`,
+                whisper: game.users.filter(u => u.isGM).map(u => u.id)
+            });
+        }
+
+        const cond = resolvePf2eRestConditions({
+            comfortLevel: recovery.comfortLevel,
+            restedFully: recovery.restedFully,
+            armorSleepPenalty: recovery.armorSleepPenalty,
+            noFoodOrWater: recovery.noFoodOrWater,
+            saveResult: recovery.exhaustionSaveResult,
+            saveDegree: recovery.exhaustionSaveDegree,
+            wasFatigued,
+            initialDrained,
+            exhaustionGain: recovery.exhaustionGain ?? 0
+        });
+
+        const targetFatigued = deprivationFloor > 0 ? true : cond.targetFatigued;
+        const fatiguedDelta = (targetFatigued ? 1 : 0) - (wasFatigued ? 1 : 0);
+        const targetDrained = cond.targetDrained;
+        const drainedDelta = cond.drainedDelta;
+        const wellRestedGranted = Boolean(cond.shouldGrantWellRested && deprivationFloor <= 0);
+
+        const currentHp = hpData.value;
+        const maxHp = hpData.max;
+        const hpToRestore = Math.min(recovery.hpRestored ?? 0, Math.max(0, maxHp - currentHp));
+        const newHp = Math.min(currentHp + hpToRestore, maxHp);
+
+        recovery.pf2eHandled = true;
+        recovery.pf2eReachedMaxHp = newHp >= maxHp;
+        recovery.fatiguedDelta = fatiguedDelta;
+        recovery.drainedDelta = drainedDelta;
+        recovery.wellRestedGranted = wellRestedGranted;
+        recovery.exhaustionDelta = fatiguedDelta + drainedDelta;
+
+        if (hpToRestore > 0) {
+            if (adapter?.applyHPRestore) {
+                await adapter.applyHPRestore(actor, hpToRestore);
+            } else {
+                await actor.update({ "system.attributes.hp.value": newHp });
+            }
+        }
+
+        if (adapter?.setFatigued) {
+            await adapter.setFatigued(actor, targetFatigued);
+        } else if (adapter?.applyExhaustionDelta && fatiguedDelta !== 0) {
+            await adapter.applyExhaustionDelta(actor, fatiguedDelta);
+        }
+
+        if (adapter?.setDrained) {
+            await adapter.setDrained(actor, targetDrained);
+        }
+
+        if (wellRestedGranted && adapter?.applyWellRestedEffect) {
+            await adapter.applyWellRestedEffect(actor);
+        }
+
+        await this._postPf2eRecoveryChat(actor, recovery, hpToRestore, {
+            fatiguedDelta,
+            drainedDelta,
+            targetFatigued,
+            targetDrained,
+            wellRestedGranted
+        });
+
+        Logger.log(`[Respite:Recovery] ── _applyPf2e() END for ${actor.name} ──`, {
+            hpBefore: currentHp,
+            hpAfter: newHp,
+            hpToRestore,
+            targetFatigued,
+            targetDrained,
+            wellRestedGranted,
+            comfortLevel: recovery.comfortLevel
+        });
+
+        return {
+            hp: hpToRestore,
+            hd: 0,
+            exhaustion: recovery.exhaustionDelta,
+            fatiguedDelta,
+            drainedDelta,
+            wellRestedGranted
+        };
+    }
+
+    static async _postPf2eRecoveryChat(actor, recovery, hpRestored, state) {
+        const comfortLabels = {
+            safe: game.i18n.localize("ionrift-respite.recovery.comfortSafe"),
+            sheltered: game.i18n.localize("ionrift-respite.recovery.comfortSheltered"),
+            rough: game.i18n.localize("ionrift-respite.recovery.comfortRough"),
+            hostile: game.i18n.localize("ionrift-respite.recovery.comfortHostile")
+        };
+        const comfortLabel = comfortLabels[recovery.comfortLevel] ?? recovery.comfortLevel;
+
+        const parts = [];
+        if (hpRestored > 0) parts.push(`${hpRestored} HP`);
+        if (state.fatiguedDelta < 0) parts.push("Fatigued cleared");
+        if (state.fatiguedDelta > 0) parts.push("Fatigued gained");
+        if (state.drainedDelta < 0) parts.push(`Drained reduced by ${Math.abs(state.drainedDelta)}`);
+        if (state.drainedDelta > 0) parts.push(`Drained +${state.drainedDelta} (now ${state.targetDrained})`);
+        if (state.wellRestedGranted) parts.push("Well-Rested (+1 Initiative)");
+
+        let advisoryNote = null;
+        if (recovery.comfortLevel === "hostile" && recovery.restType === "long") {
+            advisoryNote = "Hostile conditions block natural Fatigued and Drained recovery.";
+        } else if (recovery.armorSleepPenalty && recovery.restType === "long") {
+            advisoryNote = "Sleeping in armor without the comfort trait inflicts Fatigued.";
+        } else if (recovery.noFoodOrWater && recovery.restType === "long") {
+            advisoryNote = "Lack of food or water blocks natural Fatigued and Drained recovery.";
+        }
+
+        if (parts.length === 0 && !advisoryNote) return;
+
+        const recoveredLine = parts.length > 0
+            ? game.i18n.format("ionrift-respite.recovery.recoveredPrefix", { parts: parts.join(", ") })
+            : "";
+        const noteLine = advisoryNote
+            ? `<br><em style="color:#e67e22;"><i class="fas fa-exclamation-circle"></i> ${advisoryNote}</em>`
+            : "";
+        const gearLine = recovery.gearDescriptors?.length
+            ? `<br><span style="font-size:0.85em;opacity:0.7;">${recovery.gearDescriptors.join(" · ")}</span>`
+            : "";
+
+        const content = `
+            <div class="respite-recovery-chat">
+                ${game.i18n.format("ionrift-respite.recovery.restsInConditions", { name: actor.name, comfort: comfortLabel })}
+                ${recoveredLine}${gearLine}${noteLine}
+            </div>
+        `;
+
+        await ChatMessage.create({
+            speaker: ChatMessage.getSpeaker({ actor }),
+            content,
+            whisper: game.users.filter(u => u.isGM).map(u => u.id)
+        });
     }
 
     /**

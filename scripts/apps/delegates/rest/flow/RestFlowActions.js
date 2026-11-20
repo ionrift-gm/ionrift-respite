@@ -14,6 +14,8 @@ import {
 import { closeOpenStationDialog } from "../../../camp/StationActivityDialog.js";
 import { DowntimeLedgerApp } from "../../../downtime/DowntimeLedgerApp.js";
 import { CampGearScanner } from "../../../../services/camp/gear/CampGearScanner.js";
+import { getEquippedRestArmor } from "../../../../services/camp/gear/RestArmorHelper.js";
+import { isPf2eSystem } from "../../../../services/camp/gear/Pf2eComfortRules.js";
 import { emitRestSessionStarted } from "../../../../services/rest/session/RestSessionSync.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY } from "../../../../data/RestConstants.js";
 import {
@@ -439,20 +441,18 @@ export class RestFlowActions {
                 const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
                 if (armorRuleEnabled) {
                     const actor = game.actors.get(characterId);
-                    const equippedArmor = actor?.items?.find(i =>
-                        i.type === "equipment" && i.system?.equipped &&
-                        ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type)
-                    );
+                    const equippedArmor = getEquippedRestArmor(actor);
                     const activity = app._activities?.find(a => a.id === activityId);
                     if (equippedArmor && !activity?.armorSleepWaiver) {
-                        const armorType = equippedArmor.system?.type?.value ?? "heavy";
+                        const armorType = equippedArmor.weight ?? "heavy";
+                        const pf2e = isPf2eSystem();
                         const overlay = document.createElement("div");
                         overlay.classList.add("ionrift-armor-modal-overlay");
                         overlay.innerHTML = `
                             <div class="ionrift-armor-modal">
                                 <h3><i class="fas fa-shield-alt"></i> ${game.i18n.localize("ionrift-respite.restFlow.sleepingInArmorTitle")}</h3>
                                 <p>${game.i18n.format("ionrift-respite.restFlow.wearingArmorPrompt", { name: actor.name, armor: equippedArmor.name, armorType })}</p>
-                                <p>${game.i18n.localize("ionrift-respite.restFlow.armorPenaltyDesc")}</p>
+                                <p>${game.i18n.localize(pf2e ? "ionrift-respite.restFlow.armorPenaltyDescPf2e" : "ionrift-respite.restFlow.armorPenaltyDesc")}</p>
                                 <p>${game.i18n.localize("ionrift-respite.restFlow.confirmOrDoffPrompt")}</p>
                                 <div class="ionrift-armor-modal-buttons">
                                     <button class="btn-armor-confirm"><i class="fas fa-check"></i> ${game.i18n.localize("ionrift-respite.restFlow.confirmBtn")}</button>

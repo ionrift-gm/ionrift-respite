@@ -6,6 +6,10 @@ import {
     createExhaustionEntry,
     exhaustionSummary
 } from "../../../../services/rest/recovery/ExhaustionStage.js";
+import {
+    evaluatePf2eSaveDegree,
+    isPf2eSystem
+} from "../../../../services/camp/gear/Pf2eComfortRules.js";
 
 /**
  * Normal-rest close. After the night event, the party rolls Constitution
@@ -99,7 +103,11 @@ export class DawnExhaustionDelegate {
         const app = this._app;
         const entry = app._exhaustionDraft?.get(actor.id);
         if (!entry) return null;
-        const conMod = conSaveBonus(actor);
+        const adapter = globalThis.game?.ionrift?.respite?.adapter;
+        const conMod = conSaveBonus(actor) + (entry.saveBonus ?? 0);
+        const currentExhaustion = adapter
+            ? adapter.getExhaustion(actor)
+            : (actor.system?.attributes?.exhaustion ?? 0);
         const isOwner = Boolean(app._isGM || actor.isOwner);
         const isSelf = Boolean(
             (game.user.character && game.user.character.id === actor.id)
@@ -110,7 +118,7 @@ export class DawnExhaustionDelegate {
             actorId: actor.id,
             actorName: actor.name,
             actorImg: actor.img || "icons/svg/mystery-man.svg",
-            currentExhaustion: actor.system?.attributes?.exhaustion ?? 0,
+            currentExhaustion,
             conMod,
             conModString: conMod >= 0 ? `+${conMod}` : `${conMod}`,
             isOwner,
@@ -203,23 +211,44 @@ export class DawnExhaustionDelegate {
         const entry = this._entry(actorId) ?? app._exhaustionDraft?.get(actorId);
         if (!entry || !entry.mustRoll || entry.rolled) return;
 
-        const conMod = conSaveBonus(actor);
+        const adapter = globalThis.game?.ionrift?.respite?.adapter;
+        const pf2e = isPf2eSystem(adapter);
+        const saveBonus = entry.saveBonus ?? 0;
+        const conMod = conSaveBonus(actor) + saveBonus;
         const formula = entry.advMode === "adv" ? "2d20kh" : (entry.advMode === "dis" ? "2d20kl" : "1d20");
         const rollString = conMod >= 0 ? `${formula} + ${conMod}` : `${formula} - ${Math.abs(conMod)}`;
         const roll = await new Roll(rollString).evaluate();
 
-        const passed = roll.total >= entry.dc;
+        const d20Value = roll.dice?.[0]?.total ?? roll.terms?.[0]?.results?.[0]?.result ?? null;
+        const saveDegree = pf2e ? evaluatePf2eSaveDegree(d20Value, roll.total, entry.dc) : null;
+        const passed = pf2e
+            ? (saveDegree === "success" || saveDegree === "critSuccess")
+            : (roll.total >= entry.dc);
         entry.rolled = true;
         entry.rollTotal = roll.total;
+        entry.d20Value = d20Value;
+        entry.saveDegree = saveDegree;
         entry.passed = passed;
 
         const advText = entry.advMode === "adv" ? " (advantage)" : (entry.advMode === "dis" ? " (disadvantage)" : "");
-        const resultText = passed
-            ? "Passed. No exhaustion gained."
-            : "Failed. +1 exhaustion.";
+        const bonusText = saveBonus > 0 ? ` (+${saveBonus} circumstance)` : "";
+        let flavor;
+        if (pf2e) {
+            const pf2eResultText = passed
+                ? "Passed. No Fatigue gained."
+                : (saveDegree === "critFailure"
+                    ? "Critical failure. Fatigued and +1 Drained."
+                    : "Failed. Fatigued.");
+            flavor = `<strong>${actor.name}</strong>: Fortitude save vs Fatigue DC ${entry.dc}${bonusText}${advText}<br>${pf2eResultText}`;
+        } else {
+            const resultText = passed
+                ? "Passed. No exhaustion gained."
+                : "Failed. +1 exhaustion.";
+            flavor = `<strong>${actor.name}</strong>: Constitution save vs exhaustion DC ${entry.dc}${advText}<br>${resultText}`;
+        }
         await postRollAndSettle(roll, {
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>${actor.name}</strong>: Constitution save vs exhaustion DC ${entry.dc}${advText}<br>${resultText}`
+            flavor
         });
 
         if (isGM) {
@@ -229,6 +258,7 @@ export class DawnExhaustionDelegate {
             emitDawnSaveResult({
                 actorId,
                 rollTotal: roll.total,
+                saveDegree,
                 passed
             });
             app.render();
@@ -237,12 +267,13 @@ export class DawnExhaustionDelegate {
 
     async receivePlayerRoll(data) {
         if (!game.user.isGM) return;
-        const { actorId, rollTotal, passed } = data;
+        const { actorId, rollTotal, saveDegree = null, passed } = data;
         this.ensureDraft();
         const entry = this._app._exhaustionDraft?.get(actorId);
         if (!entry) return;
         entry.rolled = true;
         entry.rollTotal = rollTotal;
+        entry.saveDegree = saveDegree;
         entry.passed = passed;
         await this.publish();
     }
@@ -291,7 +322,7 @@ export class DawnExhaustionDelegate {
     adjustDc(actorId, delta) {
         const entry = this._entry(actorId);
         if (!entry || Number.isNaN(delta)) return;
-        entry.dc = Math.max(5, Math.min(30, (entry.dc ?? 10) + delta));
+        entry.dc = Math.max(5, Math.min(50, (entry.dc ?? 10) + delta));
         return this.publish();
     }
 
@@ -300,7 +331,7 @@ export class DawnExhaustionDelegate {
         this.ensureDraft();
         for (const entry of this._app._exhaustionDraft.values()) {
             if (entry.mustRoll && !entry.rolled) {
-                entry.dc = Math.max(5, Math.min(30, (entry.dc ?? 10) + delta));
+                entry.dc = Math.max(5, Math.min(50, (entry.dc ?? 10) + delta));
             }
         }
         return this.publish();

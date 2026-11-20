@@ -77,6 +77,46 @@ export class SystemAdapter {
      */
     getEquippedArmor(_actor) { this._notImpl("getEquippedArmor"); }
 
+    /**
+     * Equipped armor that incurs a rest penalty under the active system's rules.
+     * @param {Actor} actor
+     * @returns {{ item: object, id: string, name: string, weight: string, donTime: string }|null}
+     */
+    getEquippedRestArmor(actor) {
+        const items = Array.from(actor?.items ?? []);
+        const heavy = items.find(i =>
+            i.type === "equipment"
+            && i.system?.equipped
+            && (i.system?.type?.value ?? i.system?.armor?.type) === "heavy"
+        );
+        const medium = heavy ? null : items.find(i =>
+            i.type === "equipment"
+            && i.system?.equipped
+            && (i.system?.type?.value ?? i.system?.armor?.type) === "medium"
+        );
+        const match = heavy ?? medium;
+        if (!match) return null;
+        const weight = (match.system?.type?.value ?? match.system?.armor?.type) === "heavy" ? "heavy" : "medium";
+        return {
+            item: match,
+            id: match.id,
+            name: match.name,
+            weight,
+            donTime: weight === "heavy" ? "10 min" : "5 min"
+        };
+    }
+
+    /**
+     * Doff or don an armor item using the active system's data model.
+     * @param {Actor} _actor
+     * @param {Item} item
+     * @param {boolean} equipped
+     * @returns {Promise<void>}
+     */
+    async setArmorEquipped(_actor, item, equipped) {
+        await item?.update?.({ "system.equipped": Boolean(equipped) });
+    }
+
     /** @returns {boolean} Whether the actor is proficient with the given tool */
     isToolProficient(_actor, _toolKey) { this._notImpl("isToolProficient"); }
 

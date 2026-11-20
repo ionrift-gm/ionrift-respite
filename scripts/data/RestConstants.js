@@ -1,6 +1,7 @@
 import { isGearDeployed } from "../services/camp/props/CompoundCampPlacer.js";
-import { getRespiteFlag, getItemIdentifier, getDocSourceId } from "../services/camp/gear/CampGearScanner.js";
+import { getRespiteFlag, getItemIdentifier, getDocSourceId, isBedrollItem } from "../services/camp/gear/CampGearScanner.js";
 import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod, COMFORT_RANK, RANK_TO_KEY } from "../services/camp/gear/ComfortCalculator.js";
+import { isPf2eSystem } from "../services/camp/gear/Pf2eComfortRules.js";
 import { isSimpleStationsMode } from "../services/rest/flow/RestProfileSettings.js";
 import { isFletchingEnabled } from "../services/crafting/settings/FletchingSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/crafting/settings/TrainingSettings.js";
@@ -161,6 +162,35 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             const isSafe = comfortTier === "safe";
             const adapter = game.ionrift?.respite?.adapter;
             const exhaustion = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+
+            if (isPf2eSystem(adapter)) {
+                const drained = adapter?.getDrained ? adapter.getDrained(actor) : 0;
+                const hasBedroll = Array.from(actor?.items ?? []).some(i => isBedrollItem(i));
+                let personalAfter = boostComfort(comfortTier, 1);
+                if (hasBedroll && isComfortEnabled()) personalAfter = boostComfort(personalAfter, 1);
+                if (isHostile && personalAfter === "rough") {
+                    return { text: "Steps to Rough, 1x HP, lowers DC", urgent: true };
+                }
+                if (isHostile) {
+                    return { text: "Reaches Sheltered, 2x HP, +1 Init", urgent: true };
+                }
+                if (drained >= 2) {
+                    return { text: `Drained ${drained}, clears 2 levels`, urgent: true };
+                }
+                if (isRough) {
+                    return { text: "Steps to Sheltered, 2x HP, +1 Init", urgent: true };
+                }
+                if (drained === 1) {
+                    return { text: "Clears Drained 1, +1 Initiative", urgent: false };
+                }
+                if (exhaustion >= 1) {
+                    return { text: "Clears Fatigued, +1 Initiative", urgent: false };
+                }
+                if (hpPct < 100) {
+                    return { text: "2x overnight HP, +1 Initiative", urgent: false };
+                }
+                return { text: "Well-Rested: +1 Initiative", urgent: false };
+            }
 
             const basePenalty = HD_PENALTY[comfortTier] ?? 0;
             const boostedPenalty = HD_PENALTY[boostComfort(comfortTier, 1)] ?? 0;

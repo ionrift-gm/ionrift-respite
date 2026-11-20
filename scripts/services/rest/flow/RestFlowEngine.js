@@ -8,6 +8,13 @@ import {
     isMessKitItem,
     isMessKitOnlyItem
 } from "../../camp/gear/CampGearScanner.js";
+import { getEquippedRestArmor } from "../../camp/gear/RestArmorHelper.js";
+import {
+    isPf2eSystem,
+    getPf2eFortitudeSaveDC,
+    calculatePf2eOvernightHp,
+    PF2E_MESS_KIT_SAVE_BONUS
+} from "../../camp/gear/Pf2eComfortRules.js";
 
 /**
  * RestFlowEngine
@@ -275,11 +282,14 @@ export class RestFlowEngine {
      */
     _calculateRecovery(actor, activitySchema = null, eventOutcomes = []) {
         const adapter = game.ionrift?.respite?.adapter;
+        const pf2e = isPf2eSystem(adapter);
         const hp = adapter ? adapter.getHP(actor) : { value: actor.system?.attributes?.hp?.value ?? 0, max: actor.system?.attributes?.hp?.max ?? 0 };
         const maxHp = hp.max;
         const currentHp = hp.value;
+        const actorLevelRaw = adapter ? adapter.getLevel(actor) : (actor.system?.details?.level?.value ?? actor.system?.details?.level ?? 1);
+        const actorLevel = Math.max(1, Number(actorLevelRaw) || 1);
         const hd = adapter ? adapter.getHitDice(actor) : { current: 0, max: 0 };
-        const totalHd = hd.max || (adapter ? adapter.getLevel(actor) : (actor.system?.details?.level ?? 0));
+        const totalHd = hd.max || actorLevel;
         const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
 
         // Safe rest spot: full HP cap, no comfort tier penalties, no exhaustion risk.
@@ -287,10 +297,9 @@ export class RestFlowEngine {
         // manage their own armor (doff at the inn, etc.) without mechanical penalty.
         if (this.safeRestSpot) {
             const effectiveComfort = "safe";
-            const hdPenalty = 0;
-            const baseHdRecovered = Math.max(0, rawHdRecovery - hdPenalty);
-            const maxHpRestorable = maxHp;
-            let baseHpRestored = maxHpRestorable;
+            const restedFully = activitySchema?.id === "act_rest_fully";
+            const actorItems = actor.items ? Array.from(actor.items) : [];
+            const hasBedroll = actorItems.some(i => isBedrollItem(i));
 
             let overallHpMultiplier = 1.0;
             for (const outcome of eventOutcomes) {
@@ -306,14 +315,67 @@ export class RestFlowEngine {
             if (travelRec?.hpMultiplier && typeof travelRec.hpMultiplier === "number") {
                 overallHpMultiplier *= travelRec.hpMultiplier;
             }
+            if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {
+                void actor.unsetFlag(MODULE_ID, "travelMishapRecovery");
+            }
+
+            const isShortSafe = this.restType === "short";
+
+            if (pf2e) {
+                const conMod = adapter ? adapter.getAbilityMod(actor, "con") : (actor.system?.abilities?.con?.mod ?? 0);
+                const sheetMult = actor.hitPoints?.recoveryMultiplier ?? actor.system?.attributes?.hp?.recoveryMultiplier ?? 1;
+                const sheetAddend = actor.hitPoints?.recoveryAddend ?? actor.system?.attributes?.hp?.recoveryAddend ?? 0;
+                const pf2eHp = calculatePf2eOvernightHp({
+                    level: actorLevel,
+                    conMod,
+                    comfortTier: "safe",
+                    restedFully,
+                    hasBedroll,
+                    comfortEnabled: isComfortEnabled(),
+                    sheetMultiplier: sheetMult,
+                    sheetAddend
+                });
+                let baseHpRestored = pf2eHp.hpRestored;
+                if (overallHpMultiplier !== 1.0) {
+                    const naturalHealing = Math.min(baseHpRestored, Math.max(0, maxHp - currentHp));
+                    baseHpRestored = Math.max(0, Math.floor(naturalHealing * overallHpMultiplier));
+                }
+                const gearDescriptors = [];
+                if (pf2eHp.bedrollBonusHp > 0) gearDescriptors.push(`Bedroll: +${pf2eHp.bedrollBonusHp} HP`);
+                if (restedFully) gearDescriptors.push("Rest Fully: 2x HP, −2 Drained, +1 Initiative");
+                return {
+                    hpRestored: isShortSafe ? 0 : baseHpRestored,
+                    hdRestored: 0,
+                    spellSlotsRestored: this.restType === "long",
+                    comfortLevel: effectiveComfort,
+                    campComfort: this.comfort,
+                    restType: this.restType,
+                    restedFully,
+                    exhaustionDC: null,
+                    exhaustionAdvantage: false,
+                    exhaustionSaveBonus: 0,
+                    pf2eHpMultiplier: pf2eHp.multiplier,
+                    armorSleepPenalty: false,
+                    gearBonuses: {
+                        hd: pf2eHp.bedrollBonusHp > 0 ? 1 : 0,
+                        bedrollHp: pf2eHp.bedrollBonusHp,
+                        exhaustionAdvantage: false,
+                        exhaustionSaveBonus: 0
+                    },
+                    gearDescriptors: isShortSafe ? [] : gearDescriptors
+                };
+            }
+
+            const hdPenalty = 0;
+            const baseHdRecovered = Math.max(0, rawHdRecovery - hdPenalty);
+            const maxHpRestorable = maxHp;
+            let baseHpRestored = maxHpRestorable;
             if (overallHpMultiplier !== 1.0) {
                 const recoveryGap = maxHp - currentHp;
                 const naturalHealing = Math.min(maxHpRestorable, recoveryGap);
                 baseHpRestored = Math.max(0, Math.floor(naturalHealing * overallHpMultiplier));
             }
 
-            const actorItems = actor.items ? Array.from(actor.items) : [];
-            const hasBedroll = actorItems.some(i => isBedrollItem(i));
             const bonusHdFromActivity = activitySchema?.outcomes?.success?.effects
                 ?.filter(e => e.type === "bonus_hd")
                 ?.reduce((sum, e) => sum + (e.value ?? 0), 0) ?? 0;
@@ -325,11 +387,6 @@ export class RestFlowEngine {
             if (gearBonusHd > 0) gearDescriptors.push("Bedroll: +1 HD");
             if (bonusHdFromActivity > 0) gearDescriptors.push("Deep sleep: +1 HD");
 
-            if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {
-                void actor.unsetFlag(MODULE_ID, "travelMishapRecovery");
-            }
-
-            const isShortSafe = this.restType === "short";
             return {
                 hpRestored: isShortSafe ? 0 : baseHpRestored,
                 hdRestored: isShortSafe ? 0 : (baseHdRecovered + gearBonusHd + bonusHdFromActivity),
@@ -337,7 +394,7 @@ export class RestFlowEngine {
                 comfortLevel: effectiveComfort,
                 campComfort: this.comfort,
                 restType: this.restType,
-                restedFully: activitySchema?.id === "act_rest_fully",
+                restedFully,
                 exhaustionDC,
                 exhaustionAdvantage,
                 armorSleepPenalty: false,
@@ -345,6 +402,13 @@ export class RestFlowEngine {
                 gearDescriptors: isShortSafe ? [] : gearDescriptors
             };
         }
+
+        // Personal gear detection
+        const actorItems = actor.items ? Array.from(actor.items) : [];
+        const hasBedroll = actorItems.some(i => isBedrollItem(i));
+        const hasMessKit = actorItems.some(i => isMessKitOnlyItem(i));
+        const hasCooksUtensils = actorItems.some(i => isCooksUtensilsItem(i));
+        const hasDiningGear = hasMessKit || hasCooksUtensils || actorItems.some(i => isMessKitItem(i));
 
         // Effective comfort: start with camp comfort, boost if activity has comfort_boost
         let effectiveComfort = this.comfort;
@@ -364,15 +428,17 @@ export class RestFlowEngine {
             if (hasTendBoost) {
                 effectiveComfort = boostComfort(effectiveComfort, 1);
             }
+
+            // PF2e has no Hit Dice, so Bedroll boosts personal comfort tier directly
+            // (matching CampGearScanner and previewExhaustion) plus +level HP.
+            if (pf2e && hasBedroll) {
+                effectiveComfort = boostComfort(effectiveComfort, 1);
+            }
         }
 
         // Comfort tier penalties (using effective comfort)
         const hdPenalty = getHdPenalty(effectiveComfort);
         let baseHdRecovered = Math.max(0, rawHdRecovery - hdPenalty);
-
-        const isHostile = effectiveComfort === "hostile";
-        const maxHpRestorable = isHostile ? Math.floor(maxHp * (HP_FRACTION.hostile)) : maxHp;
-        let baseHpRestored = maxHpRestorable;
 
         // hpMultiplier automation (from event effects)
         let overallHpMultiplier = 1.0;
@@ -391,6 +457,96 @@ export class RestFlowEngine {
             overallHpMultiplier *= travelRec.hpMultiplier;
         }
 
+        // Sleeping in rest-penalizing armor
+        let armorSleepPenalty = false;
+        let equippedArmor = null;
+        try {
+            const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
+            if (armorRuleEnabled) {
+                equippedArmor = getEquippedRestArmor(actor);
+                if (equippedArmor && !activitySchema?.armorSleepWaiver) {
+                    armorSleepPenalty = true;
+                    if (!pf2e) {
+                        // Override HD recovery to 1/4 total HD (Xanathar's rule)
+                        baseHdRecovered = Math.max(0, Math.floor(totalHd / 4) - hdPenalty);
+                    }
+                }
+            }
+        } catch (e) { /* setting may not exist yet */ }
+
+        if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {
+            void actor.unsetFlag(MODULE_ID, "travelMishapRecovery");
+        }
+
+        const isShort = this.restType === "short";
+        const restedFully = activitySchema?.id === "act_rest_fully";
+
+        if (pf2e) {
+            const exhaustionDC = getPf2eFortitudeSaveDC(effectiveComfort, actorLevel);
+            const exhaustionSaveBonus = (comfortEnabled && hasDiningGear && exhaustionDC) ? PF2E_MESS_KIT_SAVE_BONUS : 0;
+            const conMod = adapter ? adapter.getAbilityMod(actor, "con") : (actor.system?.abilities?.con?.mod ?? 0);
+            const sheetMult = actor.hitPoints?.recoveryMultiplier ?? actor.system?.attributes?.hp?.recoveryMultiplier ?? 1;
+            const sheetAddend = actor.hitPoints?.recoveryAddend ?? actor.system?.attributes?.hp?.recoveryAddend ?? 0;
+            const pf2eHp = calculatePf2eOvernightHp({
+                level: actorLevel,
+                conMod,
+                comfortTier: effectiveComfort,
+                restedFully,
+                hasBedroll: comfortEnabled && hasBedroll,
+                comfortEnabled,
+                sheetMultiplier: sheetMult,
+                sheetAddend
+            });
+            let baseHpRestored = pf2eHp.hpRestored;
+            if (overallHpMultiplier !== 1.0) {
+                const naturalHealing = Math.min(baseHpRestored, Math.max(0, maxHp - currentHp));
+                baseHpRestored = Math.max(0, Math.floor(naturalHealing * overallHpMultiplier));
+            }
+            const gearDescriptors = [];
+            if (comfortEnabled) {
+                if (exhaustionSaveBonus > 0) {
+                    const gearLabel = hasCooksUtensils ? "Cook's Utensils" : "Mess Kit";
+                    gearDescriptors.push(`${gearLabel}: +${exhaustionSaveBonus} circumstance on Fortitude save`);
+                }
+                if (pf2eHp.bedrollBonusHp > 0) gearDescriptors.push(`Bedroll: +${pf2eHp.bedrollBonusHp} HP`);
+                if (restedFully) {
+                    const initNote = (!armorSleepPenalty && (effectiveComfort === "sheltered" || effectiveComfort === "safe"))
+                        ? ", +1 Initiative"
+                        : "";
+                    gearDescriptors.push(`Rest Fully: ${pf2eHp.multiplier}x HP, −2 Drained${initNote}`);
+                }
+                if (this._isTendWoundsTarget(actor.id)) gearDescriptors.push("Tended: comfort +1 tier");
+            } else if (restedFully) {
+                gearDescriptors.push(`Rest Fully: ${pf2eHp.multiplier}x HP, −2 Drained, +1 Initiative`);
+            }
+            if (armorSleepPenalty) gearDescriptors.push(`Sleeping in ${equippedArmor.name}: Fatigued at dawn`);
+
+            return {
+                hpRestored: isShort ? 0 : baseHpRestored,
+                hdRestored: 0,
+                spellSlotsRestored: this.restType === "long",
+                comfortLevel: effectiveComfort,
+                campComfort: this.comfort,
+                restType: this.restType,
+                restedFully,
+                exhaustionDC: isShort ? null : exhaustionDC,
+                exhaustionAdvantage: false,
+                exhaustionSaveBonus: isShort ? 0 : exhaustionSaveBonus,
+                pf2eHpMultiplier: pf2eHp.multiplier,
+                armorSleepPenalty: isShort ? false : armorSleepPenalty,
+                gearBonuses: {
+                    hd: pf2eHp.bedrollBonusHp > 0 ? 1 : 0,
+                    bedrollHp: pf2eHp.bedrollBonusHp,
+                    exhaustionAdvantage: false,
+                    exhaustionSaveBonus: isShort ? 0 : exhaustionSaveBonus
+                },
+                gearDescriptors: isShort ? [] : gearDescriptors
+            };
+        }
+
+        const isHostile = effectiveComfort === "hostile";
+        const maxHpRestorable = isHostile ? Math.floor(maxHp * (HP_FRACTION.hostile)) : maxHp;
+        let baseHpRestored = maxHpRestorable;
         if (overallHpMultiplier !== 1.0) {
             const recoveryGap = maxHp - currentHp;
             const naturalHealing = Math.min(maxHpRestorable, recoveryGap);
@@ -398,32 +554,7 @@ export class RestFlowEngine {
         }
 
         // Exhaustion risk at Rough/Hostile (using effective comfort)
-        let exhaustionDC = getExhaustionDC(effectiveComfort);
-
-        // Sleeping in medium/heavy armor: recover only 1/4 HD, exhaustion not reduced
-        let armorSleepPenalty = false;
-        let equippedArmor = null;
-        try {
-            const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
-            if (armorRuleEnabled) {
-                equippedArmor = actor.items?.find(i =>
-                    i.type === "equipment" && i.system?.equipped &&
-                    ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type)
-                );
-                if (equippedArmor && !activitySchema?.armorSleepWaiver) {
-                    armorSleepPenalty = true;
-                    // Override HD recovery to 1/4 total HD (Xanathar's rule)
-                    baseHdRecovered = Math.max(0, Math.floor(totalHd / 4) - hdPenalty);
-                }
-            }
-        } catch (e) { /* setting may not exist yet */ }
-
-        // Personal gear detection (separate axis from camp comfort)
-        const actorItems = actor.items ? Array.from(actor.items) : [];
-        const hasBedroll = actorItems.some(i => isBedrollItem(i));
-        const hasMessKit = actorItems.some(i => isMessKitOnlyItem(i));
-        const hasCooksUtensils = actorItems.some(i => isCooksUtensilsItem(i));
-        const hasDiningGear = hasMessKit || hasCooksUtensils || actorItems.some(i => isMessKitItem(i));
+        const exhaustionDC = getExhaustionDC(effectiveComfort);
 
         // Activity bonus HD (Rest Fully: +1 HD from deep sleep)
         const bonusHdFromActivity = activitySchema?.outcomes?.success?.effects
@@ -450,13 +581,6 @@ export class RestFlowEngine {
         }
         if (armorSleepPenalty) gearDescriptors.push(`Sleeping in ${equippedArmor.name}: 1/4 HD, exhaustion not reduced`);
 
-        if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {
-            void actor.unsetFlag(MODULE_ID, "travelMishapRecovery");
-        }
-
-        // Short rests do not restore HP or HD naturally (players spend HD manually).
-        // The full camp flow only runs for short rests under Gritty Realism.
-        const isShort = this.restType === "short";
         return {
             hpRestored: isShort ? 0 : baseHpRestored,
             hdRestored: isShort ? 0 : (baseHdRecovered + gearBonusHd + bonusHdFromActivity),
@@ -464,7 +588,7 @@ export class RestFlowEngine {
             comfortLevel: effectiveComfort,
             campComfort: this.comfort,
             restType: this.restType,
-            restedFully: activitySchema?.id === "act_rest_fully",
+            restedFully,
             exhaustionDC: isShort ? null : exhaustionDC,
             exhaustionAdvantage: isShort ? false : exhaustionAdvantage,
             armorSleepPenalty: isShort ? false : armorSleepPenalty,
@@ -479,12 +603,14 @@ export class RestFlowEngine {
      * bedroll, matching the rest shown on the character dock.
      * @param {Actor} actor
      * @param {object|null} activitySchema
-     * @returns {{ exhaustionDC: number|null, exhaustionAdvantage: boolean, comfortLevel: string }}
+     * @returns {{ exhaustionDC: number|null, exhaustionAdvantage: boolean, exhaustionSaveBonus?: number, comfortLevel: string }}
      */
     previewExhaustion(actor, activitySchema = null) {
         if (this.safeRestSpot || this.restType === "short") {
-            return { exhaustionDC: null, exhaustionAdvantage: false, comfortLevel: "safe" };
+            return { exhaustionDC: null, exhaustionAdvantage: false, exhaustionSaveBonus: 0, comfortLevel: "safe" };
         }
+        const adapter = game.ionrift?.respite?.adapter;
+        const pf2e = isPf2eSystem(adapter);
         let effectiveComfort = this.comfort;
         const comfortEnabled = isComfortEnabled();
         if (!comfortEnabled) {
@@ -501,11 +627,23 @@ export class RestFlowEngine {
         if (comfortEnabled && hasBedroll) {
             effectiveComfort = boostComfort(effectiveComfort, 1);
         }
-        const exhaustionDC = getExhaustionDC(effectiveComfort);
         const hasDiningGear = actorItems.some(item => isMessKitItem(item));
+        if (pf2e) {
+            const levelRaw = adapter ? adapter.getLevel(actor) : (actor?.system?.details?.level?.value ?? actor?.system?.details?.level ?? 1);
+            const exhaustionDC = getPf2eFortitudeSaveDC(effectiveComfort, Math.max(1, Number(levelRaw) || 1));
+            const exhaustionSaveBonus = (comfortEnabled && hasDiningGear && exhaustionDC) ? PF2E_MESS_KIT_SAVE_BONUS : 0;
+            return {
+                exhaustionDC,
+                exhaustionAdvantage: false,
+                exhaustionSaveBonus,
+                comfortLevel: effectiveComfort
+            };
+        }
+        const exhaustionDC = getExhaustionDC(effectiveComfort);
         return {
             exhaustionDC,
             exhaustionAdvantage: !!(comfortEnabled && hasDiningGear && exhaustionDC),
+            exhaustionSaveBonus: 0,
             comfortLevel: effectiveComfort
         };
     }

@@ -2,6 +2,7 @@ import { TerrainRegistry } from "../../events/resolve/TerrainRegistry.js";
 import { WEATHER_TABLE } from "../../../data/RestConstants.js";
 import { CampGearScanner } from "./CampGearScanner.js";
 import { isComfortEnabled, boostComfort, fireComfortDelta } from "./ComfortCalculator.js";
+import { isPf2eSystem } from "./Pf2eComfortRules.js";
 import { getPartyActors } from "../../party/partyActors.js";
 
 /**
@@ -167,34 +168,58 @@ export function buildCampConditionsBar({
                     : game.i18n.format("ionrift-respite.campConditions.tooltip.yourRestNoBedroll", { comfort: viewerCard.personalComfortLabel }));
 
                 const pComfort = viewerCard.personalComfort;
-                if (pComfort === "hostile") {
-                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hpCap75"));
-                    if (viewerCard.recovery?.isAlreadyFull) {
-                        lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.hdAtMax", { total: viewerCard.recovery.totalHd }));
+                if (isPf2eSystem()) {
+                    const saveDc = viewerCard.recovery?.exhaustionDC;
+                    if (pComfort === "hostile") {
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eHpHalf"));
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eHostilePersist"));
+                        if (saveDc) lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.pf2eFortSaveHostile", { dc: saveDc }));
+                    } else if (pComfort === "rough") {
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eHpNormal"));
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eDrainedNormal"));
+                        if (saveDc) lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.pf2eFortSaveRough", { dc: saveDc }));
+                    } else if (pComfort === "safe") {
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eHpDouble"));
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eDrainedNormal"));
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eNoSave"));
                     } else {
-                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hdPenalty2"));
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eHpNormal"));
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eDrainedNormal"));
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eNoSave"));
                     }
-                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.exhaustionDc15"));
-                } else if (pComfort === "rough") {
-                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hpFull"));
-                    if (viewerCard.recovery?.isAlreadyFull) {
-                        lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.hdAtMax", { total: viewerCard.recovery.totalHd }));
-                    } else {
-                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hdPenalty1"));
+                    if (viewerCard.hasMessKit && (pComfort === "rough" || pComfort === "hostile")) {
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.pf2eMessKitBonus"));
                     }
-                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.exhaustionDc10"));
                 } else {
-                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hpFull"));
-                    if (viewerCard.recovery?.isAlreadyFull) {
-                        lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.hdAtMax", { total: viewerCard.recovery.totalHd }));
+                    if (pComfort === "hostile") {
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hpCap75"));
+                        if (viewerCard.recovery?.isAlreadyFull) {
+                            lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.hdAtMax", { total: viewerCard.recovery.totalHd }));
+                        } else {
+                            lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hdPenalty2"));
+                        }
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.exhaustionDc15"));
+                    } else if (pComfort === "rough") {
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hpFull"));
+                        if (viewerCard.recovery?.isAlreadyFull) {
+                            lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.hdAtMax", { total: viewerCard.recovery.totalHd }));
+                        } else {
+                            lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hdPenalty1"));
+                        }
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.exhaustionDc10"));
                     } else {
-                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hdNormal"));
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hpFull"));
+                        if (viewerCard.recovery?.isAlreadyFull) {
+                            lines.push(game.i18n.format("ionrift-respite.campConditions.tooltip.hdAtMax", { total: viewerCard.recovery.totalHd }));
+                        } else {
+                            lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.hdNormal"));
+                        }
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.noExhaustion"));
                     }
-                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.noExhaustion"));
-                }
 
-                if (viewerCard.hasMessKit && (pComfort === "rough" || pComfort === "hostile")) {
-                    lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.messKitAdvantage"));
+                    if (viewerCard.hasMessKit && (pComfort === "rough" || pComfort === "hostile")) {
+                        lines.push(game.i18n.localize("ionrift-respite.campConditions.tooltip.messKitAdvantage"));
+                    }
                 }
 
                 if (!viewerCard.hasBedroll && (pComfort === "rough" || pComfort === "hostile")) {

@@ -14,6 +14,7 @@ import { confirmAbandonRest } from "../../../rest/confirmAbandonRest.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
 import { ImageResolver } from "../../../../utils/ImageResolver.js";
+import { isPf2eSystem } from "../../../../services/camp/gear/Pf2eComfortRules.js";
 
 export const RestResolutionCardMethods = {
     rehydrateItemLossProposal(eff) {
@@ -787,7 +788,22 @@ export const RestResolutionCardMethods = {
             const hasSetback = exhaustionDelta > 0 || (recovery.eventDamage ?? 0) > 0 || recovery.exhaustionSaveResult === "failed";
 
             let vitalPill = game.i18n.localize("ionrift-respite.restResolve.vitalMaxHpMaxHd");
-            if (exhaustionDelta > 0) {
+            const pf2e = isPf2eSystem();
+            if (pf2e) {
+                if ((recovery.drainedDelta ?? 0) > 0) {
+                    vitalPill = `+${recovery.drainedDelta} Drained`;
+                } else if ((recovery.fatiguedDelta ?? 0) > 0) {
+                    vitalPill = "Fatigued";
+                } else if (recovery.eventDamage > 0) {
+                    vitalPill = `-${recovery.eventDamage} HP`;
+                } else if (recovery.hpRestored > 0) {
+                    vitalPill = recovery.wellRestedGranted
+                        ? `+${recovery.hpRestored} HP, +1 Init`
+                        : `+${recovery.hpRestored} HP`;
+                } else if (recovery.wellRestedGranted) {
+                    vitalPill = "Well-Rested (+1 Init)";
+                }
+            } else if (exhaustionDelta > 0) {
                 vitalPill = game.i18n.format("ionrift-respite.restResolve.vitalExhaustionPlus", { amount: exhaustionDelta });
             } else if (recovery.eventDamage > 0) {
                 vitalPill = `-${recovery.eventDamage} HP`;
@@ -796,27 +812,55 @@ export const RestResolutionCardMethods = {
             }
 
             const notes = [];
-            if (recovery.hpRestored > 0 || recovery.hdRestored > 0) {
-                const parts = [];
-                if (recovery.hpRestored > 0) parts.push(`+${recovery.hpRestored} HP`);
-                if (recovery.hdRestored > 0) parts.push(`+${recovery.hdRestored} HD`);
-                if (recovery.gearBonuses?.hd) parts.push(`(+1 bedroll bonus)`);
-                notes.push(`<i class="fas fa-heartbeat" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.partsRestored", { parts: parts.join(", ") })}`);
+            if (pf2e) {
+                if (recovery.hpRestored > 0) {
+                    const parts = [`+${recovery.hpRestored} HP`];
+                    if (recovery.gearBonuses?.bedrollHp > 0) parts.push(`(+${recovery.gearBonuses.bedrollHp} HP bedroll)`);
+                    notes.push(`<i class="fas fa-heartbeat" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.partsRestored", { parts: parts.join(" ") })}`);
+                } else {
+                    notes.push(`<i class="fas fa-heart" style="color:#10b981;"></i> ${game.i18n.localize("ionrift-respite.restResolve.vitalRecoveryMaxed")}`);
+                }
+                if ((recovery.fatiguedDelta ?? 0) < 0) {
+                    notes.push(`<i class="fas fa-arrow-down" style="color:#10b981;"></i> Fatigued cleared`);
+                } else if ((recovery.fatiguedDelta ?? 0) > 0) {
+                    notes.push(`<i class="fas fa-arrow-up" style="color:#f87171;"></i> Fatigued gained`);
+                }
+                if ((recovery.drainedDelta ?? 0) < 0) {
+                    notes.push(`<i class="fas fa-arrow-down" style="color:#10b981;"></i> Drained reduced by ${Math.abs(recovery.drainedDelta)}`);
+                } else if ((recovery.drainedDelta ?? 0) > 0) {
+                    notes.push(`<i class="fas fa-arrow-up" style="color:#f87171;"></i> Drained +${recovery.drainedDelta}`);
+                }
+                if (recovery.wellRestedGranted) {
+                    notes.push(`<i class="fas fa-bolt" style="color:#10b981;"></i> Well-Rested: +1 circumstance bonus to Initiative`);
+                }
+                if (recovery.exhaustionSaveResult === "passed" && recovery.exhaustionDC) {
+                    notes.push(`<i class="fas fa-shield" style="color:#10b981;"></i> Passed Fortitude save (DC ${recovery.exhaustionDC})`);
+                } else if (recovery.exhaustionSaveResult === "failed" && recovery.exhaustionDC) {
+                    notes.push(`<i class="fas fa-skull" style="color:#f87171;"></i> Failed Fortitude save (DC ${recovery.exhaustionDC})`);
+                }
             } else {
-                notes.push(`<i class="fas fa-heart" style="color:#10b981;"></i> ${game.i18n.localize("ionrift-respite.restResolve.vitalRecoveryMaxed")}`);
-            }
+                if (recovery.hpRestored > 0 || recovery.hdRestored > 0) {
+                    const parts = [];
+                    if (recovery.hpRestored > 0) parts.push(`+${recovery.hpRestored} HP`);
+                    if (recovery.hdRestored > 0) parts.push(`+${recovery.hdRestored} HD`);
+                    if (recovery.gearBonuses?.hd) parts.push(`(+1 bedroll bonus)`);
+                    notes.push(`<i class="fas fa-heartbeat" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.partsRestored", { parts: parts.join(", ") })}`);
+                } else {
+                    notes.push(`<i class="fas fa-heart" style="color:#10b981;"></i> ${game.i18n.localize("ionrift-respite.restResolve.vitalRecoveryMaxed")}`);
+                }
 
-            if (recovery.exhaustionDelta < 0) {
-                notes.push(`<i class="fas fa-arrow-down" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.exhRecoveredNote", { amount: Math.abs(recovery.exhaustionDelta) })}`);
-            } else if (recovery.exhaustionDelta > 0) {
-                const reason = recovery.exhaustionDC
-                    ? game.i18n.format("ionrift-respite.restResolve.failedConSaveReason", { dc: recovery.exhaustionDC })
-                    : game.i18n.localize("ionrift-respite.restResolve.restConditionsReason");
-                notes.push(`<i class="fas fa-arrow-up" style="color:#f87171;"></i> ${game.i18n.format("ionrift-respite.restResolve.exhGainedNote", { amount: recovery.exhaustionDelta, reason })}`);
-            } else if (recovery.exhaustionSaveResult === "failed") {
-                notes.push(`<i class="fas fa-arrow-right" style="color:#fbbf24;"></i> ${game.i18n.format("ionrift-respite.restResolve.failedConSaveOffset", { dc: recovery.exhaustionDC })}`);
-            } else if (recovery.exhaustionSaveResult === "passed") {
-                notes.push(`<i class="fas fa-shield" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.passedConSave", { dc: recovery.exhaustionDC })}`);
+                if (recovery.exhaustionDelta < 0) {
+                    notes.push(`<i class="fas fa-arrow-down" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.exhRecoveredNote", { amount: Math.abs(recovery.exhaustionDelta) })}`);
+                } else if (recovery.exhaustionDelta > 0) {
+                    const reason = recovery.exhaustionDC
+                        ? game.i18n.format("ionrift-respite.restResolve.failedConSaveReason", { dc: recovery.exhaustionDC })
+                        : game.i18n.localize("ionrift-respite.restResolve.restConditionsReason");
+                    notes.push(`<i class="fas fa-arrow-up" style="color:#f87171;"></i> ${game.i18n.format("ionrift-respite.restResolve.exhGainedNote", { amount: recovery.exhaustionDelta, reason })}`);
+                } else if (recovery.exhaustionSaveResult === "failed") {
+                    notes.push(`<i class="fas fa-arrow-right" style="color:#fbbf24;"></i> ${game.i18n.format("ionrift-respite.restResolve.failedConSaveOffset", { dc: recovery.exhaustionDC })}`);
+                } else if (recovery.exhaustionSaveResult === "passed") {
+                    notes.push(`<i class="fas fa-shield" style="color:#10b981;"></i> ${game.i18n.format("ionrift-respite.restResolve.passedConSave", { dc: recovery.exhaustionDC })}`);
+                }
             }
 
             for (const sub of (o.outcomes ?? [])) {

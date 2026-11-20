@@ -49,11 +49,25 @@ export function boostComfort(tier, steps = 1) {
 /**
  * Returns the exhaustion DC for a given comfort tier, or null if none.
  * When comfort is disabled, always returns null (no exhaustion risk).
+ * On PF2e (when `options.level` is provided or `options.pf2e` is true), scales
+ * against PF2e's level-based Fortitude DC curve (Easy on Rough, Standard on Hostile).
  * @param {string} tier
+ * @param {{ level?: number, pf2e?: boolean }} [options]
  * @returns {number|null}
  */
-export function getExhaustionDC(tier) {
+export function getExhaustionDC(tier, options = {}) {
     if (!isComfortEnabled()) return null;
+    const isPf2e = options.pf2e ?? (
+        (globalThis.game?.ionrift?.respite?.adapter?.id ?? globalThis.game?.system?.id) === "pf2e"
+    );
+    if (isPf2e && options.level != null) {
+        const lvl = Math.max(1, Math.floor(Number(options.level) || 1));
+        const table = [14, 15, 16, 18, 19, 20, 22, 23, 24, 26, 27, 28, 30, 31, 32, 34, 35, 36, 38, 39, 40];
+        const base = lvl <= 20 ? table[lvl] : table[20] + ((lvl - 20) * 2);
+        if (tier === "rough") return base - 2;
+        if (tier === "hostile") return base;
+        return null;
+    }
     return EXHAUSTION_DC[tier] ?? null;
 }
 

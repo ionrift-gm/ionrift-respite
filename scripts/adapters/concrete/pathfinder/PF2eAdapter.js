@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { SystemAdapter } from "../../SystemAdapter.js";
+import { findPf2eRestArmor } from "../../../services/camp/gear/RestArmorHelper.js";
 
 /**
  * PF2eAdapter: Pathfinder 2nd Edition support.
@@ -208,7 +209,7 @@ export class PF2eAdapter extends SystemAdapter {
 
     getEquippedArmor(actor) {
         const armorItem = (actor.items ?? []).find(i =>
-            i.type === "armor" && i.isEquipped
+            i.type === "armor" && (i.isEquipped || (i.system?.equipped?.carryType === "worn" && i.system?.equipped?.inSlot === true))
         );
         if (!armorItem) return null;
         const category = armorItem.system?.category ?? "unarmored";
@@ -216,6 +217,191 @@ export class PF2eAdapter extends SystemAdapter {
                      : category === "medium" ? "medium"
                      : "light";
         return { name: armorItem.name, weight };
+    }
+
+    getEquippedRestArmor(actor) {
+        return findPf2eRestArmor(actor);
+    }
+
+    async setArmorEquipped(actor, item, equipped) {
+        if (!item) return;
+        if (typeof actor?.changeCarryType === "function") {
+            await actor.changeCarryType(item, {
+                carryType: "worn",
+                handsHeld: 0,
+                inSlot: Boolean(equipped)
+            });
+            return;
+        }
+        await item.update?.({
+            "system.equipped.carryType": "worn",
+            "system.equipped.inSlot": Boolean(equipped)
+        });
+    }
+
+    getConditionValue(actor, slug) {
+        if (!actor || !slug) return 0;
+        try {
+            const direct = actor.getCondition?.(slug);
+            if (direct) return Number(direct.value ?? direct.system?.value?.value ?? 1) || 1;
+            const bySlug = actor.conditions?.bySlug?.(slug);
+            if (bySlug?.length > 0) {
+                const first = bySlug[0];
+                return Number(first.value ?? first.system?.value?.value ?? 1) || 1;
+            }
+        } catch { /* fall through */ }
+        const found = (actor.items ?? []).find(i =>
+            i.type === "condition" && (i.slug === slug || i.system?.slug === slug)
+        );
+        if (!found) return 0;
+        return Number(found.value ?? found.system?.value?.value ?? 1) || 1;
+    }
+
+    getDrained(actor) {
+        return Math.max(0, Math.min(4, this.getConditionValue(actor, "drained")));
+    }
+
+    async setFatigued(actor, active) {
+        const target = Boolean(active);
+        const current = this.getExhaustion(actor) > 0;
+        if (current === target) return;
+        if (typeof actor?.toggleCondition === "function") {
+            await actor.toggleCondition("fatigued");
+            return;
+        }
+        const items = Array.isArray(actor?.items) ? actor.items : null;
+        if (target) {
+            const doc = { id: "cond-fatigued", type: "condition", name: "Fatigued", system: { slug: "fatigued" } };
+            if (typeof actor?.createEmbeddedDocuments === "function") {
+                await actor.createEmbeddedDocuments("Item", [doc]);
+            } else if (items) {
+                items.push(doc);
+            }
+        } else {
+            const existing = (actor?.items ?? []).find(i => i.type === "condition" && i.system?.slug === "fatigued");
+            if (!existing) return;
+            if (typeof actor?.deleteEmbeddedDocuments === "function" && existing.id) {
+                await actor.deleteEmbeddedDocuments("Item", [existing.id]);
+            } else if (items) {
+                const idx = items.indexOf(existing);
+                if (idx >= 0) items.splice(idx, 1);
+            }
+        }
+    }
+
+    async _setValuedCondition(actor, slug, targetValue, maxVal = 4) {
+        const target = Math.max(0, Math.min(maxVal, Math.floor(Number(targetValue) || 0)));
+        const current = this.getConditionValue(actor, slug);
+        if (current === target) return;
+
+        if (typeof actor?.increaseCondition === "function" && typeof actor?.decreaseCondition === "function") {
+            if (target === 0) {
+                await actor.decreaseCondition(slug, { forceRemove: true });
+            } else if (target > current) {
+                await actor.increaseCondition(slug, { value: target - current, max: maxVal });
+            } else {
+                const steps = current - target;
+                for (let i = 0; i < steps; i++) {
+                    await actor.decreaseCondition(slug);
+                }
+            }
+            return;
+        }
+
+        const existing = (actor?.items ?? []).find(i =>
+            i.type === "condition" && (i.slug === slug || i.system?.slug === slug)
+        );
+        const items = Array.isArray(actor?.items) ? actor.items : null;
+        if (target === 0) {
+            if (!existing) return;
+            if (typeof actor?.deleteEmbeddedDocuments === "function" && existing.id) {
+                await actor.deleteEmbeddedDocuments("Item", [existing.id]);
+            } else if (items) {
+                const idx = items.indexOf(existing);
+                if (idx >= 0) items.splice(idx, 1);
+            }
+            return;
+        }
+        if (existing) {
+            if (typeof existing.update === "function") {
+                await existing.update({ "system.value.value": target });
+            } else if (typeof actor?.updateEmbeddedDocuments === "function" && existing.id) {
+                await actor.updateEmbeddedDocuments("Item", [{ _id: existing.id, "system.value.value": target }]);
+            } else {
+                existing.system = existing.system ?? {};
+                existing.system.value = { ...(existing.system.value ?? {}), value: target };
+            }
+            return;
+        }
+        const label = slug.charAt(0).toUpperCase() + slug.slice(1);
+        const doc = {
+            id: `cond-${slug}`,
+            type: "condition",
+            name: label,
+            system: { slug, value: { isValued: true, value: target } }
+        };
+        if (typeof actor?.createEmbeddedDocuments === "function") {
+            await actor.createEmbeddedDocuments("Item", [doc]);
+        } else if (items) {
+            items.push(doc);
+        }
+    }
+
+    async setDrained(actor, targetValue) {
+        await this._setValuedCondition(actor, "drained", targetValue, 4);
+    }
+
+    async clearWellRestedEffects(actor) {
+        const ids = (actor?.items ?? [])
+            .filter(i => i.flags?.[MODULE_ID]?.wellRested === true && i.id)
+            .map(i => i.id);
+        if (!ids.length) return;
+        if (typeof actor?.deleteEmbeddedDocuments === "function") {
+            await actor.deleteEmbeddedDocuments("Item", ids);
+        } else if (Array.isArray(actor?.items)) {
+            for (const id of ids) {
+                const idx = actor.items.findIndex(i => i.id === id);
+                if (idx >= 0) actor.items.splice(idx, 1);
+            }
+        }
+    }
+
+    async applyWellRestedEffect(actor) {
+        await this.clearWellRestedEffects(actor);
+        const effectDoc = {
+            id: "fx-well-rested",
+            type: "effect",
+            name: "Well-Rested",
+            img: "icons/magic/perception/eye-ringed-glow-angry-small-teal.webp",
+            system: {
+                description: { value: "<p>+1 circumstance bonus to Initiative from Resting Fully in sheltered or safe conditions.</p>" },
+                rules: [{
+                    key: "FlatModifier",
+                    selector: "initiative",
+                    type: "circumstance",
+                    value: 1,
+                    label: "Well-Rested"
+                }],
+                duration: { value: 24, unit: "hours", sustained: false, expiry: null },
+                tokenIcon: { show: true },
+                badge: null,
+                context: null,
+                traits: { value: [] },
+                level: { value: 1 },
+                start: { value: 0, initiative: null },
+                target: null
+            },
+            flags: {
+                [MODULE_ID]: {
+                    wellRested: true
+                }
+            }
+        };
+        if (typeof actor?.createEmbeddedDocuments === "function") {
+            await actor.createEmbeddedDocuments("Item", [effectDoc]);
+        } else if (Array.isArray(actor?.items)) {
+            actor.items.push(effectDoc);
+        }
     }
 
     isToolProficient(actor, toolKey) {
@@ -288,14 +474,39 @@ export class PF2eAdapter extends SystemAdapter {
         // until Respite is ready, then calling it via triggerNativeRest().
     }
 
-    async triggerNativeRest(actor, restType) {
+    async triggerNativeRest(actor, restType, recovery = null) {
         if (restType !== "long") return;
+        const preserveRespiteState = Boolean(recovery?.pf2eHandled);
+        const hpTarget = preserveRespiteState ? this.getHP(actor).value : null;
+        const fatiguedTarget = preserveRespiteState ? (this.getExhaustion(actor) > 0) : null;
+        const drainedTarget = preserveRespiteState ? this.getDrained(actor) : null;
+        const woundedBefore = preserveRespiteState ? this.getConditionValue(actor, "wounded") : 0;
+
         try {
             if (game.pf2e?.actions?.restForTheNight) {
-                await game.pf2e.actions.restForTheNight({ actors: actor });
+                await game.pf2e.actions.restForTheNight({ actors: actor, skipDialog: true });
             }
         } catch (err) {
             console.warn("ionrift-respite | PF2eAdapter: restForTheNight() failed:", err);
+        }
+
+        if (!preserveRespiteState) return;
+        try {
+            if (hpTarget != null && this.getHP(actor).value !== hpTarget) {
+                await actor.update?.({ "system.attributes.hp.value": hpTarget });
+            }
+            await this.setFatigued(actor, fatiguedTarget);
+            await this.setDrained(actor, drainedTarget);
+
+            if (recovery.pf2eReachedMaxHp && recovery.comfortLevel !== "hostile") {
+                if (this.getConditionValue(actor, "wounded") > 0) {
+                    await this._setValuedCondition(actor, "wounded", 0, 4);
+                }
+            } else if (woundedBefore > 0 && this.getConditionValue(actor, "wounded") === 0) {
+                await this._setValuedCondition(actor, "wounded", woundedBefore, 4);
+            }
+        } catch (err) {
+            console.warn("ionrift-respite | PF2eAdapter: failed to reconcile post-rest state:", err);
         }
     }
 

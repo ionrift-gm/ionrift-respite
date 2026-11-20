@@ -18,6 +18,8 @@ import {
 } from "../../../../data/RestConstants.js";
 import { isGearDeployed } from "../../../../services/camp/props/CompoundCampPlacer.js";
 import { isSimpleRestProfile, isSimpleStationsMode } from "../../../../services/rest/flow/RestProfileSettings.js";
+import { getEquippedRestArmor } from "../../../../services/camp/gear/RestArmorHelper.js";
+import { isPf2eSystem } from "../../../../services/camp/gear/Pf2eComfortRules.js";
 import { CraftingPickerApp } from "../../../crafting/CraftingPickerApp.js";
 import {
     emitRestSnapshot,
@@ -424,11 +426,22 @@ export const ActivityStationsDetailMethods = {
                 const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
                 if (armorRuleEnabled) {
                     const actorForHint = game.actors.get(selectedCharacter.id);
-                    const equippedArmor = actorForHint?.items?.find(i => i.type === "equipment" && i.system?.equipped && ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type));
+                    const equippedArmor = getEquippedRestArmor(actorForHint);
+                    const pf2e = isPf2eSystem();
                     if (equippedArmor && tile.armorSleepWaiver) {
-                        armorHint = { text: game.i18n.localize("ionrift-respite.activityStations.armorSleepWaiverHint"), type: "positive" };
+                        armorHint = {
+                            text: game.i18n.localize(pf2e
+                                ? "ionrift-respite.activityStations.armorSleepWaiverHintPf2e"
+                                : "ionrift-respite.activityStations.armorSleepWaiverHint"),
+                            type: "positive"
+                        };
                     } else if (equippedArmor && !tile.armorSleepWaiver) {
-                        armorHint = { text: game.i18n.localize("ionrift-respite.activityStations.armorSleepPenaltyHint"), type: "warning" };
+                        armorHint = {
+                            text: game.i18n.localize(pf2e
+                                ? "ionrift-respite.activityStations.armorSleepPenaltyHintPf2e"
+                                : "ionrift-respite.activityStations.armorSleepPenaltyHint"),
+                            type: "warning"
+                        };
                     }
                 }
             } catch (e) { /* setting may not exist yet */ }
@@ -467,15 +480,11 @@ export const ActivityStationsDetailMethods = {
             if (!app._doffedArmor) app._doffedArmor = new Map();
             const doffedItemId = app._doffedArmor.get(a.id);
 
-            const equippedArmor = a.itemTypes?.equipment?.find(i =>
-                i.system?.equipped && i.system?.type?.value === "heavy"
-            ) ?? a.itemTypes?.equipment?.find(i =>
-                i.system?.equipped && i.system?.type?.value === "medium"
-            );
+            const equippedArmor = getEquippedRestArmor(a);
 
             if (equippedArmor) {
-                const armorType = equippedArmor.system?.type?.value;
-                const donTime = armorType === "heavy" ? "10 min" : "5 min";
+                const armorType = equippedArmor.weight;
+                const donTime = equippedArmor.donTime;
                 return {
                     type: armorType,
                     name: equippedArmor.name,
@@ -489,8 +498,13 @@ export const ActivityStationsDetailMethods = {
             if (doffedItemId) {
                 const doffedItem = a.items.get(doffedItemId);
                 if (doffedItem) {
-                    const armorType = doffedItem.system?.type?.value ?? "medium";
-                    const donTime = armorType === "heavy" ? "10 min" : "5 min";
+                    const pf2e = isPf2eSystem();
+                    const armorType = pf2e
+                        ? String(doffedItem.system?.category ?? "medium").toLowerCase()
+                        : (doffedItem.system?.type?.value ?? "medium");
+                    const donTime = pf2e
+                        ? (armorType === "light" ? "1 min" : "5 min")
+                        : (armorType === "heavy" ? "10 min" : "5 min");
                     return {
                         type: armorType,
                         name: doffedItem.name,

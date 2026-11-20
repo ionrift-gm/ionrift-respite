@@ -15,6 +15,8 @@ import { GatherYieldService } from "../../../../services/rest/forage/GatherYield
 import { executePlayerRoll } from "../../../../services/ui/rollRequest/RollRequestManager.js";
 import { promptArmorSleepIfNeeded } from "../../../crafting/ActivityDetailBuilder.js";
 import { isCampfireMinigameEnabled } from "../../../../services/rest/flow/RestProfileSettings.js";
+import { getEquippedRestArmor } from "../../../../services/camp/gear/RestArmorHelper.js";
+import { isPf2eSystem } from "../../../../services/camp/gear/Pf2eComfortRules.js";
 
 export class TotmActivityDelegate {
     constructor(app) {
@@ -65,16 +67,13 @@ export class TotmActivityDelegate {
             try {
                 const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
                 if (armorRuleEnabled) {
-                    const equippedArmor = actor.items?.find(i =>
-                        i.type === "equipment"
-                        && i.system?.equipped
-                        && ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type)
-                    );
+                    const equippedArmor = getEquippedRestArmor(actor);
                     if (equippedArmor) {
+                        const pf2e = isPf2eSystem();
                         const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
                         const proceed = await confirmFn({
                             title: game.i18n.localize("ionrift-respite.totmActivity.sleepingInArmorTitle"),
-                            content: `<p>${game.i18n.format("ionrift-respite.totmActivity.sleepingInArmorContent", { name: equippedArmor.name })}</p><p>${game.i18n.localize("ionrift-respite.totmActivity.sleepingInArmorPrompt")}</p>`,
+                            content: `<p>${game.i18n.format(pf2e ? "ionrift-respite.totmActivity.sleepingInArmorContentPf2e" : "ionrift-respite.totmActivity.sleepingInArmorContent", { name: equippedArmor.name })}</p><p>${game.i18n.localize("ionrift-respite.totmActivity.sleepingInArmorPrompt")}</p>`,
                             yesLabel: game.i18n.localize("ionrift-respite.totmActivity.confirmAnyway"),
                             noLabel: game.i18n.localize("ionrift-respite.common.cancel"),
                             yesIcon: "fas fa-check",
