@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.5.0] - 2026-11-25
+
+### Added
+- Pathfinder 2e overnight comfort and exposure rules: Constitution-based HP recovery, clearing Fatigued and reducing Drained by 1, Fortitude saves against Fatigued and Drained in rough or hostile camp conditions, and Fatigue penalties for sleeping in armor without the Comfort trait (waived while on watch).
+- Pathfinder 2e Detect Magic sweeps at the camp Workbench now scan the whole camp by spell rank, reporting magic presence below Rank 3, the strongest item level at Rank 3, and the carrying character at Rank 4 and above.
+- Pathfinder 2e support in Player Restrictions to intercept Rest for the Night and lock item investment outside of an active rest.
+
+### Changed
+- Renamed the fallback Other rest activity to Free Time and retired Tell Tales.
+- Sealed shelters that block campfires now hide the fire rail in the rest window, and disabled workflow steps or encounter DC controls stay hidden when their settings are off.
+
+### Fixed
+- Pathfinder 2e night events now resolve skill checks and degree-of-success outcomes against PF2e system skills and DCs.
+- Long hint text in the Pathfinder 2e Workbench examine panel wraps cleanly instead of truncating.
+
 ## [4.4.3] - 2026-11-18
 
 ### Fixed
