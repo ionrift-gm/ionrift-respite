@@ -13,6 +13,7 @@ import {
     resolvePf2eDetectMagicCaster
 } from "./DetectMagicDelegate.js";
 import { computePf2eCampDetectMagicResult } from "../../../services/crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
+import { buildPf2eDetectMagicBannerText, pf2eDetectMagicTierHint } from "../../../services/crafting/detectMagic/pf2eDetectMagicCopy.js";
 import {
     DETECT_MAGIC_BTN_LABEL_DISMISS,
     DETECT_MAGIC_BTN_LABEL_GM,
@@ -187,11 +188,7 @@ export class WorkbenchDelegate {
                     detectMagicPill = isSelf
                         ? `Rank ${previewCaster.rank}`
                         : `${previewCaster.actor.name} · R${previewCaster.rank}`;
-                    const tierHint = previewCaster.capability === "pinpoint"
-                        ? "reveals magic in camp, the strongest level, and which character carries it"
-                        : (previewCaster.capability === "rank"
-                            ? "reveals magic in camp and the strongest level, but not where it is"
-                            : "reveals whether magic is in camp, but not where it is");
+                    const tierHint = pf2eDetectMagicTierHint(previewCaster.capability);
                     pf2eCastTooltip = `Cast Detect Magic via ${previewCaster.actor.name} (Rank ${previewCaster.rank}: ${tierHint}).`;
                 } else {
                     detectMagicPill = arcane.detectMagicAccess.state === "unprepared" ? "Not prepared" : "No Caster";
@@ -218,24 +215,12 @@ export class WorkbenchDelegate {
                         }
                         : { systemId: "pf2e", castRank: 1, pf2eCapability: "presence", casterName: null }));
                 const camp = computePf2eCampDetectMagicResult(activeMeta, party.map(a => a.id));
-                const casterPrefix = camp.casterName ? `${camp.casterName} · ` : "";
-                const head = `${casterPrefix}Detect Magic (Rank ${camp.castRank}):`;
-                let bannerText;
-                if (!camp.present) {
-                    bannerText = `${head} No magic detected in camp. Identified items are ignored.`;
-                } else if (camp.capability === "pinpoint") {
-                    bannerText = `${head} Magic is present in camp. The strongest (level ${camp.strongestLevel}) is on ${camp.sourceActorName}. Other sources are not located.`;
-                } else if (camp.capability === "rank") {
-                    bannerText = `${head} Magic is present in camp. The strongest is level ${camp.strongestLevel}. Its location is not revealed.`;
-                } else {
-                    bannerText = `${head} Magic is present somewhere in camp. Rank ${camp.castRank} reveals presence only.`;
-                }
                 pf2eDetectMagicBanner = {
                     hasPresence: camp.present,
                     capability: camp.capability,
                     castRank: camp.castRank,
                     casterName: camp.casterName,
-                    text: bannerText
+                    text: buildPf2eDetectMagicBannerText(camp)
                 };
             }
         }
