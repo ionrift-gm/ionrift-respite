@@ -4046,6 +4046,13 @@
     text-overflow: ellipsis;
 }
 
+.station-workbench-identify-embed .wb-ident-recon-hint--wrap,
+.workbench-identify-panel .wb-ident-recon-hint--wrap {
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.35;
+}
+
 .station-workbench-identify-embed .wb-ident-caster-hint i,
 .workbench-identify-panel .wb-ident-caster-hint i {
     color: #c4b5fd;
