@@ -100,23 +100,102 @@ const builtinAdapter = {
 };
 
 /**
+ * @param {number} castRank
+ * @returns {"presence"|"rank"|"pinpoint"}
+ */
+function pf2eCapabilityForRank(castRank) {
+    if (castRank >= 4) return "pinpoint";
+    return castRank === 3 ? "rank" : "presence";
+}
+
+/**
+ * Whether a scanned PF2e item registers on Detect Magic at this rank.
+ * Identified items stand in for "magic you're fully aware of", which the caster may ignore.
+ * Deceptive illusions register only when their rank is below the spell's rank.
+ * @param {object} it Scanner item record.
+ * @param {number} castRank
+ * @returns {boolean}
+ */
+export function isPf2eDetectableUnknownMagic(it, castRank) {
+    if (!it || it.identified) return false;
+    if (it.isDeceptiveIllusion && Number(it.rank || 1) >= castRank) return false;
+    return true;
+}
+
+/**
+ * Camp-wide PF2e Detect Magic result (Player Core, 30-foot emanation).
+ * The spell yields one answer for the whole area, never a per-character one:
+ * - Rank 1-2: presence or absence only.
+ * - Rank 3: also the rank and level of the strongest magic.
+ * - Rank 4+: also the source of the strongest magic, to within a 5-foot cube
+ *   (one character), never a specific item.
+ *
+ * @param {object|null} [metaOverride]
+ * @param {string[]|null} [partyActorIds]
+ * @returns {{ present: boolean, castRank: number, capability: "presence"|"rank"|"pinpoint", casterName: string|null, strongestRank: number|null, strongestLevel: number|null, school: string|null, sourceActorId: string|null, sourceActorName: string|null }}
+ */
+export function computePf2eCampDetectMagicResult(metaOverride = null, partyActorIds = null) {
+    const meta = metaOverride ?? _dmGlowScanMeta;
+    const castRank = Math.max(1, Number(meta?.castRank) || 1);
+    const capability = meta?.pf2eCapability ?? pf2eCapabilityForRank(castRank);
+    const result = {
+        present: false,
+        castRank,
+        capability,
+        casterName: meta?.casterName ?? null,
+        strongestRank: null,
+        strongestLevel: null,
+        school: null,
+        sourceActorId: null,
+        sourceActorName: null
+    };
+
+    const ids = Array.isArray(partyActorIds) ? partyActorIds : [..._dmGlowPartyActorIds];
+    let top = null;
+    let topActor = null;
+    for (const id of ids) {
+        const actor = game?.actors?.get?.(id);
+        if (!actor) continue;
+        for (const it of DetectMagicScanner.collectAllMagicItems(actor)) {
+            if (!isPf2eDetectableUnknownMagic(it, castRank)) continue;
+            const rank = Number(it.rank || 1);
+            const level = Number(it.level || 1);
+            if (!top
+                || rank > Number(top.rank || 1)
+                || (rank === Number(top.rank || 1) && level > Number(top.level || 1))) {
+                top = it;
+                topActor = actor;
+            }
+        }
+    }
+    if (!top) return result;
+
+    result.present = true;
+    if (capability !== "presence") {
+        result.strongestRank = Number(top.rank || 1);
+        result.strongestLevel = Number(top.level || 1);
+    }
+    if (capability === "pinpoint") {
+        result.school = normalizeSchoolSlug(top.school);
+        result.sourceActorId = topActor.id;
+        result.sourceActorName = topActor.name ?? null;
+    }
+    return result;
+}
+
+/**
  * Computes the live Detect Magic sheet glow state for an actor.
  *
- * Strict PF2e Rank Gating (matches Tripwire's exploration Detect Magic):
- * - Only UNIDENTIFIED magical items trigger camp Detect Magic glow on PF2e
- *   (already-identified party magic items do not clutter the sheet).
- * - Rank 1-2 (`presence`, Caster Level 1-4): `tabGlow: true`, `rowGlowMap: empty`
- *   (player knows unfamiliar magic radiates from the pack, not which item).
- * - Rank 3 (`rank`, Caster Level 5-6): `tabGlow: true` with strongest Rank/Level
- *   in tooltip, `rowGlowMap: empty` (still cannot pinpoint the item).
- * - Rank 4+ (`pinpoint`, Caster Level 7+): `tabGlow: true`, `rowGlowMap` populated
- *   with unidentified magical item rows.
+ * PF2e: no item rows ever glow (the spell cannot isolate an item in a pack).
+ * Below Rank 4 no sheet glows, since that would reveal location. At Rank 4+
+ * only the character carrying the strongest source gets an Inventory tab glow.
  *
  * @param {string} actorId
  * @param {object|null} [metaOverride]
- * @returns {{ active: boolean, mode: "none"|"tab-only"|"pinpoint", tabGlow: boolean, tabSchool: string|null, tabTooltip: string, rowGlowMap: Map<string, string>, strongestRank: number|null, strongestLevel: number|null }}
+ * @param {string[]|null} [partyActorIds]
+ * @returns {{ active: boolean, mode: "none"|"source"|"pinpoint", tabGlow: boolean, tabSchool: string|null, tabTooltip: string, rowGlowMap: Map<string, string>, strongestRank: number|null, strongestLevel: number|null }}
  */
-export function computeActorDetectMagicGlowState(actorId, metaOverride = null) {
+export function computeActorDetectMagicGlowState(actorId, metaOverride = null, partyActorIds = null) {
     const empty = {
         active: false,
         mode: "none",
@@ -133,57 +212,18 @@ export function computeActorDetectMagicGlowState(actorId, metaOverride = null) {
 
     if (systemId === "pf2e") {
         if (!_dmGlowSessionActive && !metaOverride) return empty;
-        if (!metaOverride && !_dmGlowPartyActorIds.has(actorId)) return empty;
-        const actor = game?.actors?.get?.(actorId);
-        if (!actor) return empty;
-
-        const castRank = Math.max(1, Number(meta?.castRank) || 1);
-        const capability = meta?.pf2eCapability
-            ?? (castRank >= 4 ? "pinpoint" : (castRank === 3 ? "rank" : "presence"));
-        const casterLabel = meta?.casterName ? ` · ${meta.casterName}` : "";
-
-        const unidMagic = DetectMagicScanner.collectAllMagicItems(actor).filter(it => {
-            if (it.identified) return false;
-            if (it.isDeceptiveIllusion && Number(it.rank || 1) >= castRank) return false;
-            return true;
-        });
-
-        if (unidMagic.length === 0) return empty;
-
-        const top = [...unidMagic].sort(
-            (a, b) => (Number(b.rank || 1) - Number(a.rank || 1)) || (Number(b.level || 1) - Number(a.level || 1))
-        )[0];
-        const tabSchool = normalizeSchoolSlug(top.school);
-
-        if (capability !== "pinpoint") {
-            const tabTooltip = capability === "rank"
-                ? `Detect Magic (Rank ${castRank}${casterLabel}): Unfamiliar magic radiates from this inventory (strongest: Rank ${top.rank ?? 1}, Item Level ${top.level ?? 1}).`
-                : `Detect Magic (Rank ${castRank}${casterLabel}): An unfamiliar magical presence radiates from somewhere in this inventory.`;
-            return {
-                active: true,
-                mode: "tab-only",
-                tabGlow: true,
-                tabSchool,
-                tabTooltip,
-                rowGlowMap: new Map(),
-                strongestRank: top.rank ?? 1,
-                strongestLevel: top.level ?? 1
-            };
-        }
-
-        const rowGlowMap = new Map();
-        for (const it of unidMagic) {
-            rowGlowMap.set(it.itemId, normalizeSchoolSlug(it.school));
-        }
+        const camp = computePf2eCampDetectMagicResult(meta, partyActorIds);
+        if (!camp.present || camp.sourceActorId !== actorId) return empty;
+        const casterLabel = camp.casterName ? ` · ${camp.casterName}` : "";
         return {
             active: true,
-            mode: "pinpoint",
+            mode: "source",
             tabGlow: true,
-            tabSchool,
-            tabTooltip: `Detect Magic (Rank ${castRank}${casterLabel}): Unidentified magical item(s) highlighted in inventory.`,
-            rowGlowMap,
-            strongestRank: top.rank ?? 1,
-            strongestLevel: top.level ?? 1
+            tabSchool: camp.school ?? "unknown",
+            tabTooltip: `Detect Magic (Rank ${camp.castRank}${casterLabel}): The strongest magic in camp (level ${camp.strongestLevel}) is on this character.`,
+            rowGlowMap: new Map(),
+            strongestRank: camp.strongestRank,
+            strongestLevel: camp.strongestLevel
         };
     }
 

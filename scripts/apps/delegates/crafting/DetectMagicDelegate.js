@@ -138,9 +138,9 @@ function isPf2eCantripPrepared(actor, spellItem) {
 /**
  * Determines a PF2e actor's heightened Detect Magic cantrip rank and capability tier.
  * Cantrips automatically heighten to half the character's level rounded up:
- * - Rank 1-2 (Level 1-4): "presence" (presence or absence of magic only; no item highlight)
- * - Rank 3   (Level 5-6): "rank"     (learns rank/level of strongest magic; no item highlight)
- * - Rank 4+  (Level 7+):  "pinpoint" (pinpoints unidentified magic items in inventory)
+ * - Rank 1-2 (Level 1-4): "presence" (presence or absence of magic in the area only)
+ * - Rank 3   (Level 5-6): "rank"     (also the rank/level of the strongest magic)
+ * - Rank 4+  (Level 7+):  "pinpoint" (also which character carries the strongest source)
  *
  * @param {Actor|null} actor
  * @returns {{ rank: number, level: number, capability: "presence"|"rank"|"pinpoint" }}
@@ -838,11 +838,12 @@ export class DetectMagicDelegate {
         this._app._magicScanMeta = scanMeta;
         this._app._magicScanComplete = true;
         if (isPf2e) {
-            const hasUnidMagic = results.some(block =>
-                (block.items ?? []).some(it => !it.identified && !(it.isDeceptiveIllusion && Number(it.rank || 1) >= scanMeta.castRank))
+            const { isPf2eDetectableUnknownMagic } = await import("../../../services/crafting/detectMagic/DetectMagicInventoryGlowBridge.js");
+            const hasUnknownMagic = results.some(block =>
+                (block.items ?? []).some(it => isPf2eDetectableUnknownMagic(it, scanMeta.castRank))
             );
-            if (!hasUnidMagic) {
-                ui.notifications.info(`${scanMeta.casterName} casts Detect Magic (Rank ${scanMeta.castRank}): no unfamiliar magical auras detected.`);
+            if (!hasUnknownMagic) {
+                ui.notifications.info(`${scanMeta.casterName} casts Detect Magic (Rank ${scanMeta.castRank}): no magic detected in camp. Identified items are ignored.`);
             }
         } else if (results.length === 0) {
             ui.notifications.info(game.i18n.localize("ionrift-respite.detectMagicDelegate.noMagicalItemsDetected"));

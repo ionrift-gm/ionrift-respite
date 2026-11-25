@@ -12,7 +12,7 @@ import {
     getDetectMagicPlayerAccessReason,
     resolvePf2eDetectMagicCaster
 } from "./DetectMagicDelegate.js";
-import { computeActorDetectMagicGlowState } from "../../../services/crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
+import { computePf2eCampDetectMagicResult } from "../../../services/crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
 import {
     DETECT_MAGIC_BTN_LABEL_DISMISS,
     DETECT_MAGIC_BTN_LABEL_GM,
@@ -188,10 +188,10 @@ export class WorkbenchDelegate {
                         ? `Rank ${previewCaster.rank}`
                         : `${previewCaster.actor.name} · R${previewCaster.rank}`;
                     const tierHint = previewCaster.capability === "pinpoint"
-                        ? "pinpoints unidentified magic items in inventory"
+                        ? "reveals magic in camp, the strongest level, and which character carries it"
                         : (previewCaster.capability === "rank"
-                            ? "reveals strongest aura rank only; Rank 4+ pinpoints items"
-                            : "senses magical presence only; Rank 4+ pinpoints items");
+                            ? "reveals magic in camp and the strongest level, but not where it is"
+                            : "reveals whether magic is in camp, but not where it is");
                     pf2eCastTooltip = `Cast Detect Magic via ${previewCaster.actor.name} (Rank ${previewCaster.rank}: ${tierHint}).`;
                 } else {
                     detectMagicPill = arcane.detectMagicAccess.state === "unprepared" ? "Not prepared" : "No Caster";
@@ -217,26 +217,24 @@ export class WorkbenchDelegate {
                             pf2eCapability: previewCaster.capability
                         }
                         : { systemId: "pf2e", castRank: 1, pf2eCapability: "presence", casterName: null }));
-                const glowState = focusActor ? computeActorDetectMagicGlowState(focusActor.id, activeMeta) : null;
-                const castRank = Math.max(1, Number(activeMeta.castRank) || 1);
-                const capability = activeMeta.pf2eCapability ?? (castRank >= 4 ? "pinpoint" : (castRank === 3 ? "rank" : "presence"));
-                const casterPrefix = activeMeta.casterName ? `${activeMeta.casterName} · ` : "";
-                const targetName = focusActor?.name ?? "this character";
+                const camp = computePf2eCampDetectMagicResult(activeMeta, party.map(a => a.id));
+                const casterPrefix = camp.casterName ? `${camp.casterName} · ` : "";
+                const head = `${casterPrefix}Detect Magic (Rank ${camp.castRank}):`;
                 let bannerText;
-                if (!glowState?.active) {
-                    bannerText = `${casterPrefix}Detect Magic (Rank ${castRank}): No unfamiliar magical auras detected in ${targetName}'s gear.`;
-                } else if (capability === "pinpoint") {
-                    bannerText = `${casterPrefix}Detect Magic (Rank ${castRank}): Unidentified magical item(s) pinpointed and highlighted in ${targetName}'s inventory.`;
-                } else if (capability === "rank") {
-                    bannerText = `${casterPrefix}Detect Magic (Rank 3): Unfamiliar magic radiates from ${targetName}'s gear (strongest: Rank ${glowState.strongestRank ?? 1}, Item Level ${glowState.strongestLevel ?? 1}). Item pinpointing requires Rank 4.`;
+                if (!camp.present) {
+                    bannerText = `${head} No magic detected in camp. Identified items are ignored.`;
+                } else if (camp.capability === "pinpoint") {
+                    bannerText = `${head} Magic is present in camp. The strongest (level ${camp.strongestLevel}) is on ${camp.sourceActorName}. Other sources are not located.`;
+                } else if (camp.capability === "rank") {
+                    bannerText = `${head} Magic is present in camp. The strongest is level ${camp.strongestLevel}. Its location is not revealed.`;
                 } else {
-                    bannerText = `${casterPrefix}Detect Magic (Rank ${castRank}): Unfamiliar magic radiates somewhere in ${targetName}'s gear. Item pinpointing requires Rank 4.`;
+                    bannerText = `${head} Magic is present somewhere in camp. Rank ${camp.castRank} reveals presence only.`;
                 }
                 pf2eDetectMagicBanner = {
-                    hasPresence: Boolean(glowState?.active),
-                    capability,
-                    castRank,
-                    casterName: activeMeta.casterName ?? null,
+                    hasPresence: camp.present,
+                    capability: camp.capability,
+                    castRank: camp.castRank,
+                    casterName: camp.casterName,
                     text: bannerText
                 };
             }
